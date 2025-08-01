@@ -1,0 +1,31 @@
+[project]
+name = "stock_agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "finnhub-python>=2.4.24",
+    "google-generativeai<=0.8.5",
+    "langchain==0.3.13",
+    "langchain-chroma==0.1.4",
+    "langchain-community==0.3.13",
+    "langchain-core>=0.3.56",
+    "langchain-experimental==0.3.4",
+    "langchain-google-community==2.0.3",
+    "langchain-google-genai>=2.0.10",
+    "langchain-mcp-adapters>=0.1.0",
+    "langchain-ollama>=0.3.2",
+    "langchain-openai>=0.3.0",
+    "langchain-text-splitters==0.3.4",
+    "langdetect==1.0.9",
+    "langgraph>=0.5.4",
+    "langgraph-checkpoint>=2.1.0",
+    "langgraph-sdk==0.1.48",
+    "langsmith==0.2.6",
+    "pillow>=11.3.0",
+    "pydantic==2.9.2",
+    "pydantic-core==2.23.4",
+    "pydantic-settings==2.7.0",
+    "yfinance==0.2.51",
+]
