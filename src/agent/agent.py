@@ -37,8 +37,7 @@ market_research_tools = [YahooFinanceNewsTool()] + polygon_tools
 
 # 시장 조사 에이전트를 생성합니다.
 market_research_agent = create_react_agent(
-    llm,
-    tools=market_research_tools
+    llm, tools=market_research_tools
 )
 
 def market_research_node(state: MessagesState) -> Command[Literal["supervisor"]]:
@@ -57,7 +56,7 @@ def market_research_node(state: MessagesState) -> Command[Literal["supervisor"]]
 
     # 결과 메시지를 업데이트하고 supervisor node로 이동합니다.
     return Command(
-        update={'messages': [HumanMessage(content=result['messages'][-1].content, name='market_research')]},
+        update={'messages': [HumanMessage(content=result['messages'][-1].content, name='market_research', token=result['messages'][-1].usage_metadata)]},
         goto='supervisor'
     )
 
@@ -67,15 +66,25 @@ def market_research_node(state: MessagesState) -> Command[Literal["supervisor"]]
 finnhub_client = finnhub.Client(api_key=os.getenv('FINNHUB_API_KEY'))
 
 @tool
-def get_stock_price(ticker: str) -> dict:
+def get_stock_price_from_finnhub(ticker: str) -> dict:
     """Given a stock ticker, return the price data for the past 5 days using Finnhub API"""
     candles = finnhub_client.stock_candles(ticker, 'D', int((datetime.datetime.now() - datetime.timedelta(days=7)).timestamp()), int(datetime.datetime.now().timestamp()))
     return candles
 
+@tool
+def get_stock_price_from_yfinance(ticker: str) -> dict:
+    """Given a stock ticker, return the stock price data for the past month using yfinance"""
+    import yfinance as yf
+    from curl_cffi import requests
+   # session = requests.Session(impersonate="chrome")
+   # ticker = yf.Ticker(ticker, session=session)
+    stock_info = yf.download(ticker, period='1mo').to_dict()
+    return stock_info
 
-stock_research_tools = [get_stock_price]
+
+
 stock_research_agent = create_react_agent(
-    llm, tools=stock_research_tools
+    llm, tools=[get_stock_price_from_finnhub, get_stock_price_from_yfinance]
 )
 
 def stock_research_node(state: MessagesState) -> Command[Literal["supervisor"]]:
@@ -105,9 +114,8 @@ def company_research_tool(ticker: str) -> dict:
         'sec_filings': sec_filings
     }
 
-company_research_tools = [company_research_tool]
 company_research_agent = create_react_agent(
-    llm, tools=company_research_tools
+    llm, tools=[company_research_tool]
 )
 
 def company_research_node(state: MessagesState) -> Command[Literal["supervisor"]]:
@@ -128,6 +136,28 @@ def company_research_node(state: MessagesState) -> Command[Literal["supervisor"]
     )
 
 
+class LiquidityAgent:
+    """A class to check liquidity of a stock."""
+    prompt = """
+    You are a financial analyst tasked with checking the liquidity of a stock.
+    check liquidity of a stock. Given the following information.
+    get a ticker of TBX (it's not a stock, it's a treasury) to get the liquidity of the stock.
+    If the trend of a month is up, then the liquidity is good.
+    If the trend of a month is down, then the liquidity is bad.
+    """
+    liquidity_agent = create_react_agent(
+        llm, tools=[get_stock_price_from_yfinance], prompt=prompt
+    )
+
+    @classmethod
+    def liquidity_check_node(cls, state: MessagesState) -> Command[Literal["supervisor"]]:
+        result = cls.liquidity_agent.invoke(state)
+        return Command(
+            update={'messages': [HumanMessage(content=result['messages'][-1].content, name='liquidity_check')]},
+            goto='supervisor'
+        )
+
+
 
 from typing import Literal
 from typing_extensions import TypedDict
@@ -136,7 +166,7 @@ from langgraph.graph import MessagesState, END
 from langgraph.types import Command
 
 
-members = ["market_research", "stock_research", "company_research"]
+members = ["market_research", "stock_research", "company_research", "liquidity_check"] #
 options = members + ["FINISH"]
 
 system_prompt = (
@@ -146,15 +176,9 @@ system_prompt = (
     " task and respond with their results and status. "
     " Always respond with the worker name as keyword to act next,"
     " or FINISH if no further action is needed."
-    " Do not respond with any other text or explanation."
-    " Always explain in Korean"
+    " Do not respond with any other text or explanation. Always respond only with the worker name at all costs."
 )
 
-
-#class Router(TypedDict):
-#    """Worker to route to next. If no workers needed, route to FINISH."""
-
-#    next: Literal[*options]
 
 class Router(BaseModel):
     """Worker to route to next. If no workers needed, route to FINISH."""
@@ -179,6 +203,7 @@ def supervisor_node(state: MessagesState) -> Command[Literal[*members, "analyst"
                ] + state["messages"]
     #output_parser = PydanticOutputParser(pydantic_object=Router)
     response = llm.invoke(messages)
+    print(response.usage_metadata)
     goto = response.content.strip()
     if goto == "FINISH":
         goto = "analyst"
@@ -204,7 +229,7 @@ def analyst_node(state: MessagesState):
     analyst_prompt = PromptTemplate.from_template(
         """You are a stock market analyst. Given the following information, 
     Please decide whether to buy, sell, or hold the stock.
-    
+    Always explain in Korean.
     Information:
     {messages}"""
     )
@@ -223,6 +248,7 @@ graph_builder.add_node("supervisor", supervisor_node)
 graph_builder.add_node("market_research", market_research_node)
 graph_builder.add_node("stock_research", stock_research_node)
 graph_builder.add_node("company_research", company_research_node)
+graph_builder.add_node("liquidity_check", LiquidityAgent.liquidity_check_node)
 graph_builder.add_node("analyst", analyst_node)
 
 graph_builder.add_edge(START, "supervisor")
@@ -236,5 +262,6 @@ img = Image.open(io.BytesIO(img_bytes))
 img.show()
 
 
-for chunk in graph.stream({"messages": [("user", "Snowflake에 투자 할만 한가요?")]}, stream_mode="values"):
+for chunk in graph.stream({"messages": [("user", "Snowflake를 투자하려하는데, 시장 상황, 시장의 유동성(10년 미국채 금리(TBX)로 조사), 회사 상태 등등을 조사해주세요.")]}, stream_mode="values"):
     chunk['messages'][-1].pretty_print()
+
