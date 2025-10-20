@@ -201,6 +201,9 @@ class TrendResearchBase:
         7. Synthesize all analyses and provide comprehensive insights
         8. Always explain in Korean
 
+        CRITICAL: You MUST include the exact "Chart saved: /path/to/file.png" messages from plot_trend tools in your final response.
+        These file paths are needed for downstream processing (email reports with embedded images).
+
         {self.context_instructions}
 
         Today is {datetime.now().strftime("%Y-%m-%d")}. 
