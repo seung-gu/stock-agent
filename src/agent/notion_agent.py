@@ -75,7 +75,7 @@ def upload_images_to_cloudflare(image_files: list[str]) -> dict[str, str]:
             print(f"🔄 R2 업로드 시작: {chart_file}")
             filename = os.path.basename(chart_file)
             with Image.open(chart_file) as img:
-                img.thumbnail((800, 600), Image.Resampling.LANCZOS)
+                img.thumbnail((600, 400), Image.Resampling.LANCZOS)
                 buffer = io.BytesIO()
                 img.convert('RGB').save(buffer, format='JPEG', quality=85, optimize=True)
                 buffer.seek(0)
@@ -127,14 +127,66 @@ def create_notion_blocks(content: str, uploaded_map: dict[str, str]) -> list[dic
             
             # 테이블
             if line.startswith('|'):
-                table = []
+                table_lines = []
                 while i < len(lines) and lines[i].startswith('|'):
-                    table.append(lines[i])
+                    table_lines.append(lines[i])
                     i += 1
-                children.append({
-                    'object': 'block', 'type': 'code',
-                    'code': {'rich_text': [{'type': 'text', 'text': {'content': '\n'.join(table)[:2000]}}], 'language': 'plain text'}
-                })
+                
+                # 테이블 파싱
+                if len(table_lines) >= 2:
+                    # 헤더와 구분선 제거하고 데이터 행만 추출
+                    header_row = [cell.strip() for cell in table_lines[0].split('|')[1:-1]]
+                    data_rows = []
+                    
+                    for row in table_lines[2:]:  # 첫 줄은 헤더, 둘째 줄은 구분선
+                        cells = [cell.strip() for cell in row.split('|')[1:-1]]
+                        if cells:
+                            data_rows.append(cells)
+                    
+                    # Notion 테이블 블록 생성
+                    if data_rows:
+                        table_width = len(header_row)
+                        table_block = {
+                            'object': 'block',
+                            'type': 'table',
+                            'table': {
+                                'table_width': table_width,
+                                'has_column_header': True,
+                                'has_row_header': False,
+                                'children': []
+                            }
+                        }
+                        
+                        # 헤더 행
+                        header_cells = [{'type': 'text', 'text': {'content': cell}} for cell in header_row]
+                        table_block['table']['children'].append({
+                            'object': 'block',
+                            'type': 'table_row',
+                            'table_row': {'cells': [[cell] for cell in header_cells]}
+                        })
+                        
+                        # 데이터 행들
+                        for row in data_rows:
+                            row_cells = [{'type': 'text', 'text': {'content': cell}} for cell in row]
+                            table_block['table']['children'].append({
+                                'object': 'block',
+                                'type': 'table_row',
+                                'table_row': {'cells': [[cell] for cell in row_cells]}
+                            })
+                        
+                        children.append(table_block)
+                    else:
+                        # 파싱 실패시 코드 블록으로 대체
+                        children.append({
+                            'object': 'block', 'type': 'code',
+                            'code': {'rich_text': [{'type': 'text', 'text': {'content': '\n'.join(table_lines)}}], 'language': 'plain text'}
+                        })
+                else:
+                    # 테이블이 너무 짧으면 코드 블록
+                    children.append({
+                        'object': 'block', 'type': 'code',
+                        'code': {'rich_text': [{'type': 'text', 'text': {'content': '\n'.join(table_lines)}}], 'language': 'plain text'}
+                    })
                 continue
             
             # 마크다운 파싱

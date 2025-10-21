@@ -139,9 +139,6 @@ class MarketResearchManager:
 
             === 종합 리포트 ===
             {report.markdown_report}
-
-            === 차트 파일 정보 ===
-            차트 파일들이 임시 디렉토리에 저장되었습니다.
             """
             await self._post_to_notion(combined_content)
             
@@ -172,17 +169,17 @@ class MarketResearchManager:
         market_agent now outputs ReportData directly (no need for writer_agent).
         """
         combined_input = f"""
-Original Query: {equity_ticker} 시장 분석 (유동성 조건 포함)
+        Original Query: {equity_ticker} 시장 분석 (유동성 조건 포함)
 
-=== Liquidity Analysis ({liquidity_ticker}) ===
-{liquidity_output}
+        === Liquidity Analysis ({liquidity_ticker}) ===
+        {liquidity_output}
 
-=== Equity Analysis ({equity_ticker}) ===
-{equity_output}
+        === Equity Analysis ({equity_ticker}) ===
+        {equity_output}
 
-위 두 분석을 종합하여 {equity_ticker} 투자에 대한 상세한 리포트를 작성해주세요.
-리포트는 전문적이고 구조화된 마크다운 형식이어야 합니다.
-"""
+        위 두 분석을 종합하여 {equity_ticker} 투자에 대한 상세한 리포트를 작성해주세요.
+        리포트는 전문적이고 구조화된 마크다운 형식이어야 합니다.
+        """
         
         result = await Runner.run(market_agent, input=combined_input)
         return result.final_output_as(ReportData)

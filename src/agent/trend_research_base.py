@@ -99,7 +99,7 @@ def create_single_chart(ticker: str, data, period_name: str, color: str, ylabel:
     plt.savefig(filepath, dpi=100, bbox_inches='tight')
     plt.close()
     
-    return f"Chart saved: {filepath}"
+    return f"Chart saved: {filepath}\n\nIMPORTANT: Copy this EXACT path to create markdown link: [View Chart](sandbox:{filepath})"
 
 
 class TrendResearchBase:
@@ -257,23 +257,35 @@ class TrendResearchBase:
            Returns unit type (USD/EUR/PERCENTAGE/INDEX/etc)
         3. plot_trend(period, value_type): Generate chart with unit type
 
-        Workflow:
-        1. **FIRST**: Get ticker info from analyze_trend (get quote_type, currency, name)
-        2. Call get_value_unit ONCE to determine unit (returns: USD, PERCENTAGE, INDEX, etc.)
-        3. Use the SAME unit for ALL charts
-        4. For each period (5d, 1mo, 6mo):
-           - analyze_trend(period)
-           - plot_trend(period, value_type=<unit from step 2>)
-        5. Synthesize analyses
-        6. Always explain in Korean
+        MANDATORY Workflow (YOU MUST FOLLOW EVERY STEP):
+        1. analyze_trend("5d") - get metadata
+        2. get_value_unit(...) - determine unit ONCE
+        3. analyze_trend("5d") + plot_trend("5d", value_type) - MUST call plot
+        4. analyze_trend("1mo") + plot_trend("1mo", value_type) - MUST call plot
+        5. analyze_trend("6mo") + plot_trend("6mo", value_type) - MUST call plot
+        6. **FORMAT OUTPUT AS MARKDOWN TABLE**
+        
+        YOU MUST CALL plot_trend() for EVERY period. Charts are REQUIRED, not optional.
+        
+        OUTPUT FORMAT (REQUIRED):
+        Create a markdown table with ALL analysis results:
+        
+        | Period | Start | End | Change | High | Low | Volatility |
+        |--------|-------|-----|--------|------|-----|------------|
+        | 5 Days | X.XXX | X.XXX | -X.XX% | X.XXX | X.XXX | X.XXX |
+        | 1 Month | X.XXX | X.XXX | -X.XX% | X.XXX | X.XXX | X.XXX |
+        | 6 Months | X.XXX | X.XXX | -X.XX% | X.XXX | X.XXX | X.XXX |
+        
+        Then add chart links and comprehensive insights in Korean.
 
-        CRITICAL: You MUST include the exact "Chart saved: /path/to/file.png" messages from plot_trend tools in your final response.
-        These file paths are needed for downstream processing (email reports with embedded images).
+        CRITICAL: 
+        - You MUST include the EXACT "Chart saved: /path/to/file.png" messages from plot_trend tools
+        - Copy the FULL file path EXACTLY as returned (do NOT modify or shorten the path)
+        - Use the format: [차트 보기](sandbox:/full/exact/path.png)
 
         {self.context_instructions}
 
-        Today is {datetime.now().strftime("%Y-%m-%d")}. 
-        Always explain in Korean and provide comprehensive analytical insights for {self.ticker}.
+        Today is {datetime.now().strftime("%Y-%m-%d")}.
         """
         
         return Agent(
