@@ -13,7 +13,36 @@ load_dotenv(override=True)
 TEMP_CHART_DIR = tempfile.mkdtemp(prefix="market_charts_")
 
 
-def create_single_chart(ticker: str, data, period_name: str, color: str) -> str:
+# Value Unit Determiner Agent
+_value_unit_agent = Agent(
+    name="Unit Determiner",
+    instructions="""Determine value unit for chart. Return ONE WORD ONLY.
+
+Rules (priority order):
+1. Name has "Treasury"/"Yield"/"CBOE Interest Rate" → PERCENTAGE
+2. Name has "S&P"/"NASDAQ"/"Dow" → INDEX
+3. Type is EQUITY → currency code (USD/EUR/JPY)
+4. Type is INDEX + value <100 → PERCENTAGE
+5. Type is INDEX + value >100 → INDEX
+6. Type is CURRENCY → RATE
+
+Examples:
+Apple Inc., EQUITY, USD → USD
+CBOE Interest Rate 10 Year, INDEX → PERCENTAGE
+S&P 500, INDEX → INDEX
+
+Return ONLY the unit word. No explanation.""",
+    model="gpt-4o-mini"
+)
+
+# Convert Agent to tool
+get_value_unit = _value_unit_agent.as_tool(
+    tool_name="get_value_unit",
+    tool_description="Determine chart value unit type"
+)
+
+
+def create_single_chart(ticker: str, data, period_name: str, color: str, ylabel: str, value_format: str) -> str:
     """
     Create a single trend chart for the given ticker and period.
     
@@ -22,6 +51,8 @@ def create_single_chart(ticker: str, data, period_name: str, color: str) -> str:
         data: Historical price data from yfinance
         period_name: Display name for the period (e.g., "5 Days")
         color: Chart color in hex format
+        ylabel: Y-axis label (e.g., "Price ($)", "Yield (%)")
+        value_format: Format string for values (e.g., "${:.2f}", "{:.2f}%")
         
     Returns:
         Filename of the saved chart or None if data is empty
@@ -33,7 +64,7 @@ def create_single_chart(ticker: str, data, period_name: str, color: str) -> str:
     ax.plot(data.index, data['Close'], linewidth=2, color=color, marker='o', markersize=4)
     ax.fill_between(data.index, data['Close'], alpha=0.3, color=color)
     ax.set_title(f'{ticker} {period_name} Trend', fontsize=13, fontweight='bold')
-    ax.set_ylabel('Yield (%)', fontsize=11)
+    ax.set_ylabel(ylabel, fontsize=11)
     ax.grid(True, alpha=0.3, linestyle='--')
     
     # Display start/end values
@@ -42,9 +73,9 @@ def create_single_chart(ticker: str, data, period_name: str, color: str) -> str:
     change = ((end_val - start_val) / start_val) * 100
     
     change_color = 'green' if change < 0 else 'red'
-    ax.text(0.02, 0.95, f'Start: {start_val:.2f}%', transform=ax.transAxes, 
+    ax.text(0.02, 0.95, f'Start: {value_format.format(start_val)}', transform=ax.transAxes, 
             verticalalignment='top', fontsize=10, bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-    ax.text(0.02, 0.85, f'End: {end_val:.2f}%', transform=ax.transAxes, 
+    ax.text(0.02, 0.85, f'End: {value_format.format(end_val)}', transform=ax.transAxes, 
             verticalalignment='top', fontsize=10, bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
     ax.text(0.02, 0.75, f'Change: {change:+.2f}%', transform=ax.transAxes, 
             verticalalignment='top', fontsize=10, fontweight='bold',
@@ -139,11 +170,11 @@ class TrendResearchBase:
             period_name = {"5d": "5-Day", "1mo": "1-Month", "6mo": "6-Month"}.get(period, period)
             
             return f"""{period_name} Trend Analysis ({self.ticker}):
-                    - Start: {start_price:.3f}%
-                    - End: {end_price:.3f}%
+                    - Start: {start_price:.3f}
+                    - End: {end_price:.3f}
                     - Change: {change_pct:+.2f}%
-                    - High: {data['Close'].max():.3f}%
-                    - Low: {data['Close'].min():.3f}%
+                    - High: {data['Close'].max():.3f}
+                    - Low: {data['Close'].min():.3f}
                     - Volatility: {volatility:.3f}
                     - Data Points: {len(data)}"""
         
@@ -157,16 +188,49 @@ class TrendResearchBase:
             function_tool decorated function that creates charts
         """
         @function_tool
-        def plot_trend(period: str) -> str:
-            """Plot trend chart for specified period. Period options: 5d, 1mo, 6mo"""
+        def plot_trend(period: str, value_type: str) -> str:
+            """
+            Plot trend chart for specified period.
+            
+            Args:
+                period: Period options: 5d, 1mo, 6mo
+                value_type: 값 타입 (get_chart_value_type tool에서 반환된 값)
+                    - "USD" → Y-axis: "Price ($)", format: "${:.2f}"
+                    - "EUR" → Y-axis: "Price (€)", format: "€{:.2f}"
+                    - "JPY" → Y-axis: "Price (¥)", format: "¥{:.2f}"
+                    - "PERCENTAGE" → Y-axis: "Yield (%)", format: "{:.2f}%"
+                    - "INDEX" → Y-axis: "Index Value", format: "{:.2f}"
+                    - "RATE" → Y-axis: "Exchange Rate", format: "{:.4f}"
+                
+            Note: 먼저 get_chart_value_type tool을 사용해 value_type을 결정하세요.
+            """
             ticker_obj = self.get_ticker()
             data = ticker_obj.history(period=period)
+            
+            # value_type에 따라 ylabel과 format 결정
+            type_mapping = {
+                "USD": ("Price ($)", "${:.2f}"),
+                "EUR": ("Price (€)", "€{:.2f}"),
+                "JPY": ("Price (¥)", "¥{:.2f}"),
+                "GBP": ("Price (£)", "£{:.2f}"),
+                "PERCENTAGE": ("Yield (%)", "{:.2f}%"),
+                "INDEX": ("Index Value", "{:.2f}"),
+                "RATE": ("Exchange Rate", "{:.4f}"),
+            }
+            
+            # 매핑에 없는 타입이면 통화코드로 간주
+            if value_type in type_mapping:
+                ylabel, value_format = type_mapping[value_type]
+            else:
+                # 기타 통화나 알 수 없는 타입
+                ylabel = f"Price ({value_type})" if value_type else "Value"
+                value_format = "{:.2f}"
             
             period_name = {"5d": "5 Days", "1mo": "1 Month", "6mo": "6 Months"}.get(period, period)
             colors = {"5d": "#1f77b4", "1mo": "#ff7f0e", "6mo": "#2ca02c"}
             color = colors.get(period, "#1f77b4")
             
-            result = create_single_chart(self.ticker, data, period_name, color)
+            result = create_single_chart(self.ticker, data, period_name, color, ylabel, value_format)
             return result if result else f"Failed to generate {period} chart"
         
         return plot_trend
@@ -189,17 +253,19 @@ class TrendResearchBase:
 
         Available tools:
         1. analyze_trend(period): Get trend analysis for any period (5d, 1mo, 6mo)
-        2. plot_trend(period): Generate chart for any period (5d, 1mo, 6mo)
+        2. get_value_unit(ticker_symbol, quote_type, currency, ticker_name, sample_value): 
+           Returns unit type (USD/EUR/PERCENTAGE/INDEX/etc)
+        3. plot_trend(period, value_type): Generate chart with unit type
 
         Workflow:
-        1. Use analyze_trend(period="5d") to get short-term analysis
-        2. Use plot_trend(period="5d") to show short-term chart 
-        3. Use analyze_trend(period="1mo") to get medium-term analysis
-        4. Use plot_trend(period="1mo") to show medium-term chart
-        5. Use analyze_trend(period="6mo") to get long-term analysis
-        6. Use plot_trend(period="6mo") to show long-term chart
-        7. Synthesize all analyses and provide comprehensive insights
-        8. Always explain in Korean
+        1. **FIRST**: Get ticker info from analyze_trend (get quote_type, currency, name)
+        2. Call get_value_unit ONCE to determine unit (returns: USD, PERCENTAGE, INDEX, etc.)
+        3. Use the SAME unit for ALL charts
+        4. For each period (5d, 1mo, 6mo):
+           - analyze_trend(period)
+           - plot_trend(period, value_type=<unit from step 2>)
+        5. Synthesize analyses
+        6. Always explain in Korean
 
         CRITICAL: You MUST include the exact "Chart saved: /path/to/file.png" messages from plot_trend tools in your final response.
         These file paths are needed for downstream processing (email reports with embedded images).
@@ -214,7 +280,7 @@ class TrendResearchBase:
             name=self.agent_name,
             instructions=instructions,
             model="gpt-4o-mini",
-            tools=[self.analyze_trend_tool, self.plot_trend_tool],
+            tools=[self.analyze_trend_tool, self.plot_trend_tool, get_value_unit],
             model_settings=ModelSettings(tool_choice="required")
         )
     

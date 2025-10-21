@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from agents import Agent, Runner, trace
 from liquidity_agent import LiquidityTrendAgent
 from equity_agent import EquityTrendAgent
-from email_agent import email_agent
+from notion_agent import notion_agent
 from pydantic import BaseModel, Field
 import asyncio
 
@@ -88,7 +88,7 @@ Always explain in Korean and provide comprehensive, actionable market insights.
 market_agent = Agent(
     name="market_analyzer",
     instructions=instructions,
-    model="gpt-4o",
+    model="gpt-4.1-mini",
     output_type=ReportData
 )
 
@@ -127,9 +127,23 @@ class MarketResearchManager:
                 equity_ticker, liquidity_ticker, liquidity_result, equity_result
             )
             
-            # Step 3: Send email
-            print("📧 Sending email report...")
-            await self._send_email(liquidity_result+'\n\n'+equity_result+'\n\n'+report.markdown_report)
+            # Step 3: Post to Notion
+            print("📝 Posting to Notion...")
+            # 차트 파일 경로 정보도 함께 전달
+            combined_content = f"""
+            === 유동성 분석 ===
+            {liquidity_result}
+
+            === 주식 분석 ===
+            {equity_result}
+
+            === 종합 리포트 ===
+            {report.markdown_report}
+
+            === 차트 파일 정보 ===
+            차트 파일들이 임시 디렉토리에 저장되었습니다.
+            """
+            await self._post_to_notion(combined_content)
             
             print("✅ Market research complete!")
             return report
@@ -173,10 +187,10 @@ Original Query: {equity_ticker} 시장 분석 (유동성 조건 포함)
         result = await Runner.run(market_agent, input=combined_input)
         return result.final_output_as(ReportData)
     
-    async def _send_email(self, report: str) -> None:
-        """Send report via email using email_agent."""
-        await Runner.run(email_agent, input=report)
-        print("📧 Email sent successfully!")
+    async def _post_to_notion(self, report: str) -> None:
+        """Post report to Notion using notion_agent."""
+        await Runner.run(notion_agent, input=report)
+        print("📝 Notion 자동 업로드 완료!")
 
 
 # Usage examples
