@@ -9,20 +9,95 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 
+def parse_rich_text(text: str) -> list[dict]:
+    """마크다운 텍스트를 Notion rich_text 배열로 파싱 (bold, italic, code만 처리)"""
+    rich_texts = []
+    
+    # 패턴: **bold**, *italic*, `code` (링크는 제외 - URL 검증 문제 방지)
+    pattern = r'(\*\*.*?\*\*|\*.*?\*|`.*?`)'
+    parts = re.split(pattern, text)
+    
+    for part in parts:
+        if not part:
+            continue
+        
+        # Bold: **text**
+        if part.startswith('**') and part.endswith('**'):
+            rich_texts.append({
+                'type': 'text',
+                'text': {'content': part[2:-2]},
+                'annotations': {'bold': True}
+            })
+        # Italic: *text*
+        elif part.startswith('*') and part.endswith('*') and not part.startswith('**'):
+            rich_texts.append({
+                'type': 'text',
+                'text': {'content': part[1:-1]},
+                'annotations': {'italic': True}
+            })
+        # Code: `text`
+        elif part.startswith('`') and part.endswith('`'):
+            rich_texts.append({
+                'type': 'text',
+                'text': {'content': part[1:-1]},
+                'annotations': {'code': True}
+            })
+        # Plain text
+        else:
+            rich_texts.append({
+                'type': 'text',
+                'text': {'content': part}
+            })
+    
+    return rich_texts if rich_texts else [{'type': 'text', 'text': {'content': ''}}]
+
+
 def create_notion_blocks(content: str, uploaded_map: dict[str, str]) -> list[dict]:
     """간단한 마크다운 파서로 Notion 블록 생성"""
+    
     def make_block(block_type: str, text: str) -> list[dict]:
-        """텍스트가 2000자를 초과하면 여러 블록으로 분할"""
+        """텍스트를 Notion 블록으로 변환 (마크다운 파싱 포함)"""
         blocks = []
-        # 2000자씩 분할
-        while text:
-            chunk = text[:2000]
-            text = text[2000:]
+        rich_text = parse_rich_text(text)
+        
+        # rich_text의 총 길이가 2000자를 넘으면 분할
+        # 간단하게 처리: 전체 텍스트가 2000자를 넘으면 여러 블록으로
+        total_length = sum(len(rt['text']['content']) for rt in rich_text)
+        
+        if total_length <= 2000:
             blocks.append({
-                'object': 'block', 
+                'object': 'block',
                 'type': block_type,
-                block_type: {'rich_text': [{'type': 'text', 'text': {'content': chunk}}]}
+                block_type: {'rich_text': rich_text}
             })
+        else:
+            # 2000자 넘으면 rich_text 배열을 나눔
+            current_rich_texts = []
+            current_length = 0
+            
+            for rt in rich_text:
+                rt_length = len(rt['text']['content'])
+                if current_length + rt_length > 2000 and current_rich_texts:
+                    # 현재 블록을 완성하고 새 블록 시작
+                    blocks.append({
+                        'object': 'block',
+                        'type': block_type,
+                        block_type: {'rich_text': current_rich_texts}
+                    })
+                    current_rich_texts = []
+                    current_length = 0
+                
+                current_rich_texts.append(rt)
+                current_length += rt_length
+            
+            # 남은 것 추가
+            if current_rich_texts:
+                blocks.append({
+                    'object': 'block',
+                    'type': block_type,
+                    block_type: {'rich_text': current_rich_texts}
+                })
+        
         return blocks
     
     children = []
@@ -68,6 +143,19 @@ def create_notion_blocks(content: str, uploaded_map: dict[str, str]) -> list[dic
                     # Notion 테이블 블록 생성
                     if data_rows:
                         table_width = len(header_row)
+                        
+                        # 모든 행의 셀 개수를 table_width에 맞춤
+                        def normalize_row(row, width):
+                            """행의 셀 개수를 width에 맞춤 (부족하면 빈 셀 추가, 초과하면 자름)"""
+                            if len(row) < width:
+                                return row + [''] * (width - len(row))
+                            elif len(row) > width:
+                                return row[:width]
+                            return row
+                        
+                        header_row = normalize_row(header_row, table_width)
+                        data_rows = [normalize_row(row, table_width) for row in data_rows]
+                        
                         table_block = {
                             'object': 'block',
                             'type': 'table',
@@ -79,21 +167,21 @@ def create_notion_blocks(content: str, uploaded_map: dict[str, str]) -> list[dic
                             }
                         }
                         
-                        # 헤더 행
-                        header_cells = [{'type': 'text', 'text': {'content': cell}} for cell in header_row]
+                        # 헤더 행 (마크다운 파싱 적용)
+                        header_cells = [parse_rich_text(cell) for cell in header_row]
                         table_block['table']['children'].append({
                             'object': 'block',
                             'type': 'table_row',
-                            'table_row': {'cells': [[cell] for cell in header_cells]}
+                            'table_row': {'cells': header_cells}
                         })
                         
-                        # 데이터 행들
+                        # 데이터 행들 (마크다운 파싱 적용)
                         for row in data_rows:
-                            row_cells = [{'type': 'text', 'text': {'content': cell}} for cell in row]
+                            row_cells = [parse_rich_text(cell) for cell in row]
                             table_block['table']['children'].append({
                                 'object': 'block',
                                 'type': 'table_row',
-                                'table_row': {'cells': [[cell] for cell in row_cells]}
+                                'table_row': {'cells': row_cells}
                             })
                         
                         children.append(table_block)
@@ -118,10 +206,15 @@ def create_notion_blocks(content: str, uploaded_map: dict[str, str]) -> list[dic
                 children.extend(make_block('heading_2', line[3:]))
             elif line.startswith('# '):
                 children.extend(make_block('heading_1', line[2:]))
-            elif line.startswith(('- ', '* ')):
-                children.extend(make_block('bulleted_list_item', line[2:]))
             elif re.match(r'^\d+\.\s', line):
+                # Numbered list: extract number and content
                 children.extend(make_block('numbered_list_item', re.sub(r'^\d+\.\s+', '', line)))
+            elif line.startswith(('   - ', '   * ')):
+                # Indented bullet list (convert to numbered sub-item to maintain numbering)
+                children.extend(make_block('numbered_list_item', line[5:]))
+            elif line.startswith(('- ', '* ')):
+                # Top-level bullet list
+                children.extend(make_block('bulleted_list_item', line[2:]))
             else:
                 children.extend(make_block('paragraph', line))
             

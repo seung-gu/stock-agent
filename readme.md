@@ -23,11 +23,29 @@ FINNHUB_API_KEY=XXX
 GOOGLE_API_KEY=XXX
 OPENAI_API_KEY=XXX
 POLYGON_API_KEY=XXX
+PUSHOVER_TOKEN=XXX
+PUSHOVER_USER=XXX
+HF_TOKEN=XXX
+SENDGRID_API_KEY=XXX
+NOTION_API_KEY=XXX
+NOTION_DATABASE_ID=XXX
+R2_ACCESS_KEY_ID=XXX
+R2_SECRET_ACCESS_KEY=XXX
+R2_BUCKET_NAME=XXX
+R2_ACCOUNT_ID=XXX
+R2_PUBLIC_URL=XXX
 
+### Language Settings
+
+Edit `src/config.py` to change report language:
+```python
+REPORT_LANGUAGE = "English"  # Options: "English" or "Korean"
+```
 
 TODO:
-1. market_analysis_agent.py refactor
-2. test functions
+1. market_analysis_agent.py, notion_api, image_service refactor
+2. report part workflow refactor
+3. test functions
 
 
 ---
@@ -36,6 +54,8 @@ TODO:
 
 ```
 src/
+├── config.py                   # Global configuration (language settings)
+│
 ├── agent/                      # AI Agent implementations
 │   ├── async_agent.py         # Base class for async agent creation (Template Method pattern)
 │   ├── market_analysis_agent.py  # Main orchestration agent
@@ -184,3 +204,4 @@ Or use **Test Explorer** in VS Code/Cursor (configured in `.vscode/settings.json
 ## Example Report
 
 https://seunggu-kang.notion.site/MSFT-29362b45fc8081659125cfbb6df03307
+https://seunggu-kang.notion.site/Comprehensive-Market-Analysis-Report-Apple-Inc-AAPL-with-Liquidity-Conditions-29462b45fc8081779469d970d06f5ce5

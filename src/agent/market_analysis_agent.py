@@ -7,6 +7,8 @@ from notion_agent import notion_agent
 from pydantic import BaseModel, Field
 import asyncio
 
+from src.config import REPORT_LANGUAGE
+
 load_dotenv(override=True)
 
 
@@ -56,23 +58,25 @@ KEY ANALYSIS POINTS:
 - Integer percentage level crossings and their significance
 
 REPORT GENERATION:
-- First create an outline for the report describing structure and flow
+- First create an outline for the report describing structure and flow (use numbered lists in outline)
 - Then generate the full report in markdown format
+- **IMPORTANT**: In the actual report body, use markdown HEADINGS (# ## ###) for all sections, NOT numbered lists
+- This ensures proper section numbering when converted to Notion
 - The report should be lengthy and detailed (5-10 pages, at least 1000 words)
 - Include executive summary, detailed analysis, and actionable recommendations
 
 CHART INTEGRATION - VERY IMPORTANT:
-- The input will contain chart links in format: [차트 보기](sandbox:/path/to/file.png)
+- The input will contain chart links in format: [View Chart](sandbox:/path/to/file.png)
 - You MUST preserve these EXACT markdown links in your report
 - Place charts immediately after their corresponding analysis sections
 - Example structure:
-  ## 단기 분석 (5일)
-  분석 내용...
-  [5일 차트 보기](sandbox:/path/to/TNX_5_days_chart.png)
+  ## Short-term Analysis (5 Days)
+  Analysis content...
+  [View 5-day Chart](sandbox:/path/to/TNX_5d_chart.png)
   
-  ## 중기 분석 (1개월)
-  분석 내용...
-  [1개월 차트 보기](sandbox:/path/to/TNX_1_month_chart.png)
+  ## Medium-term Analysis (1 Month)
+  Analysis content...
+  [View 1-month Chart](sandbox:/path/to/TNX_1mo_chart.png)
 
 CRITICAL RULES:
 - NEVER try to create or output images directly
@@ -81,7 +85,7 @@ CRITICAL RULES:
 - Output must follow ReportData schema (short_summary, markdown_report, follow_up_questions)
 
 Today is {datetime.now().strftime("%Y-%m-%d")}.
-Always explain in Korean and provide comprehensive, actionable market insights.
+Always explain in {REPORT_LANGUAGE} and provide comprehensive, actionable market insights.
 """
         
 # Market analysis agent (no tools, just analysis)
@@ -98,7 +102,7 @@ class MarketResearchManager:
     Orchestrates the complete market research workflow:
     1. Run liquidity and equity analysis in parallel
     2. Synthesize integrated market insights and generate report
-    3. Send report via email
+    3. Post report to Notion
     """
     
     async def run(self, equity_ticker: str, liquidity_ticker: str = "^TNX"):
@@ -129,15 +133,14 @@ class MarketResearchManager:
             
             # Step 3: Post to Notion
             print("📝 Posting to Notion...")
-            # 차트 파일 경로 정보도 함께 전달
             combined_content = f"""
-            === 유동성 분석 ===
+            === Liquidity Analysis ===
             {liquidity_result}
 
-            === 주식 분석 ===
+            === Equity Analysis ===
             {equity_result}
 
-            === 종합 리포트 ===
+            === Comprehensive Report ===
             {report.markdown_report}
             """
             await self._post_to_notion(combined_content)
@@ -151,8 +154,8 @@ class MarketResearchManager:
         equity_agent = EquityTrendAgent(equity_ticker)
         
         results = await asyncio.gather(
-            liquidity_agent.run(f"{liquidity_ticker}의 5일, 1개월, 6개월 추세를 분석하고 차트도 보여줘"),
-            equity_agent.run(f"{equity_ticker}의 5일, 1개월, 6개월 추세를 분석하고 차트도 보여줘")
+            liquidity_agent.run(f"{liquidity_ticker} 5d, 1mo, 6mo trend analysis and show charts"),
+            equity_agent.run(f"{equity_ticker} 5d, 1mo, 6mo trend analysis and show charts")
         )
         
         return results[0].final_output, results[1].final_output
@@ -169,7 +172,7 @@ class MarketResearchManager:
         market_agent now outputs ReportData directly (no need for writer_agent).
         """
         combined_input = f"""
-        Original Query: {equity_ticker} 시장 분석 (유동성 조건 포함)
+        Original Query: {equity_ticker} Market Analysis (Liquidity Condition Included)
 
         === Liquidity Analysis ({liquidity_ticker}) ===
         {liquidity_output}
@@ -177,8 +180,8 @@ class MarketResearchManager:
         === Equity Analysis ({equity_ticker}) ===
         {equity_output}
 
-        위 두 분석을 종합하여 {equity_ticker} 투자에 대한 상세한 리포트를 작성해주세요.
-        리포트는 전문적이고 구조화된 마크다운 형식이어야 합니다.
+        Summarize the two analyses into a detailed report for {equity_ticker} investment.
+        The report should be professional and structured in markdown format.
         """
         
         result = await Runner.run(market_agent, input=combined_input)
@@ -187,7 +190,7 @@ class MarketResearchManager:
     async def _post_to_notion(self, report: str) -> None:
         """Post report to Notion using notion_agent."""
         await Runner.run(notion_agent, input=report)
-        print("📝 Notion 자동 업로드 완료!")
+        print("📝 Notion auto-upload complete!")
 
 
 # Usage examples

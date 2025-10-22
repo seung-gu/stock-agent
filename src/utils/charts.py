@@ -24,14 +24,15 @@ def create_single_chart(ticker: str, data, period: str, ylabel: str, value_forma
     if data.empty:
         return None
     
-    period_name = {"5d": "5 Days", "1mo": "1 Month", "6mo": "6 Months"}.get(period, period)
+    # Use period display names for chart title
+    period_display = {"5d": "5 Days", "1mo": "1 Month", "6mo": "6 Months"}.get(period, period)
     colors = {"5d": "#1f77b4", "1mo": "#ff7f0e", "6mo": "#2ca02c"}
     color = colors.get(period, "#1f77b4")
     
     fig, ax = plt.subplots(figsize=(10, 4))
     ax.plot(data.index, data['Close'], linewidth=2, color=color, marker='o', markersize=4)
     ax.fill_between(data.index, data['Close'], alpha=0.3, color=color)
-    ax.set_title(f'{ticker} {period_name} Trend', fontsize=13, fontweight='bold')
+    ax.set_title(f'{ticker} {period_display} Trend', fontsize=13, fontweight='bold')
     ax.set_ylabel(ylabel, fontsize=11)
     ax.grid(True, alpha=0.3, linestyle='--')
     
@@ -62,7 +63,8 @@ def create_single_chart(ticker: str, data, period: str, ylabel: str, value_forma
     
     # Save chart to temp directory
     ticker_clean = ticker.replace('^', '').replace('-', '_')
-    filename = f"{ticker_clean}_{period_name.lower().replace(' ', '_')}_chart.png"
+    # Use period directly for consistent filenames (5d, 1mo, 6mo)
+    filename = f"{ticker_clean}_{period}_chart.png"
     filepath = os.path.join(TEMP_CHART_DIR, filename)
     plt.savefig(filepath, dpi=100, bbox_inches='tight')
     plt.close()

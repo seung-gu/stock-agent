@@ -6,6 +6,7 @@ import yfinance as yf
 
 from src.agent.async_agent import AsyncAgent
 from src.utils.charts import create_single_chart
+from src.config import REPORT_LANGUAGE
 
 load_dotenv(override=True)
 
@@ -171,7 +172,7 @@ class TrendAgent(AsyncAgent):
         | 1 Month | X.XXX | X.XXX | -X.XX% | X.XXX | X.XXX | X.XXX |
         | 6 Months | X.XXX | X.XXX | -X.XX% | X.XXX | X.XXX | X.XXX |
         
-        Then add chart links and comprehensive insights in Korean.
+        Then add chart links and comprehensive insights in {REPORT_LANGUAGE}.
 
         CRITICAL: 
         - You MUST include the EXACT "Chart saved: /path/to/file.png" messages from plot_trend tools
