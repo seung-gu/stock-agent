@@ -99,10 +99,18 @@ class TestNotionIntegration(unittest.TestCase):
         mock_client = MagicMock()
         mock_boto3.return_value = mock_client
         
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {'url': 'https://notion.so/test', 'results': []}
-        mock_post.return_value = mock_response
+        mock_search_response = MagicMock()
+        mock_search_response.status_code = 200
+        mock_search_response.json.return_value = {'results': []}
+        
+        mock_create_response = MagicMock()
+        mock_create_response.status_code = 200
+        mock_create_response.json.return_value = {
+            'id': 'test-page-id',
+            'url': 'https://notion.so/test'
+        }
+        
+        mock_post.side_effect = [mock_search_response, mock_create_response]
         
         # 테스트 실행
         uploaded_map = {"/tmp/test.png": "https://example.com/image.jpg"}
@@ -111,24 +119,32 @@ class TestNotionIntegration(unittest.TestCase):
         self.assertEqual(result['status'], 'success')
         print("✅ 전체 워크플로우 통합 테스트 통과")
     
-    @patch('requests.post')
+    @patch('src.adapters.notion_api.requests.post')
     def test_notion_agent_workflow(self, mock_post):
-        """Notion Agent 워크플로우 테스트"""
+        """Notion Agent 워크플로우 테스트 (upload_to_notion 직접 테스트)"""
         # Mock 응답
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {'url': 'https://notion.so/test', 'results': []}
-        mock_post.return_value = mock_response
+        mock_search_response = MagicMock()
+        mock_search_response.status_code = 200
+        mock_search_response.json.return_value = {'results': []}
         
-        # 실제 agent의 post_to_notion 함수 테스트
-        from src.agent.notion_agent import post_to_notion
+        mock_create_response = MagicMock()
+        mock_create_response.status_code = 200
+        mock_create_response.json.return_value = {
+            'id': 'workflow-test-id',
+            'url': 'https://notion.so/workflow-test'
+        }
         
-        result = post_to_notion(
+        mock_post.side_effect = [mock_search_response, mock_create_response]
+        
+        # upload_to_notion 함수 테스트 (post_to_notion은 function_tool이라 직접 호출 불가)
+        result = upload_to_notion(
             title="워크플로우 테스트",
-            content="테스트 내용입니다."
+            content="테스트 내용입니다.",
+            uploaded_map={}
         )
         
         self.assertIsInstance(result, dict)
+        self.assertEqual(result['status'], 'success')
         print("✅ Notion Agent 워크플로우 테스트 통과")
 
 

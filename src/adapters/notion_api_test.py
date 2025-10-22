@@ -18,7 +18,7 @@ class TestNotionAPI(unittest.TestCase):
         
         self.assertGreater(len(blocks), 0)
         self.assertIn('paragraph', [block['type'] for block in blocks])
-        self.assertIn('image', [block['type'] for block in blocks])
+        self.assertIn('embed', [block['type'] for block in blocks])  # image -> embed 변경
         print("✅ create_notion_blocks 테스트 통과")
     
     def test_create_notion_blocks_long_content(self):
@@ -93,7 +93,10 @@ class TestNotionAPI(unittest.TestCase):
         
         mock_create_response = MagicMock()
         mock_create_response.status_code = 200
-        mock_create_response.json.return_value = {'url': 'https://notion.so/new-page'}
+        mock_create_response.json.return_value = {
+            'id': 'new-page-id',
+            'url': 'https://notion.so/new-page'
+        }
         
         mock_post.side_effect = [mock_search_response, mock_create_response]
         
@@ -104,11 +107,10 @@ class TestNotionAPI(unittest.TestCase):
         self.assertIn('url', result)
         print("✅ upload_to_notion (새 페이지) 테스트 통과")
     
-    @patch('src.adapters.notion_api.requests.patch')
     @patch('src.adapters.notion_api.requests.post')
-    def test_upload_to_notion_existing_page(self, mock_post, mock_patch):
-        """Notion 기존 페이지 업데이트 테스트"""
-        # Mock 응답 설정 - 기존 페이지 발견
+    def test_upload_to_notion_existing_page(self, mock_post):
+        """Notion 기존 페이지 발견 시 새 페이지 생성 테스트 (현재 기존 페이지 찾기 기능 비활성화)"""
+        # Mock 응답 설정 - 기존 페이지 발견하지만 새로 생성
         mock_search_response = MagicMock()
         mock_search_response.status_code = 200
         mock_search_response.json.return_value = {
@@ -122,11 +124,15 @@ class TestNotionAPI(unittest.TestCase):
                 }
             }]
         }
-        mock_post.return_value = mock_search_response
         
-        mock_patch_response = MagicMock()
-        mock_patch_response.status_code = 200
-        mock_patch.return_value = mock_patch_response
+        mock_create_response = MagicMock()
+        mock_create_response.status_code = 200
+        mock_create_response.json.return_value = {
+            'id': 'new-page-id',
+            'url': 'https://notion.so/new-page'
+        }
+        
+        mock_post.side_effect = [mock_search_response, mock_create_response]
         
         uploaded_map = {}
         result = upload_to_notion("테스트 제목", "업데이트 내용", uploaded_map)

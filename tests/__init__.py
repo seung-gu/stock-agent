@@ -1,2 +1,0 @@
-"""Tests - Test suite"""
-

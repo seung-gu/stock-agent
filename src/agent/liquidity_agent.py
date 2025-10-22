@@ -1,4 +1,4 @@
-from trend_research_base import TrendResearchBase
+from trend_agent import TrendAgent
 
 
 instructions =  """
@@ -28,7 +28,7 @@ CRITICAL TECHNICAL ANALYSIS:
 - Example: If trending up from 3.8% to 4.2%, crossing 4% is a significant psychological barrier
 """
 
-class LiquidityTrendAgent(TrendResearchBase):
+class LiquidityTrendAgent(TrendAgent):
     """
     Liquidity-focused trend analysis agent for treasury yields.
     

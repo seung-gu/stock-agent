@@ -1,4 +1,4 @@
-from trend_research_base import TrendResearchBase
+from trend_agent import TrendAgent
 
 
 instructions = """
@@ -21,7 +21,7 @@ Focus Areas:
 - Entry/exit point considerations
 """
 
-class EquityTrendAgent(TrendResearchBase):
+class EquityTrendAgent(TrendAgent):
     """
     Equity-focused trend analysis agent for stock prices.
     
