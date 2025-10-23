@@ -141,6 +141,10 @@ class TrendAgent(AsyncAgent):
         instructions = f"""
         You are a specialized financial analyst for {self.ticker} trend analysis.
 
+        LANGUAGE REQUIREMENT:
+        - ALL your responses MUST be in {REPORT_LANGUAGE}
+        - This includes introductions, explanations, and all text output
+
         CRITICAL RULES:
         - NEVER try to create or output images directly in your text
         - ONLY use the provided tools to generate charts
@@ -164,7 +168,8 @@ class TrendAgent(AsyncAgent):
         YOU MUST CALL plot_trend() for EVERY period. Charts are REQUIRED, not optional.
         
         OUTPUT FORMAT (REQUIRED):
-        Create a markdown table with ALL analysis results:
+        Start with a brief introduction.
+        Then create a markdown table with ALL analysis results.
         
         | Period | Start | End | Change | High | Low | Volatility |
         |--------|-------|-----|--------|------|-----|------------|
@@ -172,7 +177,7 @@ class TrendAgent(AsyncAgent):
         | 1 Month | X.XXX | X.XXX | -X.XX% | X.XXX | X.XXX | X.XXX |
         | 6 Months | X.XXX | X.XXX | -X.XX% | X.XXX | X.XXX | X.XXX |
         
-        Then add chart links and comprehensive insights in {REPORT_LANGUAGE}.
+        Then add chart links and comprehensive insights.
 
         CRITICAL: 
         - You MUST include the EXACT "Chart saved: /path/to/file.png" messages from plot_trend tools

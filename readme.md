@@ -43,9 +43,10 @@ REPORT_LANGUAGE = "English"  # Options: "English" or "Korean"
 ```
 
 TODO:
-1. market_analysis_agent.py, notion_api, image_service refactor
-2. report part workflow refactor
-3. test functions
+1. ~~market_analysis_agent.py refactor~~ ✅
+2. ~~report part workflow refactor~~ ✅ (Parent-child structure)
+3. ~~language configuration refactor~~ ✅ (Centralized REPORT_LANGUAGE)
+4. test functions
 
 
 ---
@@ -58,10 +59,11 @@ src/
 │
 ├── agent/                      # AI Agent implementations
 │   ├── async_agent.py         # Base class for async agent creation (Template Method pattern)
+│   ├── trend_agent.py         # Trend analysis base agent with tools
+│   ├── liquidity_agent.py    # Treasury yield trend analysis (extends TrendAgent)
+│   ├── equity_agent.py        # Stock price trend analysis (extends TrendAgent)
 │   ├── market_analysis_agent.py  # Main orchestration agent
-│   ├── liquidity_agent.py     # Treasury yield trend analysis
-│   ├── equity_agent.py        # Stock price trend analysis
-│   └── notion_agent.py        # Notion upload agent
+│   └── email_agent.py         # Email notification agent
 │
 ├── services/                   # Business logic services
 │   ├── image_service.py       # Image processing & Cloudflare R2 upload
@@ -70,11 +72,17 @@ src/
 ├── adapters/                   # External API integrations
 │   ├── notion_api.py          # Notion API client (page creation & upload)
 │   ├── markdown_to_notion.py  # Markdown parser → Notion blocks converter
+│   ├── report_builder.py      # Parent-child page structure builder
 │   ├── notion_api_test.py     # Unit tests
-│   └── notion_integration_test.py  # Integration tests
+│   ├── markdown_to_notion_test.py  # Unit tests
+│   └── report_builder_test.py # Integration tests
 │
-└── utils/                      # Utility functions
-    └── charts.py              # Chart generation utilities
+├── utils/                      # Utility functions
+│   └── charts.py              # Chart generation utilities
+│
+└── dep/                        # Deprecated/legacy code
+    ├── agent.py
+    └── market_agent.py
 ```
 
 ---
@@ -89,13 +97,21 @@ src/
 │                                                             │
 │  1. Parallel Analysis                                       │
 │     ├── LiquidityTrendAgent (^TNX)                         │
+│     │   • Trend analysis (5d, 1mo, 6mo)                    │
+│     │   • Chart generation                                  │
 │     └── EquityTrendAgent (AAPL/SPY/etc)                    │
+│         • Trend analysis (5d, 1mo, 6mo)                    │
+│         • Chart generation                                  │
 │                                                             │
-│  2. Integrated Report Generation                           │
-│     └── market_agent (GPT-4.1-mini)                        │
+│  2. Report Synthesis (market_agent)                        │
+│     • Strategic insights generation                         │
+│     • Child page titles generation (in configured language)│
+│     • ReportData schema output                             │
 │                                                             │
-│  3. Notion Publishing                                      │
-│     └── notion_agent → Image Upload → Notion API          │
+│  3. Notion Publishing (Parent-Child Structure)           │
+│     • upload_report_with_children()                        │
+│     • Image processing (shared across all pages)           │
+│     • Child pages: Liquidity | Equity | Conclusion        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -122,46 +138,67 @@ LiquidityTrendAgent              EquityTrendAgent
 market_agent (GPT-4.1-mini)
   ↓
   • Correlation Analysis (liquidity vs equity)
-  • Timeframe-specific Analysis (short/mid/long-term)
-  • Actionable Recommendations
+  • Strategic Insights & Recommendations
+  • Agent-generated Page Titles (in configured language)
   • Markdown Report Generation
   ↓
 ReportData {
-  short_summary: str
-  markdown_report: str  (with sandbox:/ chart links)
-  follow_up_questions: list[str]
+  title: str                      # Main report title
+  date: str                       # Report date
+  short_summary: str              # Executive summary
+  main_report: str                # Full conclusion & insights
+  child_page_titles: list[str]    # Titles for child pages [liquidity, equity, conclusion]
 }
 ```
 
-#### Phase 3: Notion Publishing
+#### Phase 3: Notion Publishing (Parent-Child Structure)
 ```
-notion_agent.post_to_notion(title, content)
+upload_report_with_children(title, date, summary, child_pages, uploaded_map)
   ↓
-  1. find_local_images(content)
-     • Parse markdown for sandbox:/ links
-     • Replace with placeholders: {{IMAGE_PLACEHOLDER:path}}
+  1. Create Parent Page
+     • Title: Agent-generated report title
+     • Content: Report date + executive summary
      ↓
-  2. upload_images_to_cloudflare(image_files)
-     • Upload each chart to R2 storage
-     • Return {local_path: public_url} mapping
+  2. Process Images (for all pages)
+     • find_local_images(all_content)
+       - Parse markdown for sandbox:/ links
+       - Replace with placeholders: {{IMAGE_PLACEHOLDER:path}}
+     • upload_images_to_cloudflare(image_files)
+       - Upload to R2 storage
+       - Return {local_path: public_url} mapping
      ↓
-  3. upload_to_notion(title, processed_content, uploaded_map)
-     • MarkdownToNotionParser.parse()
-       - Parse markdown: headings, lists, tables, code blocks
-       - Convert formatting: **bold**, *italic*, `code`
-       - Handle nested lists (numbered + bullets)
-       - Replace placeholders with embed blocks
-       - Split text into 2000-char chunks
-     • POST to Notion API
-       - Initial page with first 100 blocks
-       - PATCH remaining blocks (100 per batch)
+  3. Create Child Pages
+     For each child_page: (title, content)
+       • MarkdownToNotionParser.parse(content)
+         - Parse markdown: headings, lists, tables, code blocks
+         - Convert formatting: **bold**, *italic*, `code`
+         - Handle nested lists (numbered + bullets)
+         - Replace placeholders with embed blocks
+         - Split text into 2000-char chunks
+       • create_child_page(parent_id, title, content, uploaded_map)
+         - POST to Notion API with parent_page_id
+         - PATCH remaining blocks (100 per batch)
      ↓
-  ✅ Published Notion Page URL
+  3 Child Pages:
+     • {child_page_titles[0]}: Liquidity Analysis (with charts)
+     • {child_page_titles[1]}: Equity Analysis (with charts)
+     • {child_page_titles[2]}: Conclusion & Insights
+     ↓
+  ✅ Published Notion Page with Children
 ```
 
 ---
 
 ## Key Components
+
+### Language Configuration
+**Set in `src/config.py`:**
+```python
+REPORT_LANGUAGE = "Korean"  # or "English"
+```
+- All agent outputs adapt to this setting
+- Page titles, summaries, and reports generated in configured language
+- No hardcoded language strings in the codebase
 
 ### AsyncAgent (Base Class)
 **Template Method Pattern:**
@@ -170,16 +207,21 @@ notion_agent.post_to_notion(title, content)
 - `run()`: Execute agent with user message
 
 **Subclasses:**
-- `TrendResearchBase` → `LiquidityTrendAgent`, `EquityTrendAgent`
+- `TrendAgent` → `LiquidityTrendAgent`, `EquityTrendAgent`
 
 ### Agent Tools
 
 **Trend Analysis Tools:**
 - `analyze_trend(period)`: Calculate price/yield trends (%, absolute changes)
 - `plot_trend(period, value_type)`: Generate matplotlib charts → sandbox:/
+- `get_value_unit()`: Determine chart unit type (USD, PERCENTAGE, INDEX, etc.)
 
-**Notion Tools:**
-- `post_to_notion(title, content)`: Orchestrate image upload & Notion publishing
+### Report Builder
+**`upload_report_with_children()`:**
+- Creates parent page with title, date, and summary
+- Generates child pages with agent-provided titles
+- Processes images once for all pages (shared uploaded_map)
+- Returns parent page ID and URL
 
 ### External Integrations
 
