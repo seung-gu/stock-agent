@@ -1,4 +1,4 @@
-from trend_agent import TrendAgent
+from src.agent.base.trend_agent import TrendAgent
 
 
 instructions = """

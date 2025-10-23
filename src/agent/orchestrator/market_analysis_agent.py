@@ -1,11 +1,13 @@
 from datetime import datetime
 from dotenv import load_dotenv
 from agents import Agent, Runner, trace
-from liquidity_agent import LiquidityTrendAgent
-from equity_agent import EquityTrendAgent
+from src.agent.orchestrator.liquidity_agent import LiquidityAgent
+from src.agent.trend.equity_agent import EquityTrendAgent
+from src.agent.base.orchestrator_agent import OrchestratorAgent
 from pydantic import BaseModel, Field
 import asyncio
 import json
+from typing import List
 
 from src.config import REPORT_LANGUAGE
 from src.adapters.report_builder import upload_report_with_children
@@ -90,7 +92,7 @@ market_agent = Agent(
 )
 
 
-class MarketResearchManager:
+class MarketResearchManager(OrchestratorAgent):
     """
     Orchestrates the complete market research workflow:
     1. Run liquidity and equity analysis in parallel
@@ -98,7 +100,39 @@ class MarketResearchManager:
     3. Post structured report to Notion with child pages
     """
     
-    async def run(self, equity_ticker: str, liquidity_ticker: str = "^TNX"):
+    def __init__(self, liquidity_ticker: str = "^TNX", equity_ticker: str = "AAPL"):
+        """Initialize market research manager."""
+        self.liquidity_ticker = liquidity_ticker
+        self.equity_ticker = equity_ticker
+        super().__init__("market_research_manager")
+    
+    def _setup(self):
+        """Set up sub-agents and synthesis agent."""
+        # Initialize and store sub-agents with references
+        self.liquidity_agent = LiquidityAgent()
+        self.equity_agent = EquityTrendAgent(self.equity_ticker)
+        
+        # Add to sub-agents list using method chaining
+        self.add_sub_agent(self.liquidity_agent)\
+            .add_sub_agent(self.equity_agent)
+        
+        # Create synthesis agent
+        self.synthesis_agent = self._create_synthesis_agent(f"""
+        You are a market strategist synthesizing multiple analysis results.
+
+        LANGUAGE REQUIREMENT:
+        - ALL your responses MUST be in {REPORT_LANGUAGE}
+
+        YOUR TASK:
+        - Combine the provided analysis results into comprehensive market insights
+        - Identify key patterns and correlations between different analyses
+        - Provide strategic insights and recommendations
+        - Include ALL chart links from the original analyses
+        - Maintain the unique characteristics of each analysis type
+        """
+        )
+    
+    async def run_full_analysis(self, equity_ticker: str, liquidity_ticker: str = "^TNX"):
         """
         Execute full market research workflow.
         
@@ -107,53 +141,39 @@ class MarketResearchManager:
             liquidity_ticker: Treasury ticker for liquidity (default: "^TNX")
             
         Returns:
-            ReportData with markdown report and metadata
+            Dictionary with page_id and url
         """
         with trace("market_research"):
             print(f"📊 Starting market research: {equity_ticker} + {liquidity_ticker}")
             
-            # Step 1: Parallel analysis
+            # Step 1: Run individual analyses to get separate results
             print("📈 Running parallel analysis...")
-            liquidity_result, equity_result = await self._run_parallel_analysis(
-                equity_ticker, liquidity_ticker
-            )
+            liquidity_result = await self.liquidity_agent.run()
+            equity_result = await self.equity_agent.run(f"Analyze {equity_ticker} stock price trends for 5d, 1mo, 6mo periods")
             
-            # Step 2: Integrated analysis & report generation (market_agent now outputs ReportData)
+            # Step 2: Generate report using market_agent
             print("🔍 Synthesizing insights and generating report...")
             report = await self._generate_report(
                 equity_ticker, liquidity_ticker, liquidity_result, equity_result
             )
             
-            # Step 3: Post to Notion (pass original analysis results, not market_agent's version)
+            # Step 3: Post to Notion
             print("📝 Posting to Notion...")
-            await self._post_to_notion(
+            result = await self._post_to_notion(
                 report.model_dump_json(indent=4),
-                liquidity_result,  # original liquidity analysis result
-                equity_result       # original equity analysis result
+                liquidity_result, equity_result
             )
             
             print("✅ Market research complete!")
-            return report
+            return result
     
-    async def _run_parallel_analysis(self, equity_ticker: str, liquidity_ticker: str):
-        """Run liquidity and equity analysis in parallel."""
-        liquidity_agent = LiquidityTrendAgent(liquidity_ticker)
-        equity_agent = EquityTrendAgent(equity_ticker)
-        
-        results = await asyncio.gather(
-            liquidity_agent.run(
-                f"{liquidity_ticker} 5d, 1mo, 6mo trend analysis and show charts. Consider that this is a 10-years interest rate for liquidity trend analysis."),
-            equity_agent.run(f"{equity_ticker} 5d, 1mo, 6mo trend analysis and show charts")
-        )
-        
-        return [result.final_output for result in results]
     
     async def _generate_report(
         self, 
         equity_ticker: str, 
         liquidity_ticker: str,
-        liquidity_output: str,
-        equity_output: str
+        liquidity_result: str,
+        equity_result: str
     ) -> ReportData:
         """
         Generate conclusion and insights by synthesizing liquidity and equity analyses.
@@ -161,39 +181,47 @@ class MarketResearchManager:
         """
         combined_input = f"""
         LIQUIDITY ANALYSIS ({liquidity_ticker}):
-        {liquidity_output}
+        {liquidity_result}
         
         EQUITY ANALYSIS ({equity_ticker}):
-        {equity_output}
+        {equity_result}
+        
+        Please provide comprehensive market insights and strategic recommendations.
         """
         
         result = await Runner.run(market_agent, input=combined_input)
         return result.final_output_as(ReportData)
     
-    async def _post_to_notion(self, report_json: str, original_liquidity: str, original_equity: str) -> None:
+    async def _post_to_notion(self, report_json: str, liquidity_result: str, equity_result: str) -> dict:
         """Post report to Notion with child pages."""
         report = json.loads(report_json)
         
         # Process all images once (for all pages)
-        all_content = f"{report['main_report']}\n\n{original_liquidity}\n\n{original_equity}"
+        # Convert RunResult objects to strings if needed
+        liquidity_str = liquidity_result.final_output if hasattr(liquidity_result, 'final_output') else str(liquidity_result)
+        equity_str = equity_result.final_output if hasattr(equity_result, 'final_output') else str(equity_result)
+        
+        all_content = f"{report['main_report']}\n\n{liquidity_str}\n\n{equity_str}"
         _, image_files, _ = find_local_images(all_content)
         uploaded_map = upload_images_to_cloudflare(image_files) if image_files else {}
         
         # Prepare child pages
         child_pages = [
-            (report['child_page_titles'][0], original_liquidity),
-            (report['child_page_titles'][1], original_equity),
+            (report['child_page_titles'][0], liquidity_str),
+            (report['child_page_titles'][1], equity_str),
             (report['child_page_titles'][2], report['main_report'])
         ]
         
         # Upload report with children
-        upload_report_with_children(
+        result = upload_report_with_children(
             title=report['title'],
             date=report['date'],
             summary=report['short_summary'],
             child_pages=child_pages,
             uploaded_map=uploaded_map
         )
+        
+        return result
 
 
 # Usage examples
@@ -203,7 +231,7 @@ if __name__ == "__main__":
         manager = MarketResearchManager()
         
         # Run complete workflow
-        report = await manager.run(
+        result = await manager.run_full_analysis(
             equity_ticker="AAPL",
             liquidity_ticker="^TNX"
         )
@@ -211,7 +239,11 @@ if __name__ == "__main__":
         print("\n" + "=" * 80)
         print("📊 FINAL REPORT")
         print("=" * 80)
-        print(f"\n📋 Summary: {report.short_summary}")
-        print(f"\n📄 Full Report:\n{report.main_report}")
+        print(f"\n📄 Result: {result}")
+        if isinstance(result, dict):
+            print(f"📄 Page ID: {result.get('page_id', 'N/A')}")
+            print(f"🔗 URL: {result.get('url', 'N/A')}")
+        else:
+            print(f"📄 Result type: {type(result)}")
         
     asyncio.run(main())

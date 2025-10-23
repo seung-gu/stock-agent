@@ -41,6 +41,7 @@ dependencies = [
     "ipython>=8.12.0,<9.0.0",
     "sendgrid>=6.12.5",
     "boto3>=1.40.55",
+    "fredapi>=0.5.1",
 ]
 
 [dependency-groups]
