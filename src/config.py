@@ -2,5 +2,5 @@
 
 # Language settings for report generation
 # Options: "English" or "Korean"
-REPORT_LANGUAGE = "English"
+REPORT_LANGUAGE = "Korean"
 

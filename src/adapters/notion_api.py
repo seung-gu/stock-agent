@@ -206,15 +206,40 @@ def create_notion_blocks(content: str, uploaded_map: dict[str, str]) -> list[dic
                 children.extend(make_block('heading_2', line[3:]))
             elif line.startswith('# '):
                 children.extend(make_block('heading_1', line[2:]))
-            elif re.match(r'^\d+\.\s', line):
-                # Numbered list: extract number and content
-                children.extend(make_block('numbered_list_item', re.sub(r'^\d+\.\s+', '', line)))
-            elif line.startswith(('   - ', '   * ')):
-                # Indented bullet list (convert to numbered sub-item to maintain numbering)
-                children.extend(make_block('numbered_list_item', line[5:]))
-            elif line.startswith(('- ', '* ')):
-                # Top-level bullet list
-                children.extend(make_block('bulleted_list_item', line[2:]))
+            elif re.match(r'^\s*\d+\.\s', line):
+                # Numbered list with potential nested bullets
+                text = re.sub(r'^\s*\d+\.\s+', '', line)
+                blocks = make_block('numbered_list_item', text)
+                
+                # Look ahead for bulleted items to nest as children
+                nested_bullets = []
+                j = i + 1
+                while j < len(lines):
+                    next_line = lines[j]
+                    if not next_line:
+                        j += 1
+                        continue
+                    if re.match(r'^\s*[-*]\s', next_line):
+                        # This is a bullet to nest
+                        bullet_text = re.sub(r'^\s*[-*]\s+', '', next_line)
+                        nested_bullets.extend(make_block('bulleted_list_item', bullet_text))
+                        j += 1
+                    else:
+                        # Stop at non-bullet line
+                        break
+                
+                # Add nested bullets as children if any
+                if nested_bullets:
+                    for block in blocks:
+                        if block['type'] == 'numbered_list_item':
+                            block['numbered_list_item']['children'] = nested_bullets
+                    i = j - 1  # Skip processed bullets
+                
+                children.extend(blocks)
+            elif re.match(r'^\s*[-*]\s', line):
+                # Standalone bullet list (not nested under numbered item)
+                text = re.sub(r'^\s*[-*]\s+', '', line)
+                children.extend(make_block('bulleted_list_item', text))
             else:
                 children.extend(make_block('paragraph', line))
             
