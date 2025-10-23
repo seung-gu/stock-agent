@@ -1,45 +1,46 @@
 #!/usr/bin/env python3
-"""Notion API 어댑터 유닛 테스트"""
+"""Notion API adapter unit tests"""
 
 import unittest
 from unittest.mock import patch, MagicMock
-from src.adapters.notion_api import create_notion_blocks, upload_to_notion
+from src.adapters.notion_api import upload_to_notion
+from src.adapters.markdown_to_notion import create_notion_blocks
 
 
 class TestNotionAPI(unittest.TestCase):
-    """Notion API 함수 테스트"""
+    """Notion API function tests"""
     
     def test_create_notion_blocks(self):
-        """Notion 블록 생성 함수 테스트"""
-        content = "테스트 내용\n{{IMAGE_PLACEHOLDER:/tmp/test1.png}}\n추가 내용"
+        """Test Notion block creation function"""
+        content = "Test content\n{{IMAGE_PLACEHOLDER:/tmp/test1.png}}\nAdditional content"
         uploaded_map = {"/tmp/test1.png": "https://example.com/image1.jpg"}
         
         blocks = create_notion_blocks(content, uploaded_map)
         
         self.assertGreater(len(blocks), 0)
         self.assertIn('paragraph', [block['type'] for block in blocks])
-        self.assertIn('embed', [block['type'] for block in blocks])  # image -> embed 변경
-        print("✅ create_notion_blocks 테스트 통과")
+        self.assertIn('embed', [block['type'] for block in blocks])  # image -> embed change
+        print("✅ create_notion_blocks test passed")
     
     def test_create_notion_blocks_long_content(self):
-        """긴 내용 Notion 블록 생성 테스트"""
-        long_lines = '\n'.join(['테스트 내용입니다. ' * 30 for _ in range(10)])
+        """Test Notion block creation with long content"""
+        long_lines = '\n'.join(['Test content. ' * 30 for _ in range(10)])
         uploaded_map = {}
         
         blocks = create_notion_blocks(long_lines, uploaded_map)
         
         paragraph_blocks = [b for b in blocks if b['type'] == 'paragraph']
         self.assertGreater(len(paragraph_blocks), 1)
-        print("✅ 긴 내용 블록 분할 테스트 통과")
+        print("✅ Long content block splitting test passed")
     
     def test_create_notion_blocks_markdown_headings(self):
-        """마크다운 헤딩 파싱 테스트"""
+        """Test markdown heading parsing"""
         content = """
-# 제목 1
-## 제목 2
-### 제목 3
-일반 텍스트
-"""
+        # Heading 1
+        ## Heading 2
+        ### Heading 3
+        Regular text
+        """
         blocks = create_notion_blocks(content, {})
         
         block_types = [block['type'] for block in blocks]
@@ -47,31 +48,76 @@ class TestNotionAPI(unittest.TestCase):
         self.assertIn('heading_2', block_types)
         self.assertIn('heading_3', block_types)
         self.assertIn('paragraph', block_types)
-        print("✅ 마크다운 헤딩 파싱 테스트 통과")
+        print("✅ Markdown heading parsing test passed")
     
     def test_create_notion_blocks_lists(self):
-        """리스트 파싱 테스트"""
+        """Test list parsing"""
         content = """
-- 항목 1
-- 항목 2
-1. 번호 항목 1
-2. 번호 항목 2
-"""
+        - Item 1
+        - Item 2
+        1. Numbered item 1
+        2. Numbered item 2
+        """
         blocks = create_notion_blocks(content, {})
         
         block_types = [block['type'] for block in blocks]
         self.assertIn('bulleted_list_item', block_types)
         self.assertIn('numbered_list_item', block_types)
-        print("✅ 리스트 파싱 테스트 통과")
+        print("✅ List parsing test passed")
+    
+    def test_create_notion_blocks_nested_lists(self):
+        """Test nested list parsing"""
+        content = """
+        1. First item
+        - Sub item 1
+        - Sub item 2
+        2. Second item
+        - Sub item 3
+        """
+        blocks = create_notion_blocks(content, {})
+        
+        # Check for numbered list with children
+        numbered_items = [b for b in blocks if b['type'] == 'numbered_list_item']
+        self.assertGreater(len(numbered_items), 0)
+        
+        # Check if first numbered item has children
+        if numbered_items:
+            first_item = numbered_items[0]
+            self.assertIn('children', first_item['numbered_list_item'])
+            children = first_item['numbered_list_item']['children']
+            self.assertGreater(len(children), 0)
+            self.assertEqual(children[0]['type'], 'bulleted_list_item')
+        
+        print("✅ Nested list parsing test passed")
+    
+    def test_create_notion_blocks_code_block(self):
+        """Test code block parsing"""
+        content = """
+        ```python
+        def hello():
+            print("Hello World")
+        ```
+        """
+        blocks = create_notion_blocks(content, {})
+        
+        code_blocks = [b for b in blocks if b['type'] == 'code']
+        self.assertGreater(len(code_blocks), 0)
+        
+        if code_blocks:
+            code_block = code_blocks[0]
+            self.assertEqual(code_block['code']['language'], 'python')
+            self.assertIn('def hello()', code_block['code']['rich_text'][0]['text']['content'])
+        
+        print("✅ Code block parsing test passed")
     
     def test_create_notion_blocks_tables(self):
-        """테이블 파싱 테스트"""
+        """Test table parsing"""
         content = """
-| 헤더1 | 헤더2 |
-|-------|-------|
-| 값1   | 값2   |
-| 값3   | 값4   |
-"""
+        | Header1 | Header2 |
+        |---------|---------|
+        | Value1  | Value2  |
+        | Value3  | Value4  |
+        """
         blocks = create_notion_blocks(content, {})
         
         table_blocks = [b for b in blocks if b['type'] == 'table']
@@ -81,65 +127,57 @@ class TestNotionAPI(unittest.TestCase):
             table = table_blocks[0]['table']
             self.assertEqual(table['table_width'], 2)
             self.assertTrue(table['has_column_header'])
-        print("✅ 테이블 파싱 테스트 통과")
+        print("✅ Table parsing test passed")
     
     @patch('src.adapters.notion_api.requests.post')
-    def test_upload_to_notion_new_page(self, mock_post):
-        """Notion 새 페이지 생성 테스트"""
-        # Mock 응답 설정 - 검색 결과 없음 (새 페이지 생성)
-        mock_search_response = MagicMock()
-        mock_search_response.status_code = 200
-        mock_search_response.json.return_value = {'results': []}
+    @patch('src.adapters.notion_api.requests.patch')
+    def test_upload_to_notion_new_page(self, mock_patch, mock_post):
+        """Test Notion new page creation"""
+        # Mock patch response (for adding blocks)
+        mock_patch_response = MagicMock()
+        mock_patch_response.status_code = 200
+        mock_patch.return_value = mock_patch_response
         
+        # Mock post response (create page)
         mock_create_response = MagicMock()
         mock_create_response.status_code = 200
         mock_create_response.json.return_value = {
             'id': 'new-page-id',
             'url': 'https://notion.so/new-page'
         }
-        
-        mock_post.side_effect = [mock_search_response, mock_create_response]
+        mock_post.return_value = mock_create_response
         
         uploaded_map = {"/tmp/test.png": "https://example.com/image.jpg"}
-        result = upload_to_notion("테스트 제목", "내용", uploaded_map)
+        result = upload_to_notion("Test Title", "Content", uploaded_map)
         
         self.assertEqual(result['status'], 'success')
         self.assertIn('url', result)
-        print("✅ upload_to_notion (새 페이지) 테스트 통과")
+        print("✅ upload_to_notion (new page) test passed")
     
     @patch('src.adapters.notion_api.requests.post')
-    def test_upload_to_notion_existing_page(self, mock_post):
-        """Notion 기존 페이지 발견 시 새 페이지 생성 테스트 (현재 기존 페이지 찾기 기능 비활성화)"""
-        # Mock 응답 설정 - 기존 페이지 발견하지만 새로 생성
-        mock_search_response = MagicMock()
-        mock_search_response.status_code = 200
-        mock_search_response.json.return_value = {
-            'results': [{
-                'id': 'existing-page-id',
-                'url': 'https://notion.so/existing-page',
-                'properties': {
-                    'title': {
-                        'title': [{'text': {'content': '테스트 제목'}}]
-                    }
-                }
-            }]
-        }
+    @patch('src.adapters.notion_api.requests.patch')
+    def test_upload_to_notion_existing_page(self, mock_patch, mock_post):
+        """Test Notion page creation when existing page found (existing page search disabled)"""
+        # Mock patch response (for adding blocks)
+        mock_patch_response = MagicMock()
+        mock_patch_response.status_code = 200
+        mock_patch.return_value = mock_patch_response
         
+        # Mock post response (create page)
         mock_create_response = MagicMock()
         mock_create_response.status_code = 200
         mock_create_response.json.return_value = {
             'id': 'new-page-id',
             'url': 'https://notion.so/new-page'
         }
-        
-        mock_post.side_effect = [mock_search_response, mock_create_response]
+        mock_post.return_value = mock_create_response
         
         uploaded_map = {}
-        result = upload_to_notion("테스트 제목", "업데이트 내용", uploaded_map)
+        result = upload_to_notion("Test Title", "Updated content", uploaded_map)
         
         self.assertEqual(result['status'], 'success')
         self.assertIn('url', result)
-        print("✅ upload_to_notion (기존 페이지) 테스트 통과")
+        print("✅ upload_to_notion (existing page) test passed")
 
 
 if __name__ == "__main__":

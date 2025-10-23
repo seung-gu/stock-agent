@@ -68,7 +68,8 @@ src/
 │   └── image_service_test.py  # Unit tests
 │
 ├── adapters/                   # External API integrations
-│   ├── notion_api.py          # Notion API client
+│   ├── notion_api.py          # Notion API client (page creation & upload)
+│   ├── markdown_to_notion.py  # Markdown parser → Notion blocks converter
 │   ├── notion_api_test.py     # Unit tests
 │   └── notion_integration_test.py  # Integration tests
 │
@@ -145,9 +146,12 @@ notion_agent.post_to_notion(title, content)
      • Return {local_path: public_url} mapping
      ↓
   3. upload_to_notion(title, processed_content, uploaded_map)
-     • create_notion_blocks()
-       - Split text into 2000-char chunks
+     • MarkdownToNotionParser.parse()
+       - Parse markdown: headings, lists, tables, code blocks
+       - Convert formatting: **bold**, *italic*, `code`
+       - Handle nested lists (numbered + bullets)
        - Replace placeholders with embed blocks
+       - Split text into 2000-char chunks
      • POST to Notion API
        - Initial page with first 100 blocks
        - PATCH remaining blocks (100 per batch)
@@ -186,7 +190,11 @@ notion_agent.post_to_notion(title, content)
 **Notion API:**
 - Version: `2025-09-03`
 - Uses `embed` blocks for external images
-- Handles 2000-char text limit & 100-block batch limit
+- **MarkdownToNotionParser**:
+  - Class-based architecture for parsing markdown
+  - Supports: headings, lists (nested), tables, code blocks
+  - Handles: bold, italic, bold-italic, inline code
+  - Respects Notion limits: 2000 chars per block, 100 blocks per page
 
 ---
 
