@@ -96,7 +96,7 @@ class MarkdownToNotionParser:
                 'type': block_type,
                 block_type: {'rich_text': rich_text}
             }
-            # Add children if provided
+            # Add children if provided (올바른 위치에)
             if children:
                 block[block_type]['children'] = children
             blocks.append(block)
@@ -204,46 +204,136 @@ class MarkdownToNotionParser:
         
         return table_block
     
-    def _parse_nested_bullets(self, lines: List[str], start_index: int, parent_indent: int) -> tuple[List[Dict], int]:
-        """
-        Parse nested bullet points based on indentation.
-        - Tab/spaces in markdown → children in Notion
-        - No depth limit - just follow indentation
-        """
-        items = []
-        i = start_index
-        
-        while i < len(lines):
-            line = lines[i]
-            
-            # Skip empty lines
-            if not line.strip():
-                i += 1
-                continue
-            
-            indent = len(line) - len(line.lstrip())
-            
-            # Stop if we've returned to parent level or higher
-            if indent <= parent_indent:
-                break
-            
-            # Only process bullets that are direct children
-            if not re.match(r'^\s*[-*]\s', line):
-                i += 1
-                continue
-            
-            # Extract text
-            text = re.sub(r'^\s*[-*]\s+', '', line)
-            
-            # Recursively parse children (based on indent only)
-            children, next_i = self._parse_nested_bullets(lines, i + 1, indent)
-            
-            # Create bullet with or without children
-            items.extend(self._create_text_block('bulleted_list_item', text, children))
-            i = next_i
-        
-        return items, i
     
+    def _convert_header(self, line: str) -> List[Dict]:
+        """
+        Convert header line to Notion block
+        
+        HEADER Processing Method (Simple 1:1 Conversion):
+        - Header 1-3: Direct conversion to Notion's heading_1, heading_2, heading_3 blocks
+        - Header 4-6: Converted to paragraph blocks due to Notion API limitations (bold + indent)
+        - Characteristics: Process each line independently, no nested structure
+        - Reason: Notion API only supports heading_1, heading_2, heading_3, so h4-h6 must be converted to paragraphs
+        """
+        # Check for h4-h6 first (convert to bold paragraphs)
+        heading_match = re.match(r'^(#{4,6})\s+(.+)', line)
+        if heading_match:
+            level = len(heading_match.group(1))  # 4, 5, or 6
+            text = heading_match.group(2)
+            indent = "  " * (level - 3)  # 2, 4, or 6 spaces
+            return [{
+                'object': 'block',
+                'type': 'paragraph',
+                'paragraph': {
+                    'rich_text': [{
+                        'type': 'text',
+                        'text': {'content': f"{indent}{text}"},
+                        'annotations': {'bold': True}
+                    }]
+                }
+            }]
+        elif line.startswith('### '):
+            return self._create_text_block('heading_3', line[4:])
+        elif line.startswith('## '):
+            return self._create_text_block('heading_2', line[3:])
+        elif line.startswith('# '):
+            return self._create_text_block('heading_1', line[2:])
+        return []
+    
+    def _convert_numbered_list(self, line: str) -> List[Dict]:
+        """
+        Convert numbered list line to Notion block
+        
+        NUMBERED LIST Processing Method (Simple 1:1 Conversion):
+        - Numbered items: Converted to Notion paragraph blocks (with numbers included)
+        - Characteristics: Process each line independently, no nested structure
+        - Reason: Notion API doesn't properly handle children structure for numbered_list_item
+        - Notion API Limitation: numbered_list_item blocks lose their children when uploaded to Notion
+        """
+        match = re.match(r'^\s*(\d+)\.\s+(.+)', line)
+        if match:
+            number = match.group(1)
+            text = match.group(2)
+            paragraph_text = f"{number}. {text}"
+            return self._create_text_block('paragraph', paragraph_text)
+        return []
+    
+    def _convert_bullet_list(self, line: str, lines: List[str], start_index: int) -> tuple[List[Dict], int]:
+        """
+        Convert bullet list with proper children structure (unlimited nesting)
+        
+        BULLET LIST Processing Method (Complex Nested Structure Handling):
+        - Characteristics: Process multiple lines together to understand nested structure
+        - Recursive processing: Recursively process sub-bullets to support unlimited nesting
+        - Children structure: Use Notion API's children property to implement nested structure
+        - Mixed structure: Handle both bullets and numbered items together (Bullet + Number mixed)
+        - Notion API Limitation: bulleted_list_item blocks also lose their children when uploaded to Notion
+        
+        Why different approach?
+        1. HEADER/NUMBERED: Simple 1:1 conversion (process each line independently)
+        2. BULLET: Complex nested structure (process multiple lines together to understand hierarchy)
+        - Note: Despite Notion API limitations, we still build the children structure for completeness
+        """
+        text = re.sub(r'^\s*[-*]\s+', '', line)
+        current_indent = len(line) - len(line.lstrip())
+        
+        # Collect sub-bullets (unlimited nesting allowed)
+        children = []
+        next_index = start_index + 1
+        
+        while next_index < len(lines):
+            next_line = lines[next_index]
+            if not next_line.strip():
+                next_index += 1
+                continue
+                
+            next_indent = len(next_line) - len(next_line.lstrip())
+            
+            # Break if same level or higher level
+            if next_indent <= current_indent:
+                break
+                
+            # Sub-bullet case
+            if re.match(r'^\s*[-*]\s', next_line):
+                child_text = re.sub(r'^\s*[-*]\s+', '', next_line)
+                # Recursively process sub-bullets (unlimited nesting)
+                child_blocks, next_index = self._convert_bullet_list(next_line, lines, next_index)
+                children.extend(child_blocks)
+            # Sub-numbered item case
+            elif re.match(r'^\s*\d+\.\s', next_line):
+                # Process numbered item as paragraph
+                child_text = re.sub(r'^\s*\d+\.\s+', '', next_line)
+                child_block = self._create_text_block('paragraph', f"{re.match(r'^\s*(\d+)\.\s', next_line).group(1)}. {child_text}")
+                children.extend(child_block)
+                next_index += 1
+            else:
+                break
+        
+        return self._create_text_block('bulleted_list_item', text, children), next_index
+    
+    def _convert_table(self, lines: List[str], start_index: int) -> tuple[Dict, int]:
+        """Convert table lines to Notion block"""
+        # Find all table lines
+        table_lines = []
+        j = start_index
+        while j < len(lines) and '|' in lines[j] and lines[j].strip().startswith('|'):
+            table_lines.append(lines[j])
+            j += 1
+        
+        # Create table block
+        if len(table_lines) >= 2:  # At least header and one data row
+            table_block = self._create_table_block(table_lines)
+            return table_block, j
+        else:
+            # If not enough lines for table, treat as code
+            return {
+                'object': 'block',
+                'type': 'code',
+                'code': {
+                    'rich_text': [{'type': 'text', 'text': {'content': '\n'.join(table_lines)}}],
+                    'language': 'plain text'
+                }
+            }, j
     
     def _create_blocks_from_lines(self, lines: List[str]) -> List[Dict]:
         """Parse lines into Notion blocks - Pythonic approach"""
@@ -278,74 +368,27 @@ class MarkdownToNotionParser:
             
             # Table
             if line.startswith('|'):
-                table_lines = []
-                for j in range(i, len(lines)):
-                    if not lines[j].startswith('|'):
-                        break
-                    table_lines.append(lines[j])
-                    processed_lines.add(j)
-                
-                if len(table_lines) >= 2:
-                    children.append(self._create_table_block(table_lines))
-                else:
-                    children.append({
-                        'object': 'block',
-                        'type': 'code',
-                        'code': {
-                            'rich_text': [{'type': 'text', 'text': {'content': '\n'.join(table_lines)}}],
-                            'language': 'plain text'
-                        }
-                    })
+                table_block, next_index = self._convert_table(lines, i)
+                children.append(table_block)
+                processed_lines.update(range(i, next_index))
                 continue
             
-            # Headings (Notion only supports up to heading_3)
-            # Check for h4-h6 first (convert to bold paragraphs with bullets)
-            heading_match = re.match(r'^(#{4,6})\s+(.+)', line)
-            if heading_match:
-                level = len(heading_match.group(1))  # 4, 5, or 6
-                text = heading_match.group(2)
-                indent = "  " * (level - 3)  # 2, 4, or 6 spaces
-                children.append({
-                    'object': 'block',
-                    'type': 'paragraph',
-                    'paragraph': {
-                        'rich_text': [{
-                            'type': 'text',
-                            'text': {'content': f"{indent}• {text}"},
-                            'annotations': {'bold': True}
-                        }]
-                    }
-                })
-            elif line.startswith('### '):
-                children.extend(self._create_text_block('heading_3', line[4:]))
-            elif line.startswith('## '):
-                children.extend(self._create_text_block('heading_2', line[3:]))
-            elif line.startswith('# '):
-                children.extend(self._create_text_block('heading_1', line[2:]))
-            # Numbered list - convert to paragraph (no bullet point)
-            elif re.match(r'^\s*\d+\.\s', line):
-                # Extract number and text
-                match = re.match(r'^\s*(\d+)\.\s+(.+)', line)
-                if match:
-                    number = match.group(1)
-                    text = match.group(2)
-                    paragraph_text = f"{number}. {text}"
-                    
-                    # Convert to paragraph (no bullet point)
-                    children.extend(self._create_text_block('paragraph', paragraph_text))
-            # Bullet list - with nesting based on indentation
-            elif re.match(r'^\s*[-*]\s', line):
-                text = re.sub(r'^\s*[-*]\s+', '', line)
-                current_indent = len(line) - len(line.lstrip())
-                
-                # Parse nested bullets (based on indent only)
-                nested_items, next_index = self._parse_nested_bullets(lines, i + 1, current_indent)
-                
-                # Create bullet with children
-                children.extend(self._create_text_block('bulleted_list_item', text, nested_items))
-                
-                # Update processed lines
+            # Headings
+            if line.startswith('#'):
+                children.extend(self._convert_header(line))
+                continue
+            
+            # Numbered list
+            if re.match(r'^\s*\d+\.\s', line):
+                children.extend(self._convert_numbered_list(line))
+                continue
+            
+            # Bullet list
+            if re.match(r'^\s*[-*]\s', line):
+                bullet_blocks, next_index = self._convert_bullet_list(line, lines, i)
+                children.extend(bullet_blocks)
                 processed_lines.update(range(i, next_index))
+                continue
             # Paragraph
             else:
                 children.extend(self._create_text_block('paragraph', line))

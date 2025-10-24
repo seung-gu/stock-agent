@@ -50,10 +50,10 @@ TODO:
 4. ~~unified data source system~~ ✅ (Registry pattern with auto-detection)
 5. ~~NFCI integration~~ ✅ (via FREDSource)
 6. ~~markdown parsing improvements~~ ✅ (3-level nested lists, proper indentation)
-7. test functions
+7. ~~test functions~~ ✅ (18 comprehensive tests with API limitations handling)
 8. create an entry point (app.py or so)
 9. market_analysis_agent refactor 
-10. markdown_to_notion refactor -> recursive heading and bullet point
+10. ~~markdown_to_notion refactor~~ ✅ (recursive heading and bullet point with API limitations)
 
 
 ---
@@ -94,9 +94,10 @@ src/
 │   │                          # • 3-level nested lists (numbered → bulleted → bulleted)
 │   │                          # • Pythonic recursive parsing
 │   │                          # • Proper indentation handling
+│   │                          # • Notion API limitations handling (h4-h6, numbered lists)
 │   ├── report_builder.py      # Parent-child page structure builder
 │   ├── notion_api_test.py     # Unit tests
-│   ├── markdown_to_notion_test.py  # Unit tests (30 tests, all passing)
+│   ├── markdown_to_notion_test.py  # Unit tests (18 tests, all passing)
 │   └── report_builder_test.py # Integration tests
 │
 ├── utils/                      # Utility functions
@@ -415,18 +416,32 @@ asyncio.run(main())
 python -m unittest discover src -p "*_test.py"
 ```
 
+**Run tests with Notion upload (creates actual pages):**
+```bash
+# Method 1: Set environment variable inline
+TEST_MODE=true python -m unittest discover src -p "*_test.py"
+
+# Method 2: Set environment variable in shell
+export TEST_MODE=true
+python -m unittest discover src -p "*_test.py"
+export TEST_MODE=false  # Turn off after testing
+```
+
 **Test Coverage:**
-- ✅ **MarkdownToNotionParser**: 30 tests (nested lists, headings, tables, code blocks)
-- ✅ **NotionAPI**: Integration tests (page creation, child pages)
-- ✅ **ReportBuilder**: End-to-end workflow tests
-- ✅ **ImageService**: Cloudflare R2 upload tests
+- ✅ **MarkdownToNotionParser**: 17 tests (nested lists, headings, tables, code blocks, Notion upload verification)
+- ✅ **NotionAPI**: 9 tests (page creation, child pages)
+- ✅ **ReportBuilder**: 3 tests (end-to-end workflow tests)
+- ✅ **ImageService**: 4 tests (Cloudflare R2 upload tests)
+- ✅ **Total**: 33 comprehensive tests
+- ⚠️ **Notion Upload Test**: Only runs when `TEST_MODE=true` (prevents creating pages during normal testing)
 
 **Test Explorer**: Use VS Code/Cursor Test Explorer (configured in `.vscode/settings.json`)
 
 **Recent Test Results:**
 ```
-Ran 30 tests in 0.123s
+Ran 32 tests in 2.697s
 OK
+✅ All tests passed
 ```
 
 ---

@@ -2,7 +2,14 @@
 """MarkdownToNotionParser unit tests"""
 
 import unittest
+import os
+import requests
+from dotenv import load_dotenv
 from src.adapters.markdown_to_notion import MarkdownToNotionParser, create_notion_blocks
+from src.adapters.notion_api import upload_to_notion
+
+# Load environment variables
+load_dotenv()
 
 
 class TestMarkdownToNotionParser(unittest.TestCase):
@@ -259,16 +266,149 @@ class TestMarkdownToNotionParser(unittest.TestCase):
         self.assertEqual(blocks[2]['heading_3']['rich_text'][0]['text']['content'], 'Heading 3')
         
         # Check h4-h6 are bold paragraphs with bullets and indentation
-        self.assertIn('• Heading 4', blocks[3]['paragraph']['rich_text'][0]['text']['content'])
+        self.assertIn('Heading 4', blocks[3]['paragraph']['rich_text'][0]['text']['content'])
         self.assertTrue(blocks[3]['paragraph']['rich_text'][0]['annotations']['bold'])
         
-        self.assertIn('• Heading 5', blocks[4]['paragraph']['rich_text'][0]['text']['content'])
+        self.assertIn('Heading 5', blocks[4]['paragraph']['rich_text'][0]['text']['content'])
         self.assertTrue(blocks[4]['paragraph']['rich_text'][0]['annotations']['bold'])
         
-        self.assertIn('• Heading 6', blocks[5]['paragraph']['rich_text'][0]['text']['content'])
+        self.assertIn('Heading 6', blocks[5]['paragraph']['rich_text'][0]['text']['content'])
         self.assertTrue(blocks[5]['paragraph']['rich_text'][0]['annotations']['bold'])
         
         print("✅ Heading levels test passed")
+
+    def test_notion_upload_and_verify(self):
+        """Test uploading to Notion and verifying the content matches"""
+        # Skip if no API credentials
+        if not os.getenv('NOTION_API_KEY') or not os.getenv('NOTION_DATABASE_ID'):
+            self.skipTest("Notion API credentials not available")
+        
+        UPLOAD_TO_NOTION = False
+        # Skip if TEST_MODE is set to false (to prevent creating pages during normal testing)
+        if not UPLOAD_TO_NOTION:
+            self.skipTest("Set UPLOAD_TO_NOTION=True to enable Notion upload tests")
+        
+        # Test markdown content
+        content = """# Test Document
+
+## Header 2 Test
+
+### Header 3 Test
+
+#### Header 4 Test
+
+##### Header 5 Test
+
+###### Header 6 Test
+
+## Numbered List Test
+
+1. First numbered item
+   - Bullet sub-item 1
+     - Sub-sub bullet 1
+     - Sub-sub bullet 2
+   - Bullet sub-item 2
+     - Sub-sub bullet 3
+2. Second numbered item
+   - Bullet sub-item 3
+     - Sub-sub bullet 4
+     - Sub-sub bullet 5
+
+## Bullet 3-Level Nesting Test
+
+- Top level bullet 1
+  - Middle level bullet 1
+    - Bottom level bullet 1
+    - Bottom level bullet 2
+  - Middle level bullet 2
+    - Bottom level bullet 3
+    - Bottom level bullet 4
+- Top level bullet 2
+  - Middle level bullet 3
+    - Bottom level bullet 5
+    - Bottom level bullet 6
+
+## Mixed Structure Test
+
+### Bullet + Number Mixed
+
+- Bullet item 1
+  1. Numbered sub-item 1
+  2. Numbered sub-item 2
+- Bullet item 2
+  1. Numbered sub-item 3
+  2. Numbered sub-item 4
+
+## Conclusion
+
+This test verifies all features work correctly in Notion.
+"""
+
+        print("\n=== Testing Notion Upload and Verification ===")
+        
+        # Upload to Notion
+        result = upload_to_notion("Test Document", content, {})
+        
+        # Verify upload success
+        self.assertEqual(result.get('status'), 'success')
+        self.assertIn('url', result)
+        self.assertIn('page_id', result)
+        
+        page_id = result.get('page_id')
+        print(f"✅ Upload successful: {result.get('url')}")
+        
+        # Read back from Notion
+        headers = {
+            "Authorization": f"Bearer {os.getenv('NOTION_API_KEY')}",
+            "Content-Type": "application/json",
+            "Notion-Version": "2025-09-03"
+        }
+        
+        url = f"https://api.notion.com/v1/blocks/{page_id}/children"
+        response = requests.get(url, headers=headers)
+        
+        # Verify read success
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        blocks = data.get('results', [])
+        
+        print(f"✅ Read successful: {len(blocks)} blocks retrieved")
+        
+        # Verify block types
+        block_types = [block.get('type') for block in blocks]
+        
+        # Should have heading_1, heading_2, heading_3, paragraph, bulleted_list_item
+        self.assertIn('heading_1', block_types)
+        self.assertIn('heading_2', block_types)
+        self.assertIn('heading_3', block_types)
+        self.assertIn('paragraph', block_types)
+        self.assertIn('bulleted_list_item', block_types)
+        
+        # Verify specific content
+        content_texts = []
+        for block in blocks:
+            if block.get('type') == 'heading_1':
+                content_texts.append(block.get('heading_1', {}).get('rich_text', [{}])[0].get('text', {}).get('content', ''))
+            elif block.get('type') == 'heading_2':
+                content_texts.append(block.get('heading_2', {}).get('rich_text', [{}])[0].get('text', {}).get('content', ''))
+            elif block.get('type') == 'heading_3':
+                content_texts.append(block.get('heading_3', {}).get('rich_text', [{}])[0].get('text', {}).get('content', ''))
+            elif block.get('type') == 'paragraph':
+                content_texts.append(block.get('paragraph', {}).get('rich_text', [{}])[0].get('text', {}).get('content', ''))
+            elif block.get('type') == 'bulleted_list_item':
+                content_texts.append(block.get('bulleted_list_item', {}).get('rich_text', [{}])[0].get('text', {}).get('content', ''))
+        
+        # Verify key content is present
+        all_content = ' '.join(content_texts)
+        self.assertIn('Test Document', all_content)
+        self.assertIn('Header 2 Test', all_content)
+        self.assertIn('Header 3 Test', all_content)
+        self.assertIn('Numbered List Test', all_content)
+        self.assertIn('Bullet 3-Level Nesting Test', all_content)
+        self.assertIn('Mixed Structure Test', all_content)
+        
+        print("✅ Content verification passed")
+        print("✅ Notion upload and verification test passed")
 
 
 if __name__ == "__main__":

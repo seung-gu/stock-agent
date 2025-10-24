@@ -6,13 +6,11 @@ Supports automatic source detection and data fetching from:
 - FRED (economic indicators)
 """
 
+import os
+import yfinance as yf
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Any, Optional
-import re
-import os
-
-import yfinance as yf
+from typing import Any
 from fredapi import Fred
 from dotenv import load_dotenv
 
@@ -40,7 +38,7 @@ class DataSource(ABC):
         pass
     
     @abstractmethod
-    async def create_chart(self, data: dict[str, Any], symbol: str, period: str) -> str:
+    async def create_chart(self, data: dict[str, str | int | float | dict], symbol: str, period: str) -> str:
         """
         Create chart from fetched data.
         
