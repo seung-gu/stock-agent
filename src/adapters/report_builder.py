@@ -1,6 +1,5 @@
 """Report building utilities for Notion"""
 
-from typing import Dict
 from src.adapters.notion_api import upload_to_notion, create_child_page
 from src.services.image_service import find_local_images
 
@@ -11,7 +10,7 @@ def upload_report_with_children(
     summary: str,
     child_pages: list[tuple[str, str]],
     uploaded_map: dict[str, str]
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Upload a report with parent page and child pages.
     

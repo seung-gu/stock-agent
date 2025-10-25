@@ -1,7 +1,6 @@
 """Markdown to Notion converter"""
 
 import re
-from typing import List, Dict
 
 
 class MarkdownToNotionParser:
@@ -10,7 +9,7 @@ class MarkdownToNotionParser:
     def __init__(self):
         self.uploaded_map = {}
     
-    def parse(self, content: str, uploaded_map: Dict[str, str]) -> List[Dict]:
+    def parse(self, content: str, uploaded_map: dict[str, str]) -> list[dict]:
         """Main entry point: parse markdown content into Notion blocks"""
         self.uploaded_map = uploaded_map
         children = []
@@ -32,7 +31,7 @@ class MarkdownToNotionParser:
         
         return children
     
-    def _parse_rich_text(self, text: str) -> List[Dict]:
+    def _parse_rich_text(self, text: str) -> list[dict]:
         """Parse markdown text into Notion rich_text array (bold, italic, code only)"""
         rich_texts = []
         
@@ -82,7 +81,7 @@ class MarkdownToNotionParser:
         
         return rich_texts if rich_texts else [{'type': 'text', 'text': {'content': ''}}]
     
-    def _create_text_block(self, block_type: str, text: str, children: List[Dict] = None) -> List[Dict]:
+    def _create_text_block(self, block_type: str, text: str, children: list[dict] = None) -> list[dict]:
         """Convert text to Notion block with markdown parsing and length limits"""
         blocks = []
         rich_text = self._parse_rich_text(text)
@@ -138,7 +137,7 @@ class MarkdownToNotionParser:
         
         return blocks
     
-    def _normalize_table_row(self, row: List[str], width: int) -> List[str]:
+    def _normalize_table_row(self, row: list[str], width: int) -> list[str]:
         """Normalize table row to match specified width (pad or truncate)"""
         if len(row) < width:
             return row + [''] * (width - len(row))
@@ -146,7 +145,7 @@ class MarkdownToNotionParser:
             return row[:width]
         return row
     
-    def _create_table_block(self, lines: List[str]) -> Dict:
+    def _create_table_block(self, lines: list[str]) -> dict:
         """Create Notion table block from markdown table lines"""
         # Extract header and data rows
         header_row = [cell.strip() for cell in lines[0].split('|')[1:-1]]
@@ -205,7 +204,7 @@ class MarkdownToNotionParser:
         return table_block
     
     
-    def _convert_header(self, line: str) -> List[Dict]:
+    def _convert_header(self, line: str) -> list[dict]:
         """
         Convert header line to Notion block
         
@@ -240,7 +239,7 @@ class MarkdownToNotionParser:
             return self._create_text_block('heading_1', line[2:])
         return []
     
-    def _convert_numbered_list(self, line: str) -> List[Dict]:
+    def _convert_numbered_list(self, line: str) -> list[dict]:
         """
         Convert numbered list line to Notion block
         
@@ -258,7 +257,7 @@ class MarkdownToNotionParser:
             return self._create_text_block('paragraph', paragraph_text)
         return []
     
-    def _convert_bullet_list(self, line: str, lines: List[str], start_index: int) -> tuple[List[Dict], int]:
+    def _convert_bullet_list(self, line: str, lines: list[str], start_index: int) -> tuple[list[dict], int]:
         """
         Convert bullet list with proper children structure (unlimited nesting)
         
@@ -311,7 +310,7 @@ class MarkdownToNotionParser:
         
         return self._create_text_block('bulleted_list_item', text, children), next_index
     
-    def _convert_table(self, lines: List[str], start_index: int) -> tuple[Dict, int]:
+    def _convert_table(self, lines: list[str], start_index: int) -> tuple[dict, int]:
         """Convert table lines to Notion block"""
         # Find all table lines
         table_lines = []
@@ -335,7 +334,7 @@ class MarkdownToNotionParser:
                 }
             }, j
     
-    def _create_blocks_from_lines(self, lines: List[str]) -> List[Dict]:
+    def _create_blocks_from_lines(self, lines: list[str]) -> list[dict]:
         """Parse lines into Notion blocks - Pythonic approach"""
         children = []
         processed_lines = set()
@@ -395,7 +394,7 @@ class MarkdownToNotionParser:
         
         return children
     
-    def _create_image_block(self, image_url: str) -> Dict:
+    def _create_image_block(self, image_url: str) -> dict:
         """Create Notion embed block for image"""
         return {
             'object': 'block',
@@ -405,7 +404,7 @@ class MarkdownToNotionParser:
 
 
 # Convenience function for backward compatibility
-def create_notion_blocks(content: str, uploaded_map: Dict[str, str]) -> List[Dict]:
+def create_notion_blocks(content: str, uploaded_map: dict[str, str]) -> list[dict]:
     """Parse markdown content into Notion blocks (convenience function)"""
     parser = MarkdownToNotionParser()
     return parser.parse(content, uploaded_map)

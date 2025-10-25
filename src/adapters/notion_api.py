@@ -2,7 +2,6 @@
 
 import os
 import requests
-from typing import Dict
 from dotenv import load_dotenv
 
 from src.adapters.markdown_to_notion import create_notion_blocks
@@ -10,7 +9,7 @@ from src.adapters.markdown_to_notion import create_notion_blocks
 load_dotenv(override=True)
 
 
-def _get_api_headers() -> Dict[str, str]:
+def _get_api_headers() -> dict[str, str]:
     """Get Notion API headers"""
     api_key = os.environ.get('NOTION_API_KEY')
     return {
@@ -20,7 +19,7 @@ def _get_api_headers() -> Dict[str, str]:
     }
 
 
-def _create_page(title: str, blocks: list, database_id: str, headers: Dict[str, str]) -> Dict[str, str]:
+def _create_page(title: str, blocks: list, database_id: str, headers: dict[str, str]) -> dict[str, str]:
     """Create new Notion page"""
     # Create page with first 100 blocks
     data = {
@@ -57,7 +56,7 @@ def _create_page(title: str, blocks: list, database_id: str, headers: Dict[str, 
     return {"status": "success", "url": page_url, "page_id": page_id}
 
 
-def create_child_page(parent_page_id: str, title: str, content: str, uploaded_map: dict[str, str]) -> Dict[str, str]:
+def create_child_page(parent_page_id: str, title: str, content: str, uploaded_map: dict[str, str]) -> dict[str, str]:
     """Create a child page under a parent page"""
     try:
         headers = _get_api_headers()
@@ -102,7 +101,7 @@ def create_child_page(parent_page_id: str, title: str, content: str, uploaded_ma
         return {"status": "error", "message": str(e)}
 
 
-def add_link_to_page(parent_page_id: str, child_page_id: str, headers: Dict[str, str]) -> None:
+def add_link_to_page(parent_page_id: str, child_page_id: str, headers: dict[str, str]) -> None:
     """Add a link_to_page block to parent page"""
     link_block = {
         'object': 'block',
@@ -121,7 +120,7 @@ def add_link_to_page(parent_page_id: str, child_page_id: str, headers: Dict[str,
         print(f"⚠️ Link addition failed: {error_data}")
 
 
-def upload_to_notion(title: str, content: str, uploaded_map: dict[str, str]) -> Dict[str, str]:
+def upload_to_notion(title: str, content: str, uploaded_map: dict[str, str]) -> dict[str, str]:
     """Upload content to Notion as a new page"""
     try:
         database_id = os.environ.get('NOTION_DATABASE_ID')
