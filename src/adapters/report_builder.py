@@ -48,10 +48,7 @@ def upload_report_with_children(
             # Each child page content is processed independently
             # find_local_images processes images in-place and returns processed content
             child_processed, _, _ = find_local_images(child_content)
-            child_result = create_child_page(parent_page_id, child_title, child_processed, uploaded_map)
-            
-            if child_result['status'] == 'success':
-                print(f"✅ Child page created: {child_result['url']}")
+            create_child_page(parent_page_id, child_title, child_processed, uploaded_map)
         
         print("📝 Report upload complete!")
         return parent_result

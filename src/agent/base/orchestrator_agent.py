@@ -61,15 +61,8 @@ class OrchestratorAgent(AsyncAgent):
             self._setup()
         
         # Run all sub-agents in parallel
-        tasks = []
-        for agent in self.sub_agents:
-            # Use empty string if prompt is None
-            task_prompt = prompt if prompt is not None else ""
-            task = agent.run(task_prompt)
-            tasks.append(task)
-        
-        # Wait for all agents to complete
-        results = await asyncio.gather(*tasks)
+        task_prompt = prompt if prompt is not None else ""
+        results = await asyncio.gather(*[agent.run(task_prompt) for agent in self.sub_agents])
         
         # Create synthesis prompt
         synthesis_prompt = self._create_synthesis_prompt(results)

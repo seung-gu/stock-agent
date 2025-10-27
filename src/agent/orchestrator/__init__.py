@@ -1,7 +1,7 @@
 """Orchestrator agents"""
 
 from .liquidity_agent import LiquidityAgent
-from .market_analysis_agent import MarketResearchManager
+from .market_report_agent import MarketReportAgent
 
-__all__ = ["LiquidityAgent", "MarketResearchManager"]
+__all__ = ["LiquidityAgent", "MarketReportAgent"]
 

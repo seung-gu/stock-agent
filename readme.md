@@ -80,7 +80,7 @@ src/
 │   ├── orchestrator/          # 🎭 Orchestrator agents (combine multiple agents)
 │   │   ├── __init__.py       # Exports: LiquidityAgent, MarketResearchManager
 │   │   ├── liquidity_agent.py     # Liquidity orchestrator (TNX + NFCI)
-│   │   └── market_analysis_agent.py  # Main orchestrator (Liquidity + Equity)
+│   │   └── market_report_agent.py  # Main report agent (Liquidity + Equity)
 │   │
 │   └── email_agent.py         # 📧 Email notification agent
 │

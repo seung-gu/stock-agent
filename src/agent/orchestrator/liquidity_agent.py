@@ -40,7 +40,7 @@ class LiquidityAgent(OrchestratorAgent):
         - Maintain the unique characteristics of each indicator
         
         CRITICAL - CHART LINKS AND TABLES:
-        - You MUST include ALL chart links and tables from the original analyses.
+        - You MUST include ALL chart links and table structures from the original analyses.
         """
         )
 
