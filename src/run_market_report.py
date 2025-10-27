@@ -5,6 +5,10 @@ from datetime import datetime
 from dotenv import load_dotenv
 from agents import trace
 
+from src.services.image_service import find_local_images, upload_images_to_cloudflare
+from src.agent.orchestrator.market_report_agent import MarketReportAgent
+from src.adapters.report_builder import upload_report_with_children
+
 load_dotenv(override=True)
 
 
@@ -15,43 +19,20 @@ async def run_market_report():
     print(f"📊 Starting market report")
     
     with trace("run_market_report"):
-        # 2. Notion 구조 생성
-        from src.agent.notion_template_agent import NotionTemplateAgent
-        from src.agent.orchestrator.market_report_agent import MarketReportAgent
+        market_report_agent = MarketReportAgent()
+        final_report = await market_report_agent.run()
         
-        orchestrator = MarketReportAgent()
-        notion_agent = NotionTemplateAgent()
-        
-        sub_agent_names = [agent.__class__.__name__ for agent in orchestrator.sub_agents]
-        structure = await notion_agent.generate_template(sub_agent_names + ["Market Strategy Summary"])
-        
-        # 1. 분석 실행
-        sub_agent_results = await orchestrator.run_sub_agents()
-        synthesis_result = await orchestrator.run_synthesis(sub_agent_results)
+        report_contents = market_report_agent.sub_agent_results + [final_report]
 
-        # 3. 이미지 처리
-        from src.services.image_service import find_local_images, upload_images_to_cloudflare
-        
-        all_content = "\n\n".join([
-            synthesis_result,
-            *[result.final_output if hasattr(result, 'final_output') else str(result) for result in sub_agent_results]
-        ])
-        _, image_files, _ = find_local_images(all_content)
+        _, image_files, _ = find_local_images(" ".join([result.content for result in report_contents]))
         uploaded_map = upload_images_to_cloudflare(image_files) if image_files else {}
         
-        # 4. Child pages 준비
-        get_content = lambda result: result.final_output if hasattr(result, 'final_output') else str(result)
-        all_results = [get_content(result) for result in sub_agent_results] + [synthesis_result]
-        
-        child_pages = [(page.title, content) for page, content in zip(structure.child_pages, all_results)]
-        
-        # 5. Notion 업로드
-        from src.adapters.report_builder import upload_report_with_children
-        
+        child_pages = [(result.title, result.content) for result in report_contents]
+  
         return upload_report_with_children(
-            title=structure.title,
+            title=final_report.title,
             date=datetime.now().strftime('%Y-%m-%d'),
-            summary=structure.summary,
+            summary=final_report.summary,
             child_pages=child_pages,
             uploaded_map=uploaded_map
         )

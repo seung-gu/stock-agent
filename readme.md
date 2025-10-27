@@ -51,9 +51,12 @@ TODO:
 5. ~~NFCI integration~~ ✅ (via FREDSource)
 6. ~~markdown parsing improvements~~ ✅ (3-level nested lists, proper indentation)
 7. ~~test functions~~ ✅ (18 comprehensive tests with API limitations handling)
-8. create an entry point (app.py or so)
-9. market_analysis_agent refactor 
+8. ~~create an entry point~~ ✅ (run_market_report.py)
+9. ~~market_analysis_agent refactor~~ ✅ (MarketReportAgent, direct agent connection)
 10. ~~markdown_to_notion refactor~~ ✅ (recursive heading and bullet point with API limitations)
+11. ~~TNX agent analysis accuracy~~ ✅
+12. ~~AnalysisReport type system~~ ✅ (Structured output types)
+13. ~~FRED API error handling~~ ✅ (Mock data fallback)
 
 
 ---
@@ -72,15 +75,20 @@ src/
 │   │   └── trend_agent.py    # Base class for trend analysis with unified tools
 │   │
 │   ├── trend/                 # 📈 Trend analysis agents
-│   │   ├── __init__.py       # Exports: TNXAgent, NFCIAgent, EquityTrendAgent
+│   │   ├── __init__.py       # Exports: TNXAgent, NFCIAgent, DXAgent, EquityTrendAgent
 │   │   ├── tnx_agent.py      # Treasury yield (^TNX) analysis
 │   │   ├── nfci_agent.py     # NFCI (National Financial Conditions Index) analysis
-│   │   └── equity_agent.py   # Stock price trend analysis
+│   │   ├── dx_agent.py       # Dollar Index (DX=F) analysis
+│   │   └── equity_trend_agent.py  # Stock price trend analysis
 │   │
 │   ├── orchestrator/          # 🎭 Orchestrator agents (combine multiple agents)
-│   │   ├── __init__.py       # Exports: LiquidityAgent, MarketResearchManager
-│   │   ├── liquidity_agent.py     # Liquidity orchestrator (TNX + NFCI)
+│   │   ├── __init__.py       # Exports: LiquidityAgent, MarketReportAgent
+│   │   ├── liquidity_agent.py     # Liquidity orchestrator (TNX + NFCI + DX)
 │   │   └── market_report_agent.py  # Main report agent (Liquidity + Equity)
+│   │
+│   └── types/                 # 📋 Type definitions
+│       ├── __init__.py       # Package initialization
+│       └── analysis_report.py  # AnalysisReport Pydantic model
 │   │
 │   └── email_agent.py         # 📧 Email notification agent
 │
@@ -113,33 +121,27 @@ src/
 
 ## Program Workflow
 
-### 1. Main Orchestration (`MarketResearchManager`)
+### 1. Main Orchestration (`run_market_report.py`)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│            MarketResearchManager (Orchestrator)             │
+│                    run_market_report.py                     │
 │                                                             │
-│  1. Parallel Analysis (via OrchestratorAgent)               │
-│     ├── LiquidityAgent (Orchestrator)                       │
-│     │   ├── TNXAgent: ^TNX trend analysis (5d, 1mo, 6mo)    │
-│     │   │   • get_yf_data + create_yfinance_chart           │
-│     │   ├── NFCIAgent: NFCI trend analysis (5d, 1mo, 6mo)   │
-│     │   │   • get_fred_data + create_fred_chart             │
-│     │   └── Synthesis: Combined liquidity insights          │
+│  1. Direct Agent Execution                                  │
+│     ├── MarketReportAgent (Orchestrator)                    │
+│     │   ├── LiquidityAgent (TNX + NFCI + DX)                │
+│     │   └── EquityTrendAgent (Stock Analysis)               │
 │     │                                                       │
-│     └── EquityTrendAgent: Stock trend analysis              │
-│         • get_yf_data + create_yfinance_chart               │
-│         • 5d, 1mo, 6mo period analysis                      │
+│     └── Synthesis Agent (Combined Analysis)                 │
 │                                                             │
-│  2. Report Synthesis (market_agent)                         │
-│     • Strategic insights generation                         │
-│     • Child page titles generation (in configured language) │
-│     • ReportData schema output                              │
+│  2. Notion Template Generation                              │
+│     • Dynamic child page structure                          │
+│     • Professional report titles                            │
 │                                                             │
 │  3. Notion Publishing (Parent-Child Structure)              │
 │     • upload_report_with_children()                         │
 │     • Image processing (shared across all pages)            │
-│     • Child pages: Liquidity | Equity | Conclusion          │
+│     • Child pages: Liquidity | Equity | Synthesis           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -147,14 +149,14 @@ src/
 
 #### Phase 1: Data Collection & Analysis
 ```
-User Request → MarketResearchManager.run_full_analysis(equity_ticker, liquidity_ticker)
+User Request → run_market_report()
                         ↓
         ┌───────────────┴───────────────┐
         ↓                               ↓
   LiquidityAgent                  EquityTrendAgent
-  (Orchestrator)                  (Trend Agent)
+  (TNX + NFCI + DX)              (Stock Analysis)
         ↓                               ↓
-  ┌─────┴─────┐                   • get_yf_data(AAPL, 5d/1mo/6mo)
+  ┌─────┴─────┐                   • get_yf_data(NVDA, 5d/1mo/6mo)
   ↓           ↓                   • create_yfinance_chart()
 TNXAgent   NFCIAgent               • Analysis report
   ↓           ↓
@@ -177,19 +179,16 @@ TNXAgent   NFCIAgent               • Analysis report
 
 #### Phase 2: Report Synthesis
 ```
-market_agent (GPT-4.1-mini)
+Synthesis Agent (GPT-4.1-mini)
   ↓
   • Correlation Analysis (liquidity vs equity)
   • Strategic Insights & Recommendations
-  • Agent-generated Page Titles (in configured language)
-  • Markdown Report Generation
+  • AnalysisReport Generation
   ↓
-ReportData {
-  title: str                      # Main report title
-  date: str                       # Report date
-  short_summary: str              # Executive summary
-  main_report: str                # Full conclusion & insights
-  child_page_titles: list[str]    # Titles for child pages [liquidity, equity, conclusion]
+AnalysisReport {
+  title: str                      # Specific, descriptive title
+  summary: str                    # Executive summary
+  content: str                    # Detailed analysis content
 }
 ```
 
@@ -223,9 +222,9 @@ upload_report_with_children(title, date, summary, child_pages, uploaded_map)
          - PATCH remaining blocks (100 per batch)
      ↓
   3 Child Pages:
-     • {child_page_titles[0]}: Liquidity Analysis (with charts)
-     • {child_page_titles[1]}: Equity Analysis (with charts)
-     • {child_page_titles[2]}: Conclusion & Insights
+     • Liquidity Analysis (with charts)
+     • Equity Analysis (with charts)  
+     • Market Strategy Summary (with synthesis)
      ↓
   ✅ Published Notion Page with Children
 ```
@@ -268,11 +267,12 @@ REPORT_LANGUAGE = "Korean"  # or "English"
 **Trend Agents (`agent/trend/`):**
 - `TNXAgent`: Treasury yield analysis (^TNX via yfinance)
 - `NFCIAgent`: Financial conditions analysis (NFCI via FRED)
-- `EquityTrendAgent`: Stock price analysis (AAPL/SPY/etc via yfinance)
+- `DXAgent`: Dollar Index analysis (DX=F via yfinance)
+- `EquityTrendAgent`: Stock price analysis (NVDA/SPY/etc via yfinance)
 
 **Orchestrators (`agent/orchestrator/`):**
-- `LiquidityAgent`: Orchestrates TNXAgent + NFCIAgent
-- `MarketResearchManager`: Orchestrates LiquidityAgent + EquityTrendAgent
+- `LiquidityAgent`: Orchestrates TNXAgent + NFCIAgent + DXAgent
+- `MarketReportAgent`: Orchestrates LiquidityAgent + EquityTrendAgent
 
 ### Unified Data Source System
 
@@ -374,33 +374,27 @@ get_data_source("fred")      # → FREDSource
 ```python
 # Import from organized structure
 from src.agent.base import AsyncAgent, OrchestratorAgent, TrendAgent
-from src.agent.trend import TNXAgent, NFCIAgent, EquityTrendAgent
-from src.agent.orchestrator import LiquidityAgent, MarketResearchManager
+from src.agent.trend import TNXAgent, NFCIAgent, DXAgent, EquityTrendAgent
+from src.agent.orchestrator import LiquidityAgent, MarketReportAgent
 
 # Initialize agents
 tnx_agent = TNXAgent()                      # ^TNX analysis
 nfci_agent = NFCIAgent()                    # NFCI analysis
-equity_agent = EquityTrendAgent("AAPL")     # AAPL analysis
-liquidity_agent = LiquidityAgent()          # TNX + NFCI orchestrator
-manager = MarketResearchManager("^TNX", "AAPL")  # Full analysis orchestrator
+dx_agent = DXAgent()                        # DX=F analysis
+equity_agent = EquityTrendAgent("NVDA")     # NVDA analysis
+liquidity_agent = LiquidityAgent()          # TNX + NFCI + DX orchestrator
+manager = MarketReportAgent()               # Full analysis orchestrator
 ```
 
 ### Run Full Market Analysis
 
 ```python
 import asyncio
+from src.run_market_report import run_market_report
 
 async def main():
-    manager = MarketResearchManager(
-        liquidity_ticker="^TNX",
-        equity_ticker="AAPL"
-    )
-    
     # Run full analysis and post to Notion
-    result = await manager.run_full_analysis(
-        equity_ticker="AAPL",
-        liquidity_ticker="^TNX"
-    )
+    result = await run_market_report()
     
     print(f"✅ Report published: {result['url']}")
 

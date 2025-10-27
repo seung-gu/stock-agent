@@ -14,6 +14,7 @@ class AsyncAgent:
         self.agent_name = agent_name
         self._setup()  # Hook: subclass initializes attributes here
         self.agent = self._create_agent()
+        self.output_type = None
     
     def _setup(self):
         """
@@ -35,7 +36,8 @@ class AsyncAgent:
         return Agent(
             name=self.agent_name,
             instructions="",
-            model="gpt-4o-mini",
+            model="gpt-4.1-mini",
+            output_type=self.output_type
         )
     
     async def run(self, message: str):
@@ -49,4 +51,5 @@ class AsyncAgent:
             Agent's response with analysis results
         """
         result = await Runner.run(self.agent, input=message)
-        return result
+        return result.final_output_as(self.output_type)
+

@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from agents import Agent, function_tool, ModelSettings
 
 from src.agent.base.async_agent import AsyncAgent
+from src.types.analysis_report import AnalysisReport
 from src.utils.data_sources import get_data_source
 from src.config import REPORT_LANGUAGE
 
@@ -26,6 +27,7 @@ class TrendAgent(AsyncAgent):
         """
         self.ticker = ticker
         self.context_instructions = context_instructions
+        self.output_type = AnalysisReport
 
         super().__init__(agent_name)
     
@@ -137,8 +139,8 @@ class TrendAgent(AsyncAgent):
            - Use for: NFCI, DFF, T10Y2Y, UNRATE, etc.
 
         WORKFLOW:
-        1. Analyze the requested ticker/indicator from user input
-        2. Call appropriate tool for each period (5d, 1mo, 6mo)
+        1. Analyze the ticker: {self.ticker} (this is the specific ticker you must analyze)
+        2. Call appropriate tool for each period (5d, 1mo, 6mo) using {self.ticker}
         3. FORMAT OUTPUT AS MARKDOWN TABLE
         4. Include ALL chart links from tool responses
         
@@ -163,13 +165,20 @@ class TrendAgent(AsyncAgent):
         {self.context_instructions}
 
         Today is {datetime.now().strftime("%Y-%m-%d")}.
+        
+        IMPORTANT - ANALYSIS REPORT STRUCTURE:
+        You must return a structured AnalysisReport with:
+        - title: Create a specific, descriptive title for {self.ticker} analysis
+        - summary: Executive summary of key findings for {self.ticker}
+        - content: The detailed analysis content above for {self.ticker}
         """
         
         return Agent(
             name=self.agent_name,
             instructions=instructions,
-            model="gpt-4o-mini",
+            model="gpt-4.1-mini",
             tools=[self.yfinance_tool, self.fred_tool],
-            model_settings=ModelSettings(tool_choice="required")
+            model_settings=ModelSettings(tool_choice="required"),
+            output_type=self.output_type
         )
         

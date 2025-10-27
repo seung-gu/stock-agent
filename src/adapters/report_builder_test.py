@@ -3,7 +3,7 @@
 
 import sys
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from dotenv import load_dotenv
 from src.adapters.report_builder import upload_report_with_children
 

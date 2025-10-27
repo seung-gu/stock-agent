@@ -1,10 +1,11 @@
 """Base orchestrator agent for combining multiple sub-agents"""
 
 from src.agent.base.async_agent import AsyncAgent
-from agents import Agent
+from src.types.analysis_report import AnalysisReport
+from agents import Agent, Runner
 import asyncio
 from src.config import REPORT_LANGUAGE
-
+        
 
 class OrchestratorAgent(AsyncAgent):
     """
@@ -18,8 +19,10 @@ class OrchestratorAgent(AsyncAgent):
     
     def __init__(self, agent_name: str):
         """Initialize orchestrator agent."""
-        self.sub_agents: list[AsyncAgent] = []
         self.synthesis_agent: Agent = None
+        self.sub_agents: list[AsyncAgent] = []
+        self.sub_agent_results: list[str] = []
+        self.output_type = AnalysisReport
         super().__init__(agent_name)
     
     def _setup(self):
@@ -43,11 +46,12 @@ class OrchestratorAgent(AsyncAgent):
         """Create synthesis agent for combining results."""
         return Agent(
             name=f"{self.agent_name}_synthesis",
-            model="gpt-4o-mini",
-            instructions=instructions
+            model="gpt-4.1-mini",
+            instructions=instructions,
+            output_type=AnalysisReport
         )
     
-    async def run(self, prompt: str = None) -> str:
+    async def run(self, prompt: str = None) -> AnalysisReport:
         """
         Run all sub-agents in parallel and synthesize results.
         
@@ -55,25 +59,22 @@ class OrchestratorAgent(AsyncAgent):
             prompt: Optional prompt for sub-agents
             
         Returns:
-            Synthesized analysis result
+            Synthesized analysis result as RunResult
         """
         if not self.sub_agents or self.synthesis_agent is None:
             self._setup()
         
         # Run all sub-agents in parallel
         task_prompt = prompt if prompt is not None else ""
-        results = await asyncio.gather(*[agent.run(task_prompt) for agent in self.sub_agents])
+        self.sub_agent_results = await asyncio.gather(*[agent.run(task_prompt) for agent in self.sub_agents])
         
         # Create synthesis prompt
-        synthesis_prompt = self._create_synthesis_prompt(results)
+        synthesis_prompt = self._create_synthesis_prompt()
+        result = await Runner.run(self.synthesis_agent, input=synthesis_prompt)
+        return result.final_output_as(self.output_type)
         
-        # Synthesize results
-        from agents import Runner
-        synthesis_result = await Runner.run(self.synthesis_agent, input=synthesis_prompt)
-        
-        return synthesis_result.final_output
     
-    def _create_synthesis_prompt(self, results: list[str]) -> str:
+    def _create_synthesis_prompt(self) -> str:
         """
         Create synthesis prompt from sub-agent results.
         Automatically uses agent_name for labeling.
@@ -82,7 +83,7 @@ class OrchestratorAgent(AsyncAgent):
         prompt_parts = ["Please synthesize the following analyses:", ""]
         
         # Use each agent's agent_name for labeling
-        for agent, result in zip(self.sub_agents, results):
+        for agent, result in zip(self.sub_agents, self.sub_agent_results):
             # Extract final_output if result is a RunResult object
             result_text = result.final_output if hasattr(result, 'final_output') else str(result)
             

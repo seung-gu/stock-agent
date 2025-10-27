@@ -15,11 +15,13 @@ class TNXAgent(TrendAgent):
             Please provide a detailed analysis of the TNX index and its trends.
 
             TREASURY YIELD ANALYSIS:
-            - Rising yields = Tightening liquidity (negative for risk assets)
-            - Falling yields = Loosening liquidity (positive for risk assets)
-            - Yield volatility = Market uncertainty about liquidity conditions
-            - Pay attention to integer percentage levels (3%, 4%, etc.) as psychological barriers
-            - Assess implications for stock market, crypto, and risk assets
+            - Rising yields = Tightening liquidity (NEGATIVE for risk assets)
+            - Falling yields = Loosening liquidity (POSITIVE for risk assets)
+            
+            CRITICAL RULES:
+            - Prioritize longer timeframes over shorter ones
+            - If longer-term trend contradicts short-term movement, emphasize longer-term
+            - NEVER say "negative impact" when yields are falling long-term
 
             TOOL USAGE:
             - Use get_yf_data("^TNX", period) for treasury yield data

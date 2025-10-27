@@ -1,5 +1,4 @@
 import asyncio
-
 from src.agent.trend.tnx_agent import TNXAgent
 from src.agent.trend.nfci_agent import NFCIAgent
 from src.agent.trend.dx_agent import DXAgent
