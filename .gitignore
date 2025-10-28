@@ -78,3 +78,9 @@ Desktop.ini
 # Custom for this project
 shell/
 
+# Generated charts
+charts/
+*.png
+*.jpg
+*.jpeg
+

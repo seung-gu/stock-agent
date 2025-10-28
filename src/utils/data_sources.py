@@ -7,6 +7,7 @@ Supports automatic source detection and data fetching from:
 """
 
 import os
+import pandas as pd
 import yfinance as yf
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
@@ -70,16 +71,74 @@ class DataSource(ABC):
 class YFinanceSource(DataSource):
     """Data source for stocks, ETFs, and treasuries via yfinance."""
     
+    def _period_to_timedelta(self, period: str) -> timedelta:
+        """Convert yfinance period string to approximate timedelta for display window."""
+        period_map = {
+            '5d': timedelta(days=7),      # ~5 trading days with weekends
+            '1mo': timedelta(days=35),    # ~22 trading days with weekends
+            '3mo': timedelta(days=100),   # ~65 trading days with weekends
+            '6mo': timedelta(days=200),   # ~130 trading days with weekends
+            '1y': timedelta(days=365),    # ~252 trading days with weekends
+            '2y': timedelta(days=730),    # ~504 trading days with weekends
+            '5y': timedelta(days=1825),   # ~1260 trading days with weekends
+            '10y': timedelta(days=3650),  # ~2520 trading days with weekends
+        }
+        period_lower = period.lower()
+        if period_lower not in period_map:
+            print(f"Warning: Unsupported period '{period}', using default 6mo (200 days)")
+            return timedelta(days=200)  # Default: 6mo equivalent
+        return period_map[period_lower]
+
     async def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
         """Fetch data from yfinance."""
         ticker = yf.Ticker(symbol)
-        hist = ticker.history(period=period)
+        period_lower = (period or '').lower()
+        
+        # Determine if we need extra lookback for SMA 200
+        needs_sma_200 = period_lower in ['1y', '2y', '5y', '10y', 'max']
+        end_date = datetime.now()
+        display_delta = self._period_to_timedelta(period_lower)
+        start_display = end_date - display_delta
+        
+        if period_lower == 'max':
+            hist = ticker.history(period='max')
+        else:
+            # Fetch with buffer if 200-SMA needed (approx 280 calendar days ~ 200 trading days)
+            fetch_start = start_display - (timedelta(days=280) if needs_sma_200 else timedelta(days=0))
+            hist = ticker.history(start=fetch_start, end=end_date)
         
         if hist.empty:
             raise ValueError(f"No data found for {symbol} with period {period}")
         
+        # Normalize timezone for safe datetime comparisons
+        try:
+            hist.index = hist.index.tz_localize(None)
+        except (TypeError, AttributeError):
+            pass
+
+        # Compute common SMAs for convenience (5/20/200)
+        try:
+            if 'Close' in hist.columns:
+                if 'SMA_5' not in hist.columns:
+                    hist['SMA_5'] = hist['Close'].rolling(window=5).mean()
+                if 'SMA_20' not in hist.columns:
+                    hist['SMA_20'] = hist['Close'].rolling(window=20).mean()
+                if 'SMA_200' not in hist.columns:
+                    hist['SMA_200'] = hist['Close'].rolling(window=200).mean()
+        except Exception:
+            # If SMA computation fails, continue without SMAs
+            pass
+        
+        # Slice back to display window so chart reflects requested period
+        if period_lower != 'max':
+            # Ensure start_display is pandas Timestamp and naive
+            start_display_ts = pd.Timestamp(start_display).tz_localize(None)
+            hist_display = hist[hist.index >= start_display_ts]
+        else:
+            hist_display = hist
+        
         return {
-            'history': hist,
+            'history': hist_display,
             'info': ticker.info,
             'symbol': symbol
         }
@@ -181,13 +240,20 @@ class FREDSource(DataSource):
     def _period_to_timedelta(self, period: str) -> timedelta:
         """Convert period string to timedelta."""
         period_map = {
-            '5d': timedelta(days=7),  # Get extra for weekends
-            '1mo': timedelta(days=35),
-            '6mo': timedelta(days=180),
-            '1y': timedelta(days=365),
-            '2y': timedelta(days=730)
+            '5d': timedelta(days=7),      # ~5 trading days with weekends
+            '1mo': timedelta(days=35),    # ~22 trading days with weekends
+            '3mo': timedelta(days=100),   # ~65 trading days with weekends
+            '6mo': timedelta(days=200),   # ~130 trading days with weekends
+            '1y': timedelta(days=365),    # ~252 trading days with weekends
+            '2y': timedelta(days=730),    # ~504 trading days with weekends
+            '5y': timedelta(days=1825),   # ~1260 trading days with weekends
+            '10y': timedelta(days=3650),  # ~2520 trading days with weekends
         }
-        return period_map.get(period, timedelta(days=180))
+        period_lower = period.lower()
+        if period_lower not in period_map:
+            print(f"Warning: Unsupported period '{period}', using default 6mo (200 days)")
+            return timedelta(days=200)  # Default: 6mo equivalent
+        return period_map[period_lower]
     
     async def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
         """Fetch data from FRED API."""

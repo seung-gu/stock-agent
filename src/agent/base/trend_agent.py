@@ -6,6 +6,7 @@ from agents import Agent, function_tool, ModelSettings
 from src.agent.base.async_agent import AsyncAgent
 from src.types.analysis_report import AnalysisReport
 from src.utils.data_sources import get_data_source
+import pandas as pd
 from src.config import REPORT_LANGUAGE
 
 load_dotenv(override=True)
@@ -45,7 +46,7 @@ class TrendAgent(AsyncAgent):
             
             Args:
                 symbol: Ticker symbol (e.g., ^TNX, AAPL, SPY)
-                period: Time period (5d, 1mo, 6mo)
+                period: Time period (5d, 1mo, 3mo, 6mo, 1y, 2y, 5y or 10y)
                 
             Returns:
                 Analysis with price data and chart link
@@ -56,7 +57,25 @@ class TrendAgent(AsyncAgent):
                 analysis = source.get_analysis(data, period)
                 chart_info = await source.create_chart(data, symbol, period)
                 
-                period_name = {"5d": "5 Days", "1mo": "1 Month", "6mo": "6 Months"}.get(period, period)
+                period_name = {
+                    "5d": "5 Days", "1mo": "1 Month", "3mo": "3 Months", "6mo": "6 Months",
+                    "1y": "1 Year", "2y": "2 Years", "5y": "5 Years", "10y": "10 Years"
+                }.get(period, f"{period} (default: 6mo)")
+                
+                # Extract SMA info if available
+                hist = data.get('history')
+                sma_info = ""
+                if hist is not None and not hist.empty:
+                    latest = hist.iloc[-1]
+                    sma_parts = []
+                    if 'SMA_5' in hist.columns and not pd.isna(latest.get('SMA_5')):
+                        sma_parts.append(f"SMA(5): {latest['SMA_5']:.3f}")
+                    if 'SMA_20' in hist.columns and not pd.isna(latest.get('SMA_20')):
+                        sma_parts.append(f"SMA(20): {latest['SMA_20']:.3f}")
+                    if 'SMA_200' in hist.columns and not pd.isna(latest.get('SMA_200')):
+                        sma_parts.append(f"SMA(200): {latest['SMA_200']:.3f}")
+                    if sma_parts:
+                        sma_info = f"\n                        - Moving Averages: {', '.join(sma_parts)}"
                 
                 output = f"""{period_name} Analysis ({symbol}):
                         - Start: {analysis['start']:.3f}
@@ -64,7 +83,7 @@ class TrendAgent(AsyncAgent):
                         - Change: {analysis['change_pct']:+.2f}%
                         - High: {analysis['high']:.3f}
                         - Low: {analysis['low']:.3f}
-                        - Volatility: {analysis['volatility']:.3f}
+                        - Volatility: {analysis['volatility']:.3f}{sma_info}
 
                         {chart_info}"""
                 
@@ -83,7 +102,7 @@ class TrendAgent(AsyncAgent):
             
             Args:
                 indicator: FRED indicator code (e.g., NFCI, DFF, T10Y2Y, UNRATE)
-                period: Time period (6mo, 1y, 2y) - default 6mo (IMPORTANT)
+                period: Time period (5d, 1mo, 3mo, 6mo, 1y, 2y, 5y or 10y)
                 
             Returns:
                 Analysis with indicator data and chart link
@@ -94,7 +113,9 @@ class TrendAgent(AsyncAgent):
                 analysis = source.get_analysis(data, period)
                 chart_info = await source.create_chart(data, indicator, period)
                 
-                period_name = {"6mo": "6 Months", "1y": "1 Year", "2y": "2 Years"}.get(period, period)
+                period_name = {
+                    "6mo": "6 Months", "1y": "1 Year", "2y": "2 Years", "5y": "5 Years", "10y": "10 Years"
+                }.get(period, f"{period} (default: 6mo)")
                 
                 output = f"""{period_name} Analysis ({indicator}):
                         - Latest ({analysis['latest_date']}): {analysis['latest']:.3f}"""
@@ -150,9 +171,10 @@ class TrendAgent(AsyncAgent):
         
         | Period | Start | End | Change | High | Low | Volatility |
         |--------|-------|-----|--------|------|-----|------------|
-        | 5 Days | X.XXX | X.XXX | -X.XX% | X.XXX | X.XXX | X.XXX |
-        | 1 Month | X.XXX | X.XXX | -X.XX% | X.XXX | X.XXX | X.XXX |
-        | 6 Months | X.XXX | X.XXX | -X.XX% | X.XXX | X.XXX | X.XXX |
+        | 5 Days | X.XXX | X.XXX | ±X.XX% | X.XXX | X.XXX | X.XXX |
+        | 1 Month | X.XXX | X.XXX | ±X.XX% | X.XXX | X.XXX | X.XXX |
+        | 6 Months | X.XXX | X.XXX | ±X.XX% | X.XXX | X.XXX | X.XXX |
+        | 1 Year | X.XXX | X.XXX | ±X.XX% | X.XXX | X.XXX | X.XXX |
         
         Then add chart links and comprehensive insights.
 

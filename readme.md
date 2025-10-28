@@ -57,6 +57,8 @@ TODO:
 11. ~~TNX agent analysis accuracy~~ ✅
 12. ~~AnalysisReport type system~~ ✅ (Structured output types)
 13. ~~FRED API error handling~~ ✅ (Mock data fallback)
+14. ~~SMA (Simple Moving Averages) implementation~~ ✅ (5/20/200-day SMAs with candlestick charts)
+15. ~~Unit testing with Mock API~~ ✅ (17 tests, no real API calls)
 
 
 ---
@@ -110,7 +112,14 @@ src/
 │
 ├── utils/                      # Utility functions
 │   ├── charts.py              # Unified chart generation (yfinance & FRED)
-│   └── data_sources.py        # Data source registry (YFinanceSource, FREDSource)
+│   │                          # • Candlestick charts with SMA overlays
+│   │                          # • 5/20/200-day Simple Moving Averages
+│   │                          # • Weekend gap removal for continuous display
+│   ├── data_sources.py        # Data source registry (YFinanceSource, FREDSource)
+│   │                          # • Automatic SMA calculation (5/20/200-day)
+│   │                          # • Extended data fetching for SMA 200
+│   ├── data_sources_test.py   # Unit tests (10 tests, Mock API)
+│   └── charts_test.py         # Unit tests (7 tests, Mock API)
 │
 └── dep/                        # Deprecated/legacy code
     ├── agent.py
@@ -130,18 +139,19 @@ src/
 │  1. Direct Agent Execution                                  │
 │     ├── MarketReportAgent (Orchestrator)                    │
 │     │   ├── LiquidityAgent (TNX + NFCI + DX)                │
-│     │   └── EquityTrendAgent (Stock Analysis)               │
+│     │   └── EquityTrendAgent (Stock Analysis + SMA)         │
+│     │       • 4-period analysis (5d/1mo/6mo/1y)             │
+│     │       • Candlestick charts with moving averages       │
+│     │       • Technical indicators (SMA 5/20/200)           │
 │     │                                                       │
 │     └── Synthesis Agent (Combined Analysis)                 │
 │                                                             │
-│  2. Notion Template Generation                              │
-│     • Dynamic child page structure                          │
-│     • Professional report titles                            │
-│                                                             │
-│  3. Notion Publishing (Parent-Child Structure)              │
-│     • upload_report_with_children()                         │
-│     • Image processing (shared across all pages)            │
+│  2. Image Processing & Notion Publishing                    │
+│     • find_local_images() - Parse chart links               │
+│     • upload_images_to_cloudflare() - R2 storage            │
+│     • upload_report_with_children() - Parent-child pages    │
 │     • Child pages: Liquidity | Equity | Synthesis           │
+│     • Enhanced equity analysis with moving averages         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -156,10 +166,12 @@ User Request → run_market_report()
   LiquidityAgent                  EquityTrendAgent
   (TNX + NFCI + DX)              (Stock Analysis)
         ↓                               ↓
-  ┌─────┴─────┐                   • get_yf_data(NVDA, 5d/1mo/6mo)
-  ↓           ↓                   • create_yfinance_chart()
-TNXAgent   NFCIAgent               • Analysis report
-  ↓           ↓
+  ┌─────┴─────┐                   • get_yf_data(NVDA, 5d/1mo/6mo/1y)
+  ↓           ↓                   • create_yfinance_chart() for 1mo, 1y only
+TNXAgent   NFCIAgent              • Candlestick charts with SMA overlays:
+  ↓           ↓                     - 1mo: SMA 5, 20 (short-term trends)
+  ↓           ↓                     - 1y: SMA 5, 20, 200 (comprehensive analysis)
+  ↓           ↓                   • Technical analysis with moving averages
 • get_yf    • get_fred
   _data       _data
 • create    • create
@@ -192,7 +204,7 @@ AnalysisReport {
 }
 ```
 
-#### Phase 3: Notion Publishing (Parent-Child Structure)
+#### Phase 2: Image Processing & Notion Publishing
 ```
 upload_report_with_children(title, date, summary, child_pages, uploaded_map)
   ↓
@@ -205,7 +217,7 @@ upload_report_with_children(title, date, summary, child_pages, uploaded_map)
        - Parse markdown for sandbox:/ links
        - Replace with placeholders: {{IMAGE_PLACEHOLDER:path}}
      • upload_images_to_cloudflare(image_files)
-       - Upload to R2 storage
+       - Upload to R2 storage (candlestick charts + SMA overlays)
        - Return {local_path: public_url} mapping
      ↓
   3. Create Child Pages
@@ -223,7 +235,7 @@ upload_report_with_children(title, date, summary, child_pages, uploaded_map)
      ↓
   3 Child Pages:
      • Liquidity Analysis (with charts)
-     • Equity Analysis (with charts)  
+     • Equity Analysis (with candlestick charts + SMA overlays)  
      • Market Strategy Summary (with synthesis)
      ↓
   ✅ Published Notion Page with Children
@@ -284,6 +296,9 @@ REPORT_LANGUAGE = "Korean"  # or "English"
 
 **Implementations:**
 - `YFinanceSource`: Stocks, ETFs, treasuries (^TNX, AAPL, SPY)
+  - Automatic SMA calculation (5/20/200-day)
+  - Extended data fetching for SMA 200 (period + 280 days)
+  - Timezone normalization for safe date comparisons
 - `FREDSource`: Economic indicators (NFCI, DFF, T10Y2Y)
   - Lazy initialization for FRED API key
   - Indicator-specific configurations
@@ -305,6 +320,15 @@ get_data_source("fred")      # → FREDSource
   - Handles both DataFrame (yfinance) and Series (FRED)
   - Automatic baseline detection for FRED indicators
   - Consistent styling across all chart types
+- **Candlestick Charts with SMA Overlays:**
+  - OHLC (Open, High, Low, Close) candlestick visualization
+  - 5-day, 20-day, 200-day Simple Moving Averages
+  - Conditional SMA display based on chart period:
+    * No SMAs for 5-day charts
+    * SMA 5, 20 for 1mo, 3mo, 6mo periods
+    * SMA 5, 20, 200 for 1y+ periods
+  - Weekend/holiday gap removal for continuous display
+  - Distinct colors and line weights for each SMA
 
 ### Report Builder
 **`upload_report_with_children()`:**
@@ -335,6 +359,29 @@ get_data_source("fred")      # → FREDSource
 ---
 
 ## Recent Improvements
+
+### SMA (Simple Moving Averages) Implementation (v3.0)
+
+**Technical Analysis Enhancement:**
+- **5-day, 20-day, 200-day Simple Moving Averages** automatically calculated
+- **Candlestick Charts** with SMA overlays for professional stock analysis
+- **Conditional SMA Display** based on chart period:
+  * 5-day charts: No SMAs (too short for meaningful analysis)
+  * 1mo, 3mo, 6mo: SMA 5, 20 (short to medium-term trends)
+  * 1y+: SMA 5, 20, 200 (comprehensive trend analysis)
+- **Weekend Gap Removal** for continuous candlestick display
+- **Extended Data Fetching** (period + 280 days) to ensure sufficient data for SMA 200
+
+**Chart Features:**
+- OHLC (Open, High, Low, Close) candlestick visualization
+- Distinct colors and line weights for each SMA
+- Professional financial chart styling
+- Automatic timezone handling for accurate date comparisons
+
+**Agent Integration:**
+- SMA data included in trend analysis output
+- Current price vs SMA comparisons
+- Enhanced technical analysis capabilities
 
 ### Advanced Markdown Parsing (v2.0)
 
@@ -426,14 +473,26 @@ export TEST_MODE=false  # Turn off after testing
 - ✅ **NotionAPI**: 9 tests (page creation, child pages)
 - ✅ **ReportBuilder**: 3 tests (end-to-end workflow tests)
 - ✅ **ImageService**: 4 tests (Cloudflare R2 upload tests)
-- ✅ **Total**: 33 comprehensive tests
+- ✅ **DataSources**: 10 tests (yfinance/FRED with Mock API, SMA calculations)
+- ✅ **Charts**: 7 tests (candlestick charts, SMA overlays, weekend gap removal)
+- ✅ **Total**: 50 comprehensive tests
 - ⚠️ **Notion Upload Test**: Only runs when `TEST_MODE=true` (prevents creating pages during normal testing)
+- 🚫 **No Real API Calls**: All tests use Mock data for fast, reliable execution
 
 **Test Explorer**: Use VS Code/Cursor Test Explorer (configured in `.vscode/settings.json`)
 
 **Recent Test Results:**
 ```
-Ran 32 tests in 2.697s
+# Data Sources Tests
+Ran 10 tests in 0.013s
+OK
+
+# Charts Tests  
+Ran 7 tests in 0.584s
+OK
+
+# All Tests Combined
+Ran 50 tests in 3.2s
 OK
 ✅ All tests passed
 ```

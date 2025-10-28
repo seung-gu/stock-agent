@@ -1,26 +1,6 @@
 from src.agent.base.trend_agent import TrendAgent
 
 
-instructions = """
-EQUITY ANALYSIS FOCUS:
-You are an equity analyst specializing in stock price analysis.
-
-Key Interpretations:
-- Rising prices = Bullish sentiment, positive momentum, buying pressure
-- Falling prices = Bearish sentiment, negative momentum, selling pressure
-- Volatility = Market uncertainty and risk level
-- Volume patterns for trend confirmation
-- Support and resistance levels
-
-Focus Areas:
-- Price momentum and trend strength
-- Market sentiment indicators
-- Trading volume patterns
-- Key technical levels (highs, lows)
-- Risk/reward assessments for investors
-- Entry/exit point considerations
-"""
-
 class EquityTrendAgent(TrendAgent):
     """
     Equity-focused trend analysis agent for stock prices.
@@ -37,7 +17,37 @@ class EquityTrendAgent(TrendAgent):
             ticker: Stock ticker symbol (e.g., "AAPL", "TSLA")
         """
         agent_name = f"equity_agent_{ticker.replace('^', '').replace('-', '_')}"
-        super().__init__(ticker, agent_name, instructions)
+        super().__init__(
+            ticker=ticker,
+            agent_name=agent_name,
+            context_instructions="""
+            EQUITY ANALYSIS FOCUS:
+            You are an equity analyst specializing in stock price analysis.
+
+            Key Interpretations:
+            - Rising prices = Bullish sentiment, positive momentum, buying pressure
+            - Falling prices = Bearish sentiment, negative momentum, selling pressure
+            - Volatility = Market uncertainty and risk level
+            - Volume patterns for trend confirmation
+            - Support and resistance levels
+
+            Focus Areas:
+            - Price momentum and trend strength
+            - Market sentiment indicators
+            - Trading volume patterns
+            - Key technical levels (highs, lows)
+            - Risk/reward assessments for investors
+            - Entry/exit point considerations
+            - Moving Averages (5, 20, 200) are important for trend analysis
+            - 5, 20 are short-term trends, 200 is long-term trend
+            - If the price is above the 200-day moving average, the trend is bullish in the long term
+            
+            EQUITY-SPECIFIC WORKFLOW:
+            - Analyze 4 periods: 5d, 1mo (short-term) and 6mo, 1y (long-term)
+            - Generate charts ONLY for 1mo and 1y
+            - Output: Single table with all 4 periods, followed by chart links
+            """
+        )
 
 
 # Usage examples
