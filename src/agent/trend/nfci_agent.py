@@ -10,21 +10,18 @@ class NFCIAgent(TrendAgent):
         super().__init__(
             ticker="NFCI",
             agent_name="nfci_agent",
+            tools=[self._create_fred_tool()],
             context_instructions="""
-            You are a financial analyst specializing in the NFCI (National Financial Condition Index) analysis.
-            Please provide a detailed analysis of the NFCI index and its trends.
-
-            NFCI (National Financial Condition Index) ANALYSIS:
+            NFCI (National Financial Condition Index) Analysis:
             - NFCI = 0: Historical average financial conditions
             - NFCI > 0: Tighter conditions (credit stress, risk aversion)
             - NFCI < 0: Looser conditions (easy credit, risk appetite)
             - Rising NFCI = Financial conditions tightening (liquidity stress)
             - Falling NFCI = Financial conditions easing (liquidity improvement)
-            - NFCI reflects credit conditions, risk spreads, and leverage
-
-            TOOL USAGE:
-            - Use get_fred_data("NFCI", period) for NFCI data
-            - NFCI is an economic indicator from FRED (Federal Reserve Economic Data)
-            - Typical period: "6mo ", "1y", "2y" for 6-month, 1-year, 2-year analysis (IMPORTANT)
+            
+            PERIOD REQUIREMENTS:
+            - Tables: "6mo", "1y", "2y"
+            - Charts: "2y"
+            - Use get_fred_data("NFCI", period) for data
             """
         )

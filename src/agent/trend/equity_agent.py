@@ -20,6 +20,7 @@ class EquityTrendAgent(TrendAgent):
         super().__init__(
             ticker=ticker,
             agent_name=agent_name,
+            tools=[self._create_yfinance_tool()],
             context_instructions="""
             EQUITY ANALYSIS FOCUS:
             You are an equity analyst specializing in stock price analysis.
@@ -40,7 +41,9 @@ class EquityTrendAgent(TrendAgent):
             - Entry/exit point considerations
             - Moving Averages (5, 20, 200) are important for trend analysis
             - 5, 20 are short-term trends, 200 is long-term trend
-            - If the price is above the 200-day moving average, the trend is bullish in the long term
+            - 50-day moving average is the 1-quarter average, so it can be used to understand how institutional investors are viewing the company's next quarter outlook
+            - The 200-day moving average reveals market investors' buying/selling psychology (overheating or stagnation)
+            - When the 200-day line is trending upward (important) and the stock price is above the 200-day line, there's a high probability of a major bull market 
             
             EQUITY-SPECIFIC WORKFLOW:
             - Analyze 4 periods: 5d, 1mo (short-term) and 6mo, 1y (long-term)

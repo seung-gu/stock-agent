@@ -17,7 +17,7 @@ class TrendAgent(AsyncAgent):
     Trend analysis agent for trend analysis with reusable tools and agent creation.
     """
     
-    def __init__(self, ticker: str, agent_name: str, context_instructions: str):
+    def __init__(self, ticker: str, agent_name: str, context_instructions: str, tools: list = []):
         """
         Initialize trend analysis agent with ticker.
         
@@ -25,17 +25,14 @@ class TrendAgent(AsyncAgent):
             ticker: Ticker symbol (e.g., "^TNX", "AAPL")
             agent_name: Agent name identifier (e.g., "liquidity_agent_TNX")
             context_instructions: Specialized analysis instructions
+            tools: List of tools to use (optional)
         """
         self.ticker = ticker
         self.context_instructions = context_instructions
+        self.tools = tools
         self.output_type = AnalysisReport
 
         super().__init__(agent_name)
-    
-    def _setup(self):
-        """Set up instance attributes before agent creation."""
-        self.yfinance_tool = self._create_yfinance_tool()
-        self.fred_tool = self._create_fred_tool()
     
     def _create_yfinance_tool(self):
         """Create yfinance data tool."""
@@ -118,12 +115,12 @@ class TrendAgent(AsyncAgent):
                 }.get(period, f"{period} (default: 6mo)")
                 
                 output = f"""{period_name} Analysis ({indicator}):
-                        - Latest ({analysis['latest_date']}): {analysis['latest']:.3f}"""
-                
-                if 'change_1w' in analysis:
-                    output += f"\n- 1 Week Change: {analysis['change_1w']:+.3f}"
-                if 'change_1m' in analysis:
-                    output += f"\n- 1 Month Change: {analysis['change_1m']:+.3f}"
+                        - Start: {analysis['start']:.3f}
+                        - End: {analysis['end']:.3f}
+                        - Change: {analysis['change_pct']:+.2f}%
+                        - High: {analysis['high']:.3f}
+                        - Low: {analysis['low']:.3f}
+                        - Volatility: {analysis['volatility']:.3f}"""
                 
                 output += f"\n\n{chart_info}"
                 
@@ -142,10 +139,9 @@ class TrendAgent(AsyncAgent):
         """
         instructions = f"""
         You are a specialized financial analyst for trend analysis.
-
+        
         LANGUAGE REQUIREMENT:
         - ALL your responses MUST be in {REPORT_LANGUAGE}
-        - This includes introductions, explanations, and all text output
 
         CRITICAL RULES:
         - NEVER try to create or output images directly in your text
@@ -153,28 +149,22 @@ class TrendAgent(AsyncAgent):
         - DO NOT use markdown image syntax like ![image] in your responses
         - Charts will be automatically displayed by the system after you use the tools
 
-        Available tools:
-        1. get_yf_data(symbol, period): Get stock/treasury data from Yahoo Finance
-           - Use for: stocks (AAPL, SPY), treasuries (^TNX, ^FVX), indices
-        2. get_fred_data(indicator, period="6mo"): Get economic data from FRED
-           - Use for: NFCI, DFF, T10Y2Y, UNRATE, etc.
-
         WORKFLOW:
-        1. Analyze the ticker: {self.ticker} (this is the specific ticker you must analyze)
-        2. Call appropriate tool for each period (5d, 1mo, 6mo) using {self.ticker}
+        1. Analyze the ticker: {self.ticker}
+        2. Call appropriate tool for each period using {self.ticker}
         3. FORMAT OUTPUT AS MARKDOWN TABLE
         4. Include ALL chart links from tool responses
         
         OUTPUT FORMAT (REQUIRED):
         Start with a brief introduction.
-        Then create a markdown table with ALL analysis results.
+        Then create a markdown table with analysis results for the requested periods.
         
         | Period | Start | End | Change | High | Low | Volatility |
         |--------|-------|-----|--------|------|-----|------------|
-        | 5 Days | X.XXX | X.XXX | ±X.XX% | X.XXX | X.XXX | X.XXX |
-        | 1 Month | X.XXX | X.XXX | ±X.XX% | X.XXX | X.XXX | X.XXX |
-        | 6 Months | X.XXX | X.XXX | ±X.XX% | X.XXX | X.XXX | X.XXX |
-        | 1 Year | X.XXX | X.XXX | ±X.XX% | X.XXX | X.XXX | X.XXX |
+        | [Period 1] | X.XXX | X.XXX | ±X.XX% | X.XXX | X.XXX | X.XXX |
+        | [Period 2] | X.XXX | X.XXX | ±X.XX% | X.XXX | X.XXX | X.XXX |
+        | [Period 3] | X.XXX | X.XXX | ±X.XX% | X.XXX | X.XXX | X.XXX |
+        ...
         
         Then add chart links and comprehensive insights.
 
@@ -184,8 +174,6 @@ class TrendAgent(AsyncAgent):
         - Use the format: [View Chart](sandbox:/full/exact/path.png)
         - ALL chart links MUST appear in the final output
 
-        {self.context_instructions}
-
         Today is {datetime.now().strftime("%Y-%m-%d")}.
         
         IMPORTANT - ANALYSIS REPORT STRUCTURE:
@@ -193,14 +181,19 @@ class TrendAgent(AsyncAgent):
         - title: Create a specific, descriptive title for {self.ticker} analysis
         - summary: Executive summary of key findings for {self.ticker}
         - content: The detailed analysis content above for {self.ticker}
+
+        {self.context_instructions}
         """
+        
+        # Set tool_choice based on whether tools are available
+        tool_choice = "required" if self.tools else "auto"
         
         return Agent(
             name=self.agent_name,
             instructions=instructions,
             model="gpt-4.1-mini",
-            tools=[self.yfinance_tool, self.fred_tool],
-            model_settings=ModelSettings(tool_choice="required"),
+            tools=self.tools,
+            model_settings=ModelSettings(tool_choice=tool_choice),
             output_type=self.output_type
         )
         

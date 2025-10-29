@@ -119,12 +119,14 @@ class YFinanceSource(DataSource):
         # Compute common SMAs for convenience (5/20/200)
         try:
             if 'Close' in hist.columns:
+                from src.utils.technical_indicators import calculate_sma
+                
                 if 'SMA_5' not in hist.columns:
-                    hist['SMA_5'] = hist['Close'].rolling(window=5).mean()
+                    hist['SMA_5'] = calculate_sma(hist, window=5)
                 if 'SMA_20' not in hist.columns:
-                    hist['SMA_20'] = hist['Close'].rolling(window=20).mean()
+                    hist['SMA_20'] = calculate_sma(hist, window=20)
                 if 'SMA_200' not in hist.columns:
-                    hist['SMA_200'] = hist['Close'].rolling(window=200).mean()
+                    hist['SMA_200'] = calculate_sma(hist, window=200)
         except Exception:
             # If SMA computation fails, continue without SMAs
             pass
@@ -238,21 +240,21 @@ class FREDSource(DataSource):
         return self._fred
     
     def _period_to_timedelta(self, period: str) -> timedelta:
-        """Convert period string to timedelta."""
+        """Convert period string to timedelta for FRED data (weekly frequency)."""
         period_map = {
-            '5d': timedelta(days=7),      # ~5 trading days with weekends
-            '1mo': timedelta(days=35),    # ~22 trading days with weekends
-            '3mo': timedelta(days=100),   # ~65 trading days with weekends
-            '6mo': timedelta(days=200),   # ~130 trading days with weekends
-            '1y': timedelta(days=365),    # ~252 trading days with weekends
-            '2y': timedelta(days=730),    # ~504 trading days with weekends
-            '5y': timedelta(days=1825),   # ~1260 trading days with weekends
-            '10y': timedelta(days=3650),  # ~2520 trading days with weekends
+            '5d': timedelta(days=7),      # ~1 week for weekly data
+            '1mo': timedelta(days=30),    # ~4 weeks for weekly data
+            '3mo': timedelta(days=90),    # ~13 weeks for weekly data
+            '6mo': timedelta(days=180),   # ~26 weeks for weekly data
+            '1y': timedelta(days=365),    # ~52 weeks for weekly data
+            '2y': timedelta(days=730),    # ~104 weeks for weekly data
+            '5y': timedelta(days=1825),   # ~260 weeks for weekly data
+            '10y': timedelta(days=3650),  # ~520 weeks for weekly data
         }
         period_lower = period.lower()
         if period_lower not in period_map:
-            print(f"Warning: Unsupported period '{period}', using default 6mo (200 days)")
-            return timedelta(days=200)  # Default: 6mo equivalent
+            print(f"Warning: Unsupported period '{period}', using default 6mo (180 days)")
+            return timedelta(days=180)  # Default: 6mo equivalent
         return period_map[period_lower]
     
     async def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
@@ -303,26 +305,20 @@ class FREDSource(DataSource):
         """Extract analysis metrics from FRED data."""
         series_data = data['data']
         
-        latest = float(series_data.iloc[-1])
-        latest_date = series_data.index[-1].strftime('%Y-%m-%d')
+        # Get start and end values for the period
+        start_value = float(series_data.iloc[0])
+        end_value = float(series_data.iloc[-1])
+        change_pct = ((end_value - start_value) / start_value) * 100
         
-        # Get changes over different periods
-        one_week_ago = float(series_data.iloc[-5]) if len(series_data) >= 5 else None
-        one_month_ago = float(series_data.iloc[-20]) if len(series_data) >= 20 else None
-        
-        result = {
+        return {
             'period': period,
-            'latest': latest,
-            'latest_date': latest_date,
+            'start': start_value,
+            'end': end_value,
+            'change_pct': change_pct,
+            'high': float(series_data.max()),
+            'low': float(series_data.min()),
+            'volatility': float(series_data.std())
         }
-        
-        if one_week_ago is not None:
-            result['change_1w'] = latest - one_week_ago
-        
-        if one_month_ago is not None:
-            result['change_1m'] = latest - one_month_ago
-        
-        return result
 
 
 def get_data_source(source: str) -> DataSource:

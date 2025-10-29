@@ -59,6 +59,8 @@ TODO:
 13. ~~FRED API error handling~~ ✅ (Mock data fallback)
 14. ~~SMA (Simple Moving Averages) implementation~~ ✅ (5/20/200-day SMAs with candlestick charts)
 15. ~~Unit testing with Mock API~~ ✅ (17 tests, no real API calls)
+16. API Verificator (Only return values when tool gets 200 request status)
+17. Table and charts correspond to the requirements
 
 
 ---
@@ -177,6 +179,12 @@ TNXAgent   NFCIAgent              • Candlestick charts with SMA overlays:
 • create    • create
   _yf_        _fred_
   chart       chart
+
+DXAgent
+  ↓
+• get_yf_data(DX=F, 5d/1mo/6mo/1y)
+• create_yfinance_chart() for 1y only
+• Currency index analysis (Dollar strength/weakness)rt
   ↓           ↓
   └─────┬─────┘
         ↓

@@ -10,21 +10,17 @@ class TNXAgent(TrendAgent):
         super().__init__(
             ticker="^TNX",
             agent_name="tnx_agent",
+            tools=[self._create_yfinance_tool()],
             context_instructions="""
-            You are a treasury analyst specializing in the TNX (10-Year Treasury Note) analysis.
-            Please provide a detailed analysis of the TNX index and its trends.
-
-            TREASURY YIELD ANALYSIS:
+            TNX (10-Year Treasury Note) Analysis:
             - Rising yields = Tightening liquidity (NEGATIVE for risk assets)
             - Falling yields = Loosening liquidity (POSITIVE for risk assets)
-            
-            CRITICAL RULES:
             - Prioritize longer timeframes over shorter ones
-            - If longer-term trend contradicts short-term movement, emphasize longer-term
             - NEVER say "negative impact" when yields are falling long-term
-
-            TOOL USAGE:
-            - Use get_yf_data("^TNX", period) for treasury yield data
-            - Treasury yields come from Yahoo Finance (yfinance)
+            
+            PERIOD REQUIREMENTS:
+            - Tables: "5d", "1mo", "6mo", "1y"
+            - Charts: "1y"
+            - Use get_yf_data("^TNX", period) for data
             """
         )

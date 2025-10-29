@@ -212,12 +212,14 @@ def create_yfinance_chart(ticker: str, data, period: str, ylabel: str, value_for
     # Compute SMAs if not present
     try:
         if hasattr(data, 'columns') and 'Close' in data.columns:
+            from src.utils.technical_indicators import calculate_sma
+            
             if 'SMA_5' not in data.columns:
-                data['SMA_5'] = data['Close'].rolling(window=5).mean()
+                data['SMA_5'] = calculate_sma(data, window=5)
             if 'SMA_20' not in data.columns:
-                data['SMA_20'] = data['Close'].rolling(window=20).mean()
+                data['SMA_20'] = calculate_sma(data, window=20)
             if 'SMA_200' not in data.columns:
-                data['SMA_200'] = data['Close'].rolling(window=200).mean()
+                data['SMA_200'] = calculate_sma(data, window=200)
     except Exception:
         # If SMA computation fails, proceed without them
         pass
