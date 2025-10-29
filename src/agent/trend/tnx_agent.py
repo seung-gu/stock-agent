@@ -20,7 +20,6 @@ class TNXAgent(TrendAgent):
             
             PERIOD REQUIREMENTS:
             - Tables: "5d", "1mo", "6mo", "1y"
-            - Charts: "1y"
-            - Use get_yf_data("^TNX", period) for data
+            - Charts: "1mo","1y"
             """
         )

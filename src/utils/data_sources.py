@@ -24,6 +24,28 @@ load_dotenv()
 class DataSource(ABC):
     """Base class for all data sources."""
     
+    def __init__(self):
+        """Initialize with cache."""
+        self._cache = {}
+    
+    @staticmethod
+    def _get_period_rank(period: str) -> int:
+        """Get period rank for comparison (higher = longer)."""
+        period_ranks = {
+            '5d': 1, '1mo': 2, '3mo': 3, '6mo': 4, 
+            '1y': 5, '2y': 6, '5y': 7, '10y': 8, 'max': 9
+        }
+        return period_ranks.get(period.lower(), 5)  # Default to 1y
+    
+    def _should_fetch(self, symbol: str, period: str) -> bool:
+        """Determine if we need to fetch data from API."""
+        cached = self._cache.get(symbol)
+        if not cached:
+            return True
+        if self._get_period_rank(period) > self._get_period_rank(cached['period']):
+            return True
+        return False
+    
     @abstractmethod
     async def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
         """
@@ -39,7 +61,7 @@ class DataSource(ABC):
         pass
     
     @abstractmethod
-    async def create_chart(self, data: dict[str, str | int | float | dict], symbol: str, period: str) -> str:
+    async def create_chart(self, data: dict[str, Any], symbol: str, period: str) -> str:
         """
         Create chart from fetched data.
         
@@ -71,6 +93,10 @@ class DataSource(ABC):
 class YFinanceSource(DataSource):
     """Data source for stocks, ETFs, and treasuries via yfinance."""
     
+    def __init__(self):
+        """Initialize with smart cache for API optimization."""
+        super().__init__()  # Initialize cache from base class
+    
     def _period_to_timedelta(self, period: str) -> timedelta:
         """Convert yfinance period string to approximate timedelta for display window."""
         period_map = {
@@ -88,60 +114,84 @@ class YFinanceSource(DataSource):
             print(f"Warning: Unsupported period '{period}', using default 6mo (200 days)")
             return timedelta(days=200)  # Default: 6mo equivalent
         return period_map[period_lower]
-
+    
     async def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
-        """Fetch data from yfinance."""
-        ticker = yf.Ticker(symbol)
+        """Fetch data from yfinance with intelligent caching."""
         period_lower = (period or '').lower()
+        cached = self._cache.get(symbol)
         
-        # Determine if we need extra lookback for SMA 200
-        needs_sma_200 = period_lower in ['1y', '2y', '5y', '10y', 'max']
-        end_date = datetime.now()
-        display_delta = self._period_to_timedelta(period_lower)
-        start_display = end_date - display_delta
-        
-        if period_lower == 'max':
-            hist = ticker.history(period='max')
-        else:
-            # Fetch with buffer if 200-SMA needed (approx 280 calendar days ~ 200 trading days)
-            fetch_start = start_display - (timedelta(days=280) if needs_sma_200 else timedelta(days=0))
-            hist = ticker.history(start=fetch_start, end=end_date)
-        
-        if hist.empty:
-            raise ValueError(f"No data found for {symbol} with period {period}")
-        
-        # Normalize timezone for safe datetime comparisons
-        try:
-            hist.index = hist.index.tz_localize(None)
-        except (TypeError, AttributeError):
-            pass
-
-        # Compute common SMAs for convenience (5/20/200)
-        try:
-            if 'Close' in hist.columns:
-                from src.utils.technical_indicators import calculate_sma
+        if self._should_fetch(symbol, period_lower):
+            # Fetch data
+            ticker = yf.Ticker(symbol)
+            end_date = datetime.now()
+            
+            if period_lower == 'max':
+                hist = ticker.history(period='max')
+            else:
+                display_delta = self._period_to_timedelta(period_lower)
+                start_display = end_date - display_delta
                 
-                if 'SMA_5' not in hist.columns:
+                # Add buffer for SMA 200 if needed
+                needs_sma_200 = period_lower in ['1y', '2y', '5y', '10y', 'max']
+                fetch_start = start_display - (timedelta(days=280) if needs_sma_200 else timedelta(days=0))
+                hist = ticker.history(start=fetch_start, end=end_date)
+            
+            if hist.empty:
+                raise ValueError(f"No data found for {symbol} with period {period_lower}")
+            
+            # Normalize timezone
+            try:
+                hist.index = hist.index.tz_localize(None)
+            except (TypeError, AttributeError):
+                pass
+
+            # Compute SMAs
+            try:
+                if 'Close' in hist.columns:
+                    from src.utils.technical_indicators import calculate_sma
+                    
                     hist['SMA_5'] = calculate_sma(hist, window=5)
-                if 'SMA_20' not in hist.columns:
                     hist['SMA_20'] = calculate_sma(hist, window=20)
-                if 'SMA_200' not in hist.columns:
                     hist['SMA_200'] = calculate_sma(hist, window=200)
-        except Exception:
-            # If SMA computation fails, continue without SMAs
-            pass
+            except Exception:
+                pass
+            
+            # Get info (only once per symbol)
+            info = {}
+            if cached and 'info' in cached:
+                info = cached['info']
+            else:
+                try:
+                    info = getattr(ticker, 'info', {}) or {}
+                except Exception:
+                    info = {}
+            
+            # Update cache with longest data
+            self._cache[symbol] = {
+                'hist': hist,
+                'info': info,
+                'period': period_lower,
+                'fetched_at': datetime.now()
+            }
+            cached = self._cache[symbol]
         
-        # Slice back to display window so chart reflects requested period
-        if period_lower != 'max':
-            # Ensure start_display is pandas Timestamp and naive
+        # Get cached data
+        hist = cached['hist']
+        info = cached['info']
+        
+        # Slice to requested period
+        if period_lower == 'max' or period_lower == cached['period']:
+            hist_display = hist
+        else:
+            end_date = datetime.now()
+            display_delta = self._period_to_timedelta(period_lower)
+            start_display = end_date - display_delta
             start_display_ts = pd.Timestamp(start_display).tz_localize(None)
             hist_display = hist[hist.index >= start_display_ts]
-        else:
-            hist_display = hist
-        
+
         return {
             'history': hist_display,
-            'info': ticker.info,
+            'info': info,
             'symbol': symbol
         }
     
@@ -192,6 +242,19 @@ class YFinanceSource(DataSource):
         end_price = float(hist['Close'].iloc[-1])
         change_pct = ((end_price - start_price) / start_price) * 100
         
+        # Extract SMA info if available
+        sma_parts = []
+        if not hist.empty:
+            latest = hist.iloc[-1]
+            if 'SMA_5' in hist.columns and not pd.isna(latest.get('SMA_5')):
+                sma_parts.append(f"SMA(5): {latest['SMA_5']:.3f}")
+            if 'SMA_20' in hist.columns and not pd.isna(latest.get('SMA_20')):
+                sma_parts.append(f"SMA(20): {latest['SMA_20']:.3f}")
+            if 'SMA_200' in hist.columns and not pd.isna(latest.get('SMA_200')):
+                sma_parts.append(f"SMA(200): {latest['SMA_200']:.3f}")
+        
+        sma_text = ', '.join(sma_parts) if sma_parts else ""
+        
         return {
             'period': period,
             'start': start_price,
@@ -199,7 +262,8 @@ class YFinanceSource(DataSource):
             'change_pct': change_pct,
             'high': float(hist['Close'].max()),
             'low': float(hist['Close'].min()),
-            'volatility': float(hist['Close'].std())
+            'volatility': float(hist['Close'].std()),
+            'sma': sma_text
         }
 
 
@@ -208,6 +272,7 @@ class FREDSource(DataSource):
     
     def __init__(self):
         # Lazy initialization - only create Fred client when needed
+        super().__init__()  # Initialize cache from base class
         self._fred = None
         
         # Indicator-specific configurations
@@ -258,18 +323,50 @@ class FREDSource(DataSource):
         return period_map[period_lower]
     
     async def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
-        """Fetch data from FRED API."""
-        end_date = datetime.now()
-        start_date = end_date - self._period_to_timedelta(period)
+        """Fetch data from FRED API with intelligent caching."""
+        period_lower = (period or '').lower()
+        cached = self._cache.get(symbol)
         
-        series_data = self.fred.get_series(
-            symbol,
-            observation_start=start_date.strftime('%Y-%m-%d'),
-            observation_end=end_date.strftime('%Y-%m-%d')
-        )
+        if self._should_fetch(symbol, period_lower):
+            # Fetch data
+            end_date = datetime.now()
+            start_date = end_date - self._period_to_timedelta(period_lower)
+            
+            series_data = self.fred.get_series(
+                symbol,
+                observation_start=start_date.strftime('%Y-%m-%d'),
+                observation_end=end_date.strftime('%Y-%m-%d')
+            )
+            
+            if series_data.empty:
+                raise ValueError(f"No FRED data found for {symbol} with period {period_lower}")
+            
+            # Update cache with longest data
+            self._cache[symbol] = {
+                'data': series_data,
+                'period': period_lower,
+                'fetched_at': datetime.now()
+            }
+            cached = self._cache[symbol]
         
-        if series_data.empty:
-            raise ValueError(f"No FRED data found for {symbol}")
+        # Get cached data
+        series_data = cached['data']
+        
+        # Slice to requested period
+        if period_lower == cached['period']:
+            period_data = series_data
+        else:
+            end_date = datetime.now()
+            start_date = end_date - self._period_to_timedelta(period_lower)
+            start_date_str = start_date.strftime('%Y-%m-%d')
+            end_date_str = end_date.strftime('%Y-%m-%d')
+            
+            # Filter data to requested period
+            period_data = series_data[(series_data.index >= start_date_str) & (series_data.index <= end_date_str)]
+            
+            if period_data.empty:
+                # If no data in period, use the most recent data
+                period_data = series_data.tail(1)
         
         config = self.indicator_configs.get(symbol, {
             'name': symbol,
@@ -279,7 +376,7 @@ class FREDSource(DataSource):
         })
         
         return {
-            'data': series_data,
+            'data': period_data,
             'symbol': symbol,
             'config': config
         }

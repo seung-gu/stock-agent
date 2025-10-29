@@ -1,12 +1,10 @@
 from datetime import datetime
-from agents.result import T
 from dotenv import load_dotenv
 from agents import Agent, function_tool, ModelSettings
 
 from src.agent.base.async_agent import AsyncAgent
 from src.types.analysis_report import AnalysisReport
 from src.utils.data_sources import get_data_source
-import pandas as pd
 from src.config import REPORT_LANGUAGE
 
 load_dotenv(override=True)
@@ -34,10 +32,30 @@ class TrendAgent(AsyncAgent):
 
         super().__init__(agent_name)
     
+    @staticmethod
+    def _get_period_name(period: str) -> str:
+        """Get human-readable period name."""
+        period_names = {
+            "5d": "5 Days", "1mo": "1 Month", "3mo": "3 Months", "6mo": "6 Months",
+            "1y": "1 Year", "2y": "2 Years", "5y": "5 Years", "10y": "10 Years"
+        }
+        return period_names.get(period, f"{period}")
+    
+    @staticmethod
+    async def _fetch_and_analyze(source_name: str, symbol: str, period: str, include_chart: bool = False) -> tuple[dict, dict, str]:
+        """Common workflow for fetching, analyzing, and optionally charting data."""
+        source = get_data_source(source_name)
+        data = await source.fetch_data(symbol, period)
+        analysis = source.get_analysis(data, period)
+        chart_info = ""
+        if include_chart:
+            chart_info = await source.create_chart(data, symbol, period)
+        return data, analysis, chart_info
+    
     def _create_yfinance_tool(self):
         """Create yfinance data tool."""
         @function_tool
-        async def get_yf_data(symbol: str, period: str) -> str:
+        async def get_yf_data(symbol: str, period: str, include_chart: bool = False) -> str:
             """
             Get stock, ETF, or treasury data from Yahoo Finance.
             
@@ -49,30 +67,12 @@ class TrendAgent(AsyncAgent):
                 Analysis with price data and chart link
             """
             try:
-                source = get_data_source("yfinance")
-                data = await source.fetch_data(symbol, period)
-                analysis = source.get_analysis(data, period)
-                chart_info = await source.create_chart(data, symbol, period)
+                data, analysis, chart_info = await TrendAgent._fetch_and_analyze("yfinance", symbol, period, include_chart)
+                period_name = TrendAgent._get_period_name(period)
                 
-                period_name = {
-                    "5d": "5 Days", "1mo": "1 Month", "3mo": "3 Months", "6mo": "6 Months",
-                    "1y": "1 Year", "2y": "2 Years", "5y": "5 Years", "10y": "10 Years"
-                }.get(period, f"{period} (default: 6mo)")
-                
-                # Extract SMA info if available
-                hist = data.get('history')
                 sma_info = ""
-                if hist is not None and not hist.empty:
-                    latest = hist.iloc[-1]
-                    sma_parts = []
-                    if 'SMA_5' in hist.columns and not pd.isna(latest.get('SMA_5')):
-                        sma_parts.append(f"SMA(5): {latest['SMA_5']:.3f}")
-                    if 'SMA_20' in hist.columns and not pd.isna(latest.get('SMA_20')):
-                        sma_parts.append(f"SMA(20): {latest['SMA_20']:.3f}")
-                    if 'SMA_200' in hist.columns and not pd.isna(latest.get('SMA_200')):
-                        sma_parts.append(f"SMA(200): {latest['SMA_200']:.3f}")
-                    if sma_parts:
-                        sma_info = f"\n                        - Moving Averages: {', '.join(sma_parts)}"
+                if analysis.get('sma'):
+                    sma_info = f"\n                        - Moving Averages: {analysis['sma']}"
                 
                 output = f"""{period_name} Analysis ({symbol}):
                         - Start: {analysis['start']:.3f}
@@ -81,7 +81,6 @@ class TrendAgent(AsyncAgent):
                         - High: {analysis['high']:.3f}
                         - Low: {analysis['low']:.3f}
                         - Volatility: {analysis['volatility']:.3f}{sma_info}
-
                         {chart_info}"""
                 
                 return output
@@ -93,7 +92,7 @@ class TrendAgent(AsyncAgent):
     def _create_fred_tool(self):
         """Create FRED economic data tool."""
         @function_tool
-        async def get_fred_data(indicator: str, period: str = "6mo") -> str:
+        async def get_fred_data(indicator: str, period: str = "6mo", include_chart: bool = False) -> str:
             """
             Get economic indicator data from FRED (Federal Reserve Economic Data).
             
@@ -105,14 +104,8 @@ class TrendAgent(AsyncAgent):
                 Analysis with indicator data and chart link
             """
             try:
-                source = get_data_source("fred")
-                data = await source.fetch_data(indicator, period)
-                analysis = source.get_analysis(data, period)
-                chart_info = await source.create_chart(data, indicator, period)
-                
-                period_name = {
-                    "6mo": "6 Months", "1y": "1 Year", "2y": "2 Years", "5y": "5 Years", "10y": "10 Years"
-                }.get(period, f"{period} (default: 6mo)")
+                data, analysis, chart_info = await TrendAgent._fetch_and_analyze("fred", indicator, period, include_chart)
+                period_name = TrendAgent._get_period_name(period)
                 
                 output = f"""{period_name} Analysis ({indicator}):
                         - Start: {analysis['start']:.3f}
@@ -120,9 +113,8 @@ class TrendAgent(AsyncAgent):
                         - Change: {analysis['change_pct']:+.2f}%
                         - High: {analysis['high']:.3f}
                         - Low: {analysis['low']:.3f}
-                        - Volatility: {analysis['volatility']:.3f}"""
-                
-                output += f"\n\n{chart_info}"
+                        - Volatility: {analysis['volatility']:.3f}
+                        {chart_info}"""
                 
                 return output
             except Exception as e:
@@ -152,12 +144,13 @@ class TrendAgent(AsyncAgent):
         WORKFLOW:
         1. Analyze the ticker: {self.ticker}
         2. Call appropriate tool for each period using {self.ticker}
-        3. FORMAT OUTPUT AS MARKDOWN TABLE
-        4. Include ALL chart links from tool responses
+        3. When calling the tools, always call the longest period first and then call the shorter periods in reverse order
+        4. FORMAT OUTPUT AS MARKDOWN TABLE
+        5. Include ALL chart links from tool responses in the order of the periods
         
         OUTPUT FORMAT (REQUIRED):
         Start with a brief introduction.
-        Then create a markdown table with analysis results for the requested periods.
+        Then create a markdown table with analysis results for the requested periods in ascending order.
         
         | Period | Start | End | Change | High | Low | Volatility |
         |--------|-------|-----|--------|------|-----|------------|

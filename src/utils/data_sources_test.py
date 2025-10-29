@@ -164,8 +164,12 @@ class TestFREDSource(unittest.TestCase):
         # Use mock data directly
         analysis = self.source.get_analysis(self.mock_fred_data, "6mo")
         
-        self.assertIn('latest', analysis)
-        self.assertIn('latest_date', analysis)
+        self.assertIn('start', analysis)
+        self.assertIn('end', analysis)
+        self.assertIn('change_pct', analysis)
+        self.assertIn('high', analysis)
+        self.assertIn('low', analysis)
+        self.assertIn('volatility', analysis)
 
 
 class TestDataSourceFactory(unittest.TestCase):

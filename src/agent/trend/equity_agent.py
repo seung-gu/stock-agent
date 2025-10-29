@@ -45,10 +45,9 @@ class EquityTrendAgent(TrendAgent):
             - The 200-day moving average reveals market investors' buying/selling psychology (overheating or stagnation)
             - When the 200-day line is trending upward (important) and the stock price is above the 200-day line, there's a high probability of a major bull market 
             
-            EQUITY-SPECIFIC WORKFLOW:
-            - Analyze 4 periods: 5d, 1mo (short-term) and 6mo, 1y (long-term)
-            - Generate charts ONLY for 1mo and 1y
-            - Output: Single table with all 4 periods, followed by chart links
+            PERIOD REQUIREMENTS:
+            - Tables: "5d", "1mo", "6mo", "1y"
+            - Charts: "1mo","1y"
             """
         )
 

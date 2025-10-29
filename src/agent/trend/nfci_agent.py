@@ -22,6 +22,5 @@ class NFCIAgent(TrendAgent):
             PERIOD REQUIREMENTS:
             - Tables: "6mo", "1y", "2y"
             - Charts: "2y"
-            - Use get_fred_data("NFCI", period) for data
             """
         )
