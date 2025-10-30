@@ -1,7 +1,8 @@
 import asyncio
 
 from src.agent.base.trend_agent import TrendAgent
-from src.agent.tools.agent_tools import fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data, analyze_disparity_data, generate_disparity_chart
+from src.agent.tools.agent_tools import fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data, \
+analyze_disparity_data, generate_disparity_chart, generate_RSI_chart, analyze_RSI_data
 
 
 class EquityTrendAgent(TrendAgent):
@@ -24,7 +25,8 @@ class EquityTrendAgent(TrendAgent):
         super().__init__(
             ticker=ticker,
             agent_name=agent_name,
-            tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data, analyze_disparity_data, generate_disparity_chart],
+            tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data, analyze_disparity_data, generate_disparity_chart
+                   , generate_RSI_chart, analyze_RSI_data],
             context_instructions="""
             EQUITY ANALYSIS FOCUS:
             You are an equity analyst specializing in stock price analysis.
@@ -59,6 +61,8 @@ class EquityTrendAgent(TrendAgent):
             ADDITIONAL TOOLS:
             - analyze_SMA_data to analyze SMA data (Mandatory)
             - generate_disparity_chart (5y period) to generate disparity chart
+            - generate_RSI_chart (14 period) to generate RSI chart
+            - analyze_RSI_data (14 period) to analyze RSI data
             """
         )
 
@@ -67,11 +71,11 @@ class EquityTrendAgent(TrendAgent):
 if __name__ == "__main__":
     async def main():
         print("\n" + "=" * 80)
-        print("Example: Equity Analysis (Apple)")
+        print("Example: Equity Analysis (NVDA)")
         print("=" * 80)
         # Example: Equity analysis (Stock)
-        aapl_agent = EquityTrendAgent("AAPL")
-        result = await aapl_agent.run("AAPL의 추세를 분석하고 투자 관점에서 해석해줘")
+        aapl_agent = EquityTrendAgent("NVDA")
+        result = await aapl_agent.run("NVDA의 추세를 분석하고 투자 관점에서 해석해줘")
         print(result.content)
  
     asyncio.run(main())

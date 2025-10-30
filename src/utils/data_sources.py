@@ -105,9 +105,9 @@ class YFinanceSource(DataSource):
         """Convert yfinance period string to approximate timedelta for display window."""
         period_map = {
             '5d': timedelta(days=7),      # ~5 trading days with weekends
-            '1mo': timedelta(days=35),    # ~22 trading days with weekends
-            '3mo': timedelta(days=100),   # ~65 trading days with weekends
-            '6mo': timedelta(days=200),   # ~130 trading days with weekends
+            '1mo': timedelta(days=30),    # ~22 trading days with weekends
+            '3mo': timedelta(days=90),   # ~65 trading days with weekends
+            '6mo': timedelta(days=182),   # ~130 trading days with weekends
             '1y': timedelta(days=365),    # ~252 trading days with weekends
             '2y': timedelta(days=730),    # ~504 trading days with weekends
             '5y': timedelta(days=1825),   # ~1260 trading days with weekends
@@ -272,7 +272,7 @@ class YFinanceSource(DataSource):
             'change_pct': change_pct,
             'high': float(hist['Close'].max()),
             'low': float(hist['Close'].min()),
-            'volatility': float(hist['Close'].std())
+            'volatility': float(hist['Close'].pct_change().std() * (len(hist) ** 0.5) * 100)
         }
 
 
@@ -433,7 +433,7 @@ class FREDSource(DataSource):
             'change_pct': change_pct,
             'high': float(series_data.max()),
             'low': float(series_data.min()),
-            'volatility': float(series_data.std())
+            'volatility': float(series_data.pct_change().std() * (len(series_data) ** 0.5) * 100)
         }
 
 
