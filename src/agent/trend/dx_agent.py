@@ -2,6 +2,7 @@
 """DX=F (Dollar Index) Trend Analysis Agent"""
 
 from src.agent.base.trend_agent import TrendAgent
+from src.agent.tools.agent_tools import fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data
 
 class DXAgent(TrendAgent):
     """Specialized agent for DX=F (Dollar Index) analysis"""
@@ -10,7 +11,7 @@ class DXAgent(TrendAgent):
         super().__init__(
             ticker="DX=F",
             agent_name="dx_agent",
-            tools=[self._create_yfinance_tool()],
+            tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data],
             context_instructions="""
             DX=F (Dollar Index) Analysis:
             - DX=F measures the value of the US dollar against a basket of foreign currencies
@@ -21,5 +22,8 @@ class DXAgent(TrendAgent):
             PERIOD REQUIREMENTS:
             - Tables: "5d", "1mo", "6mo", "1y"
             - Charts: "1mo","1y"
+            
+            ADDITIONAL TOOLS:
+            - analyze_SMA_data to analyze SMA data (Mandatory)
             """
         )

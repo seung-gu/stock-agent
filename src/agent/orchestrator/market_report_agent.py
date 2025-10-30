@@ -1,8 +1,10 @@
+import asyncio
 from dotenv import load_dotenv
+from datetime import datetime
+
 from src.agent.orchestrator.liquidity_agent import LiquidityAgent
 from src.agent.trend.equity_agent import EquityTrendAgent
 from src.agent.base.orchestrator_agent import OrchestratorAgent
-import asyncio
 from src.config import REPORT_LANGUAGE
 
 
@@ -38,6 +40,8 @@ class MarketReportAgent(OrchestratorAgent):
         - Identify key patterns and correlations between different analyses
         - Provide strategic insights and recommendations
         - Maintain the unique characteristics of each analysis type
+        - Today is {datetime.now().strftime("%Y-%m-%d")}
+        - Include the week number of the current month and year in the report title
         
         DO NOT include any image links or tables in your response.
         """)

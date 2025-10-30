@@ -2,6 +2,7 @@
 """TNX (10-Year Treasury Note) Trend Analysis Agent"""
 
 from src.agent.base.trend_agent import TrendAgent
+from src.agent.tools.agent_tools import fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data
 
 class TNXAgent(TrendAgent):
     """Specialized agent for TNX (10-Year Treasury Note) analysis"""
@@ -10,7 +11,7 @@ class TNXAgent(TrendAgent):
         super().__init__(
             ticker="^TNX",
             agent_name="tnx_agent",
-            tools=[self._create_yfinance_tool()],
+            tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data],
             context_instructions="""
             TNX (10-Year Treasury Note) Analysis:
             - Rising yields = Tightening liquidity (NEGATIVE for risk assets)
@@ -21,5 +22,8 @@ class TNXAgent(TrendAgent):
             PERIOD REQUIREMENTS:
             - Tables: "5d", "1mo", "6mo", "1y"
             - Charts: "1mo","1y"
+            
+            ADDITIONAL TOOLS:
+            - analyze_SMA_data to analyze SMA data (Mandatory)
             """
         )

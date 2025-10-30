@@ -9,24 +9,28 @@ Supports automatic source detection and data fetching from:
 import os
 import pandas as pd
 import yfinance as yf
+from pandas.tseries.offsets import BDay
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Any
 from fredapi import Fred
 from dotenv import load_dotenv
 
+from src.utils.charts import create_yfinance_chart, create_fred_chart
+from src.utils.technical_indicators import calculate_sma
+
 # Load environment variables
 load_dotenv()
-
-# Charts will be imported when needed to avoid circular imports
 
 
 class DataSource(ABC):
     """Base class for all data sources."""
+    # Shared cache across all instances of the same subclass
+    _cache: dict[str, Any] = {}
     
     def __init__(self):
-        """Initialize with cache."""
-        self._cache = {}
+        """Initialize data source (cache is class-level)."""
+        pass
     
     @staticmethod
     def _get_period_rank(period: str) -> int:
@@ -119,8 +123,18 @@ class YFinanceSource(DataSource):
         """Fetch data from yfinance with intelligent caching."""
         period_lower = (period or '').lower()
         cached = self._cache.get(symbol)
+        if not period_lower:
+            # Default empty period to cached period if available, else sensible default
+            if cached and cached.get('period'):
+                print(f"[YF][WARN] Empty period for {symbol}; defaulting to cached period '{cached['period']}'")
+                period_lower = cached['period']
+            else:
+                print(f"[YF][WARN] Empty period for {symbol}; defaulting to '1y'")
+                period_lower = '1y'
+        
         
         if self._should_fetch(symbol, period_lower):
+            print(f"[YF][API] Fetching data: symbol={symbol}, period={period_lower}")
             # Fetch data
             ticker = yf.Ticker(symbol)
             end_date = datetime.now()
@@ -131,9 +145,10 @@ class YFinanceSource(DataSource):
                 display_delta = self._period_to_timedelta(period_lower)
                 start_display = end_date - display_delta
                 
-                # Add buffer for SMA 200 if needed
-                needs_sma_200 = period_lower in ['1y', '2y', '5y', '10y', 'max']
-                fetch_start = start_display - (timedelta(days=280) if needs_sma_200 else timedelta(days=0))
+                # Determine buffer by trading days using BusinessDay offset with safety margin for holidays
+                max_window = 20 if period_lower in ['1mo', '3mo'] else 200
+                safety_margin = 20  # extra trading days to cover holiday gaps
+                fetch_start = pd.Timestamp(start_display.date()) - BDay(max_window + safety_margin)
                 hist = ticker.history(start=fetch_start, end=end_date)
             
             if hist.empty:
@@ -143,17 +158,6 @@ class YFinanceSource(DataSource):
             try:
                 hist.index = hist.index.tz_localize(None)
             except (TypeError, AttributeError):
-                pass
-
-            # Compute SMAs
-            try:
-                if 'Close' in hist.columns:
-                    from src.utils.technical_indicators import calculate_sma
-                    
-                    hist['SMA_5'] = calculate_sma(hist, window=5)
-                    hist['SMA_20'] = calculate_sma(hist, window=20)
-                    hist['SMA_200'] = calculate_sma(hist, window=200)
-            except Exception:
                 pass
             
             # Get info (only once per symbol)
@@ -174,20 +178,40 @@ class YFinanceSource(DataSource):
                 'fetched_at': datetime.now()
             }
             cached = self._cache[symbol]
+        else:
+            if cached:
+                print(f"[YF][CACHE] Using cached data: symbol={symbol}, cached_period={cached['period']} → requested={period_lower}")
         
         # Get cached data
         hist = cached['hist']
         info = cached['info']
         
-        # Slice to requested period
-        if period_lower == 'max' or period_lower == cached['period']:
+        # Compute SMA columns ONCE on the full cached history if missing
+        if 'Close' in hist.columns:
+            if 'SMA_5' not in hist.columns:
+                hist['SMA_5'] = calculate_sma(hist, 5)
+            if 'SMA_20' not in hist.columns:
+                hist['SMA_20'] = calculate_sma(hist, 20)
+            if 'SMA_200' not in hist.columns:
+                hist['SMA_200'] = calculate_sma(hist, 200)
+
+        # Slice to requested period (align to first available trading day >= start_display)
+        if period_lower == 'max':
             hist_display = hist
         else:
             end_date = datetime.now()
             display_delta = self._period_to_timedelta(period_lower)
-            start_display = end_date - display_delta
-            start_display_ts = pd.Timestamp(start_display).tz_localize(None)
-            hist_display = hist[hist.index >= start_display_ts]
+            start_display = (end_date - display_delta).date()
+            start_display_ts = pd.Timestamp(start_display)
+            # ensure SMA_200 is valid from the first row of the display slice
+            first_valid_ts = None
+            if 'SMA_200' in hist.columns:
+                first_valid_ts = hist['SMA_200'].first_valid_index()
+            effective_start = start_display_ts
+            if first_valid_ts is not None and first_valid_ts > effective_start:
+                effective_start = first_valid_ts
+            pos = hist.index.searchsorted(effective_start)
+            hist_display = hist.iloc[pos:]
 
         return {
             'history': hist_display,
@@ -203,7 +227,6 @@ class YFinanceSource(DataSource):
         # Determine chart configuration
         chart_config = self._get_chart_config(symbol, info)
         
-        from src.utils.charts import create_yfinance_chart
         return create_yfinance_chart(
             ticker=symbol,
             data=hist,
@@ -235,25 +258,12 @@ class YFinanceSource(DataSource):
             }
     
     def get_analysis(self, data: dict[str, Any], period: str) -> dict[str, Any]:
-        """Extract analysis metrics from yfinance data."""
+        """Extract basic analysis metrics from yfinance data (without technical indicators)."""
         hist = data['history']
         
         start_price = float(hist['Close'].iloc[0])
         end_price = float(hist['Close'].iloc[-1])
         change_pct = ((end_price - start_price) / start_price) * 100
-        
-        # Extract SMA info if available
-        sma_parts = []
-        if not hist.empty:
-            latest = hist.iloc[-1]
-            if 'SMA_5' in hist.columns and not pd.isna(latest.get('SMA_5')):
-                sma_parts.append(f"SMA(5): {latest['SMA_5']:.3f}")
-            if 'SMA_20' in hist.columns and not pd.isna(latest.get('SMA_20')):
-                sma_parts.append(f"SMA(20): {latest['SMA_20']:.3f}")
-            if 'SMA_200' in hist.columns and not pd.isna(latest.get('SMA_200')):
-                sma_parts.append(f"SMA(200): {latest['SMA_200']:.3f}")
-        
-        sma_text = ', '.join(sma_parts) if sma_parts else ""
         
         return {
             'period': period,
@@ -262,8 +272,7 @@ class YFinanceSource(DataSource):
             'change_pct': change_pct,
             'high': float(hist['Close'].max()),
             'low': float(hist['Close'].min()),
-            'volatility': float(hist['Close'].std()),
-            'sma': sma_text
+            'volatility': float(hist['Close'].std())
         }
 
 
@@ -326,8 +335,18 @@ class FREDSource(DataSource):
         """Fetch data from FRED API with intelligent caching."""
         period_lower = (period or '').lower()
         cached = self._cache.get(symbol)
+        if not period_lower:
+            # Default empty period to cached period if available, else sensible default
+            if cached and cached.get('period'):
+                print(f"[FRED][WARN] Empty period for {symbol}; defaulting to cached period '{cached['period']}'")
+                period_lower = cached['period']
+            else:
+                print(f"[FRED][WARN] Empty period for {symbol}; defaulting to '6mo'")
+                period_lower = '6mo'
+        
         
         if self._should_fetch(symbol, period_lower):
+            print(f"[FRED][API] Fetching data: symbol={symbol}, period={period_lower}")
             # Fetch data
             end_date = datetime.now()
             start_date = end_date - self._period_to_timedelta(period_lower)
@@ -348,6 +367,9 @@ class FREDSource(DataSource):
                 'fetched_at': datetime.now()
             }
             cached = self._cache[symbol]
+        else:
+            if cached:
+                print(f"[FRED][CACHE] Using cached data: symbol={symbol}, cached_period={cached['period']} → requested={period_lower}")
         
         # Get cached data
         series_data = cached['data']
@@ -386,13 +408,10 @@ class FREDSource(DataSource):
         series_data = data['data']
         config = data['config']
         
-        from src.utils.charts import create_chart
-        return create_chart(
+        return create_fred_chart(
             data=series_data,
-            title=config['name'],
-            ylabel=f'{config["name"]} Value',
+            indicator_name=config['name'],
             period=period,
-            value_format='{:.3f}',
             baseline=config.get('baseline'),
             positive_label=config.get('positive_label', 'Above Baseline'),
             negative_label=config.get('negative_label', 'Below Baseline')
@@ -441,5 +460,6 @@ def get_data_source(source: str) -> DataSource:
     if source_lower not in sources:
         raise ValueError(f"Unknown source: {source}. Available: {list(sources.keys())}")
     
+    # Return a new instance; cache is class-level and shared across instances
     return sources[source_lower]()
 

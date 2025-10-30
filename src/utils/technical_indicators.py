@@ -8,7 +8,6 @@ moving averages, disparity (이격도), and market breadth metrics.
 import pandas as pd
 import yfinance as yf
 import random
-from typing import Dict
 
 
 def calculate_sma(data: pd.DataFrame, window: int, price_column: str = 'Close') -> pd.Series:
@@ -45,7 +44,7 @@ def calculate_disparity(data: pd.DataFrame, window: int, price_column: str = 'Cl
     """
     Calculate disparity (이격도) for given data.
     
-    Formula: (Current Price / SMA) * 100
+    Formula: (Current Price / SMA - 1) * 100
     
     Args:
         data: DataFrame with price data
@@ -56,7 +55,7 @@ def calculate_disparity(data: pd.DataFrame, window: int, price_column: str = 'Cl
         Series with disparity values
     """
     sma = calculate_sma(data, window=window, price_column=price_column)
-    return (data[price_column] / sma) * 100
+    return (data[price_column] / sma - 1) * 100
 
 
 def calculate_rsi(data: pd.DataFrame, window: int = 14, price_column: str = 'Close') -> pd.Series:
@@ -80,7 +79,7 @@ def calculate_rsi(data: pd.DataFrame, window: int = 14, price_column: str = 'Clo
 
 
 def calculate_macd(data: pd.DataFrame, fast: int = 12, slow: int = 26, signal: int = 9, 
-                   price_column: str = 'Close') -> Dict[str, pd.Series]:
+                   price_column: str = 'Close') -> dict[str, pd.Series]:
     """
     Calculate MACD (Moving Average Convergence Divergence) for given data.
     
@@ -108,7 +107,7 @@ def calculate_macd(data: pd.DataFrame, fast: int = 12, slow: int = 26, signal: i
     }
 
 
-def get_market_breadth_sample(sample_size: int = 50) -> Dict[str, float]:
+def get_market_breadth_sample(sample_size: int = 50) -> dict[str, float]:
     """
     Calculate market breadth using random sample of S&P 500 stocks.
     
@@ -137,8 +136,8 @@ def get_market_breadth_sample(sample_size: int = 50) -> Dict[str, float]:
                 if not pd.isna(current_disparity):
                     disparities.append(current_disparity)
                     
-                    # Check if above 200-day MA (disparity > 100)
-                    if current_disparity > 100:
+                    # Check if above 200-day MA (disparity > 0)
+                    if current_disparity > 0:
                         above_200ma += 1
                     total_stocks += 1
         except Exception as e:
@@ -161,7 +160,7 @@ def get_market_breadth_sample(sample_size: int = 50) -> Dict[str, float]:
     }
 
 
-def get_sector_breadth(sectors: list = None) -> Dict[str, Dict[str, float]]:
+def get_sector_breadth(sectors: list = None) -> dict[str, dict[str, float]]:
     """
     Calculate market breadth for specific sectors.
     
@@ -186,7 +185,7 @@ def get_sector_breadth(sectors: list = None) -> Dict[str, Dict[str, float]]:
                 if not pd.isna(current_disparity):
                     sector_breadth[sector] = {
                         'disparity_200': current_disparity,
-                        'above_200ma': current_disparity > 100,
+                        'above_200ma': current_disparity > 0,
                         'current_price': data['Close'].iloc[-1],
                         'sma_200': data['Close'].rolling(200).mean().iloc[-1]
                     }

@@ -48,8 +48,6 @@ class LiquidityAgent(OrchestratorAgent):
 
 # Usage examples
 if __name__ == "__main__":
-    import asyncio
-    
     async def main():
         # Example: Comprehensive liquidity analysis (TNX + NFCI + DX=F)
         print("=" * 80)
@@ -57,6 +55,6 @@ if __name__ == "__main__":
         print("=" * 80)
         liquidity_agent = LiquidityAgent()
         result = await liquidity_agent.run()
-        print(result.final_output)
+        print(result.content)
         
     asyncio.run(main())

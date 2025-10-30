@@ -1,3 +1,12 @@
+
+## Example Report
+English ver:
+https://seunggu-kang.notion.site/Market-Insights-Report-Week-4-of-October-2025-29c62b45fc80815c9d97e02ab6e75a4d 
+
+Korean ver:
+https://seunggu-kang.notion.site/2025-10-5-NVDA-29c62b45fc8081b68871f24bc39ef6d9
+
+---
 ### Install uv
 
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -50,7 +59,7 @@ TODO:
 4. ~~unified data source system~~ ✅ (Registry pattern with auto-detection)
 5. ~~NFCI integration~~ ✅ (via FREDSource)
 6. ~~markdown parsing improvements~~ ✅ (3-level nested lists, proper indentation)
-7. ~~test functions~~ ✅ (18 comprehensive tests with API limitations handling)
+7. ~~test functions~~ ✅ (51 comprehensive tests with API limitations handling)
 8. ~~create an entry point~~ ✅ (run_market_report.py)
 9. ~~market_analysis_agent refactor~~ ✅ (MarketReportAgent, direct agent connection)
 10. ~~markdown_to_notion refactor~~ ✅ (recursive heading and bullet point with API limitations)
@@ -58,9 +67,12 @@ TODO:
 12. ~~AnalysisReport type system~~ ✅ (Structured output types)
 13. ~~FRED API error handling~~ ✅ (Mock data fallback)
 14. ~~SMA (Simple Moving Averages) implementation~~ ✅ (5/20/200-day SMAs with candlestick charts)
-15. ~~Unit testing with Mock API~~ ✅ (17 tests, no real API calls)
+15. ~~Unit testing with Mock API~~ ✅ (51 tests, no real API calls)
 16. API Verificator (Only return values when tool gets 200 request status)
 17. Table and charts correspond to the requirements
+18. ~~Technical Indicator System Refactor~~ ✅ (TechnicalAnalyzer fluent API, chart separation, Equity disparity support)
+19. ~~SMA(200) Chart Cut-off Fix~~ ✅ (Extended buffer with BDay offset, pre-compute SMAs, smart slicing)
+20. ~~Modular Agent Tools Architecture~~ ✅ (9 independent function_tools, complete layer separation, agent autonomy)
 
 
 ---
@@ -76,7 +88,14 @@ src/
 │   │   ├── __init__.py       # Exports: AsyncAgent, OrchestratorAgent, TrendAgent
 │   │   ├── async_agent.py    # Base class for async agents (Template Method pattern)
 │   │   ├── orchestrator_agent.py  # Base class for orchestrators (parallel execution)
-│   │   └── trend_agent.py    # Base class for trend analysis with unified tools
+│   │   └── trend_agent.py    # Base class for trend analysis (simplified, tool-agnostic)
+│   │
+│   ├── tools/                 # 🛠️ Modular function tools (NEW v5.0)
+│   │   └── agent_tools.py    # 9 independent @function_tool for agents
+│   │                         # • fetch_data, analyze_OHLCV_data, generate_OHLCV_chart
+│   │                         # • analyze_SMA_data, analyze_disparity_data, analyze_RSI_data, analyze_MACD_data
+│   │                         # • generate_disparity_chart, generate_RSI_chart, generate_MACD_chart
+│   │                         # • Cache-based, complete layer separation
 │   │
 │   ├── trend/                 # 📈 Trend analysis agents
 │   │   ├── __init__.py       # Exports: TNXAgent, NFCIAgent, DXAgent, EquityTrendAgent
@@ -96,6 +115,22 @@ src/
 │   │
 │   └── email_agent.py         # 📧 Email notification agent
 │
+├── utils/                      # Utility modules
+│   ├── charts.py              # Chart generation system
+│   │   ├── create_yfinance_chart()  # Candlestick with SMA overlays
+│   │   ├── create_fred_chart()      # FRED line chart with baseline
+│   │   └── create_line_chart()      # Generic line chart (disparity, RSI, etc.)
+│   ├── data_sources.py        # Unified data source system
+│   │                          # • YFinanceSource, FREDSource
+│   │                          # • Smart caching (fetch once, slice multiple)
+│   │                          # • Raw OHLCV data only (no calculations)
+│   ├── technical_indicators.py  # Technical analysis pure functions
+│   │                          # • calculate_sma, calculate_disparity, calculate_rsi, calculate_macd
+│   │                          # • Used by agent_tools.py
+│   │                          # • No agent coupling (pure calculation)
+│   ├── data_sources_test.py   # Unit tests (10 tests, Mock API)
+│   └── charts_test.py         # Unit tests (7 tests, Mock API)
+│
 ├── services/                   # Business logic services
 │   ├── image_service.py       # Image processing & Cloudflare R2 upload
 │   └── image_service_test.py  # Unit tests
@@ -111,17 +146,6 @@ src/
 │   ├── notion_api_test.py     # Unit tests
 │   ├── markdown_to_notion_test.py  # Unit tests (18 tests, all passing)
 │   └── report_builder_test.py # Integration tests
-│
-├── utils/                      # Utility functions
-│   ├── charts.py              # Unified chart generation (yfinance & FRED)
-│   │                          # • Candlestick charts with SMA overlays
-│   │                          # • 5/20/200-day Simple Moving Averages
-│   │                          # • Weekend gap removal for continuous display
-│   ├── data_sources.py        # Data source registry (YFinanceSource, FREDSource)
-│   │                          # • Automatic SMA calculation (5/20/200-day)
-│   │                          # • Extended data fetching for SMA 200
-│   ├── data_sources_test.py   # Unit tests (10 tests, Mock API)
-│   └── charts_test.py         # Unit tests (7 tests, Mock API)
 │
 └── dep/                        # Deprecated/legacy code
     ├── agent.py
@@ -278,9 +302,10 @@ REPORT_LANGUAGE = "Korean"  # or "English"
 - `_create_synthesis_prompt()`: Abstract method for custom synthesis
 
 **TrendAgent (extends AsyncAgent):**
-- Unified tools: `get_yf_data`, `get_fred_data`, `create_yfinance_chart`, `create_fred_chart`
+- Tool-agnostic base class (simplified)
 - Context-aware instructions
 - Extensible for any ticker/indicator
+- Tools selected by subclasses from `agent_tools.py`
 
 #### Concrete Implementations
 
@@ -317,11 +342,23 @@ get_data_source("yfinance")  # → YFinanceSource
 get_data_source("fred")      # → FREDSource
 ```
 
-**Agent Tools:**
-- `get_yf_data(symbol, period)`: Fetch data from yfinance
-- `get_fred_data(symbol, period)`: Fetch data from FRED
-- `create_yfinance_chart(symbol, period)`: Generate yfinance chart
-- `create_fred_chart(symbol, period)`: Generate FRED chart
+**Modular Agent Tools (`agent/tools/agent_tools.py`):**
+
+**Data Layer:**
+- `fetch_data(source, symbol, period)`: Fetch and cache data from yfinance/FRED
+
+**Analysis Layer:**
+- `analyze_OHLCV_data(source, symbol, period)`: Extract OHLCV metrics from cache
+- `analyze_SMA_data(symbol, period, windows)`: Calculate SMA indicators
+- `analyze_disparity_data(symbol, period, window)`: Calculate disparity from SMA
+- `analyze_RSI_data(symbol, period, window)`: Calculate RSI
+- `analyze_MACD_data(symbol, period, fast, slow, signal)`: Calculate MACD
+
+**Chart Layer:**
+- `generate_OHLCV_chart(source, symbol, period)`: Generate candlestick/line chart
+- `generate_disparity_chart(symbol, period, window)`: Generate disparity line chart
+- `generate_RSI_chart(symbol, period, window)`: Generate RSI line chart
+- `generate_MACD_chart(symbol, period, fast, slow, signal)`: Generate MACD line chart
 
 **Unified Charting (`charts.py`):**
 - `create_chart()`: Universal chart generator
@@ -367,6 +404,125 @@ get_data_source("fred")      # → FREDSource
 ---
 
 ## Recent Improvements
+
+### Modular Agent Tools Architecture (v5.0)
+
+**Revolutionary Refactor - Complete Layer Separation:**
+
+**Before (Coupled):**
+```python
+# TrendAgent had monolithic methods
+class TrendAgent:
+    def get_yf_data(...)          # Fetch + analyze + chart
+    def get_fred_data(...)         # Fetch + analyze + chart
+    def _get_technical_indicators(...)  # Tightly coupled
+```
+
+**After (Modular):**
+```python
+# 9 independent @function_tool in agent_tools.py
+@function_tool async def fetch_data(source, symbol, period)
+@function_tool async def analyze_OHLCV_data(source, symbol, period)
+@function_tool async def generate_OHLCV_chart(source, symbol, period)
+@function_tool async def analyze_SMA_data(symbol, period, windows)
+@function_tool async def analyze_disparity_data(symbol, period, window)
+@function_tool async def analyze_RSI_data(symbol, period, window)
+@function_tool async def analyze_MACD_data(symbol, period, ...)
+@function_tool async def generate_disparity_chart(symbol, period, window)
+@function_tool async def generate_RSI_chart(symbol, period, window)
+@function_tool async def generate_MACD_chart(symbol, period, ...)
+```
+
+**Design Principles:**
+1. **Layer Separation**: Data fetching ↔ Analysis ↔ Chart generation completely decoupled
+2. **Agent Autonomy**: Each agent selects only the tools it needs
+3. **Cache-Based**: Fetch once (longest period first), then all tools reuse cached data
+4. **Modularity**: Adding new indicators = adding new independent tools
+5. **Zero Coupling**: `technical_indicators.py` only has pure functions
+
+**Agent-Specific Tool Selection:**
+```python
+# TNXAgent: Basic OHLCV + SMA
+tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data]
+
+# EquityTrendAgent: Full suite including disparity
+tools=[
+    fetch_data, analyze_OHLCV_data, generate_OHLCV_chart,
+    analyze_SMA_data, analyze_disparity_data, generate_disparity_chart
+]
+
+# NFCIAgent: FRED-only (no technical indicators)
+tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart]
+```
+
+**Benefits:**
+- ✅ **Flexibility**: Mix and match tools per agent
+- ✅ **Maintainability**: Single Responsibility per tool
+- ✅ **Extensibility**: Add tools without touching existing code
+- ✅ **Testability**: Each tool independently testable
+- ✅ **Performance**: Cached data reused across all tool calls
+
+**Deprecated & Removed:**
+- `TrendAgent.get_yf_data()`, `TrendAgent.get_fred_data()` ❌
+- `TrendAgent._get_technical_indicators()` ❌
+- `TrendAgent._create_yfinance_indicators_tool()` ❌
+- `TechnicalAnalyzer` class (fluent API) ❌
+  - Replaced with pure functions: `calculate_sma()`, `calculate_disparity()`, etc.
+
+**Files:**
+- **New**: `src/agent/tools/agent_tools.py` (174 lines, 9 tools)
+- **Modified**: `src/agent/base/trend_agent.py` (simplified to 110 lines)
+- **Modified**: All trend agents (TNX, DX, NFCI, Equity) with tool selection
+- **Modified**: `src/utils/technical_indicators.py` (TechnicalAnalyzer removed, pure functions remain)
+
+---
+
+### SMA(200) Chart Fix (v4.1)
+
+**Problem Solved:**
+- **SMA_200 lines were cut off** at the beginning of 1y charts for TNX and DX=F
+- Issue: Insufficient historical data buffer causing rolling average calculation to start from chart start date
+
+**Solution:**
+1. **Extended Data Fetching**: Fetch 220+ *business days* (not calendar days) before display period
+   - Used `pandas.tseries.offsets.BDay` for accurate trading day calculation
+   - Additional 20 business day margin to handle holidays/market closures
+2. **Pre-compute SMAs**: Calculate SMA (5, 20, 200) on full buffered history *before* slicing for display
+3. **Smart Slicing Logic**: Display starts from the later of:
+   - Requested start date (e.g., 1 year ago)
+   - First valid SMA_200 date (199 business days into fetched data)
+4. **Fixed Test Data**: Corrected mock DataFrame generation to avoid NaN Close values
+
+**Results:**
+- ✅ TNX 1y chart: SMA_200 displayed from first row (no cut-off)
+- ✅ DX=F 1y chart: SMA_200 displayed from first row (no cut-off)
+- ✅ All unit tests passing with 0 null SMA values in display window
+- ✅ Charts show complete SMA lines across entire display period
+
+**Files Modified:**
+- `src/utils/data_sources.py`: Enhanced fetch logic with BDay offset, removed redundant slicing condition
+- `src/utils/data_sources_test.py`: Fixed mock data generation (list comprehension instead of Series misalignment)
+
+### Chart Separation & Disparity Features (v4.0)
+
+**Chart System Refactor:**
+- **Separated Chart Functions**: Dedicated functions per data type
+  - `create_yfinance_chart()`: Candlestick with SMA overlays
+  - `create_fred_chart()`: Line chart with baseline
+  - `create_line_chart()`: Generic line chart for technical indicators (disparity, RSI, MACD)
+- **DataSource Purity**: `fetch_data()` returns raw OHLCV only, no calculations
+
+**Equity-Specific Features:**
+- **200-day Disparity (이격도)** available as independent tool
+- **Separate Disparity Chart**: Visual representation of price vs SMA relationship
+- Formula: `(Current Price / SMA_200 - 1) * 100`
+- Interpretation: >0% = above long-term average, <0% = below
+- Accessible via `analyze_disparity_data()` and `generate_disparity_chart()` tools
+
+**Pythonic Improvements:**
+- Python 3.13 compatible (using builtin `list`, `dict` types)
+- Type hints with modern syntax (`list[int]`, `dict[str, float]`)
+- Single Responsibility Principle per function
 
 ### SMA (Simple Moving Averages) Implementation (v3.0)
 
@@ -479,11 +635,11 @@ export TEST_MODE=false  # Turn off after testing
 **Test Coverage:**
 - ✅ **MarkdownToNotionParser**: 17 tests (nested lists, headings, tables, code blocks, Notion upload verification)
 - ✅ **NotionAPI**: 9 tests (page creation, child pages)
-- ✅ **ReportBuilder**: 3 tests (end-to-end workflow tests)
-- ✅ **ImageService**: 4 tests (Cloudflare R2 upload tests)
-- ✅ **DataSources**: 10 tests (yfinance/FRED with Mock API, SMA calculations)
+- ✅ **ReportBuilder**: 2 tests (parent page creation, failure handling)
+- ✅ **ImageService**: 4 tests (Cloudflare R2 upload, local image finding)
+- ✅ **DataSources**: 12 tests (yfinance/FRED with Mock API, SMA calculations, SMA(200) cut-off tests)
 - ✅ **Charts**: 7 tests (candlestick charts, SMA overlays, weekend gap removal)
-- ✅ **Total**: 50 comprehensive tests
+- ✅ **Total**: 51 comprehensive tests (0.6s execution time)
 - ⚠️ **Notion Upload Test**: Only runs when `TEST_MODE=true` (prevents creating pages during normal testing)
 - 🚫 **No Real API Calls**: All tests use Mock data for fast, reliable execution
 
@@ -492,22 +648,16 @@ export TEST_MODE=false  # Turn off after testing
 **Recent Test Results:**
 ```
 # Data Sources Tests
-Ran 10 tests in 0.013s
+Ran 12 tests in 0.015s
 OK
 
 # Charts Tests  
-Ran 7 tests in 0.584s
+Ran 7 tests in 0.590s
 OK
 
 # All Tests Combined
-Ran 50 tests in 3.2s
+Ran 51 tests in 0.606s
 OK
-✅ All tests passed
+✅ All tests passed (includes SMA(200) cut-off tests)
 ```
 
----
-
-## Example Report
-
-https://seunggu-kang.notion.site/MSFT-29362b45fc8081659125cfbb6df03307
-https://seunggu-kang.notion.site/Comprehensive-Market-Analysis-Report-Apple-Inc-AAPL-with-Liquidity-Conditions-29462b45fc8081779469d970d06f5ce5

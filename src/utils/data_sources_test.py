@@ -3,6 +3,7 @@
 import unittest
 import asyncio
 import pandas as pd
+from datetime import datetime
 from unittest.mock import patch, MagicMock
 from src.utils.data_sources import get_data_source, YFinanceSource, FREDSource
 
@@ -15,7 +16,6 @@ class TestYFinanceSource(unittest.TestCase):
         self.source = YFinanceSource()
         
         # Create mock data - using recent dates to ensure they pass date slicing
-        from datetime import datetime, timedelta
         end_date = datetime.now()
         
         self.mock_data_5d = {
@@ -51,10 +51,64 @@ class TestYFinanceSource(unittest.TestCase):
                 'SMA_200': [100 + i*0.1 for i in range(650)]
             }, index=pd.date_range(end=end_date, periods=650, freq='D'))
         }
+
+    @patch('yfinance.Ticker')
+    def test_sma200_not_cut_tnx_1y(self, mock_ticker_class):
+        """Ensure SMA(200) is precomputed on full history and not cut after slicing for 1y (TNX)."""
+        end_date = datetime.now().date()
+        # Create long history (800 business days) to simulate buffer+display
+        idx = pd.date_range(end=pd.Timestamp(end_date), periods=800, freq='B')
+        hist_df = pd.DataFrame({
+            'Open': [100 + i * 0.01 for i in range(len(idx))],
+            'High': [101 + i * 0.01 for i in range(len(idx))],
+            'Low': [99 + i * 0.01 for i in range(len(idx))],
+            'Close': [100 + i * 0.01 for i in range(len(idx))],
+            'Volume': [1_000_000] * len(idx)
+        }, index=idx)
+
+        mock_ticker = MagicMock()
+        mock_ticker.history.return_value = hist_df
+        mock_ticker_class.return_value = mock_ticker
+
+        async def run():
+            source = YFinanceSource()
+            data = await source.fetch_data("^TNX", "1y")
+            hist = data['history']
+            self.assertIn('SMA_200', hist.columns)
+            # First row of sliced 1y history should already have valid SMA_200 (not NaN)
+            self.assertFalse(pd.isna(hist['SMA_200'].iloc[0]))
+
+        asyncio.run(run())
+
+    @patch('yfinance.Ticker')
+    def test_sma200_not_cut_dxf_1y(self, mock_ticker_class):
+        """Ensure SMA(200) is not cut for DX=F 1y as well."""
+        end_date = datetime.now().date()
+        idx = pd.date_range(end=pd.Timestamp(end_date), periods=800, freq='B')
+        hist_df = pd.DataFrame({
+            'Open': [80 + i * 0.02 for i in range(len(idx))],
+            'High': [81 + i * 0.02 for i in range(len(idx))],
+            'Low': [79 + i * 0.02 for i in range(len(idx))],
+            'Close': [80 + i * 0.02 for i in range(len(idx))],
+            'Volume': [500_000] * len(idx)
+        }, index=idx)
+
+        mock_ticker = MagicMock()
+        mock_ticker.history.return_value = hist_df
+        mock_ticker_class.return_value = mock_ticker
+
+        async def run():
+            source = YFinanceSource()
+            data = await source.fetch_data("DX=F", "1y")
+            hist = data['history']
+            self.assertIn('SMA_200', hist.columns)
+            self.assertFalse(pd.isna(hist['SMA_200'].iloc[0]))
+
+        asyncio.run(run())
     
     @patch('yfinance.Ticker')
     def test_fetch_5d(self, mock_ticker_class):
-        """Test fetching 5-day data"""
+        """Test fetching 5-day data (without SMAs)"""
         # Mock yfinance Ticker and its history method
         mock_ticker = MagicMock()
         mock_ticker.history.return_value = self.mock_data_5d['history']
@@ -66,14 +120,13 @@ class TestYFinanceSource(unittest.TestCase):
             self.assertIsNotNone(hist)
             self.assertGreater(len(hist), 0)
             self.assertIn('Close', hist.columns)
-            self.assertIn('SMA_5', hist.columns)
-            self.assertIn('SMA_20', hist.columns)
+            # SMAs are no longer calculated in fetch_data
         
         asyncio.run(run())
     
     @patch('yfinance.Ticker')
     def test_fetch_1mo(self, mock_ticker_class):
-        """Test fetching 1-month data"""
+        """Test fetching 1-month data (without SMAs)"""
         # Mock yfinance Ticker and its history method
         mock_ticker = MagicMock()
         mock_ticker.history.return_value = self.mock_data_1mo['history']
@@ -84,14 +137,13 @@ class TestYFinanceSource(unittest.TestCase):
             hist = data['history']
             self.assertIsNotNone(hist)
             self.assertGreater(len(hist), 0)
-            self.assertIn('SMA_5', hist.columns)
-            self.assertIn('SMA_20', hist.columns)
+            # SMAs are no longer calculated in fetch_data
         
         asyncio.run(run())
     
     @patch('yfinance.Ticker')
     def test_fetch_1y(self, mock_ticker_class):
-        """Test fetching 1-year data with SMA 200"""
+        """Test fetching 1-year data (without SMAs)"""
         # Mock yfinance Ticker and its history method
         mock_ticker = MagicMock()
         mock_ticker.history.return_value = self.mock_data_1y['history']
@@ -102,14 +154,12 @@ class TestYFinanceSource(unittest.TestCase):
             hist = data['history']
             self.assertIsNotNone(hist)
             self.assertGreater(len(hist), 0)
-            self.assertIn('SMA_5', hist.columns)
-            self.assertIn('SMA_20', hist.columns)
-            self.assertIn('SMA_200', hist.columns)
+            # SMAs are no longer calculated in fetch_data
         
         asyncio.run(run())
     
     def test_get_analysis(self):
-        """Test analysis metrics extraction"""
+        """Test analysis metrics extraction (without technical indicators)"""
         # Use mock data directly
         analysis = self.source.get_analysis(self.mock_data_1mo, "1mo")
         
@@ -119,6 +169,8 @@ class TestYFinanceSource(unittest.TestCase):
         self.assertIn('high', analysis)
         self.assertIn('low', analysis)
         self.assertIn('volatility', analysis)
+        # SMA is no longer in get_analysis - it's calculated by TechnicalAnalyzer
+        self.assertNotIn('sma', analysis)
     
     def test_unsupported_period_warning(self):
         """Test unsupported period shows warning and uses default"""

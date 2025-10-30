@@ -2,6 +2,7 @@
 """NFCI (National Financial Condition Index) Trend Analysis Agent"""
 
 from src.agent.base.trend_agent import TrendAgent
+from src.agent.tools.agent_tools import fetch_data, analyze_OHLCV_data, generate_OHLCV_chart
 
 class NFCIAgent(TrendAgent):
     """Specialized agent for NFCI (National Financial Condition Index) analysis"""
@@ -10,7 +11,7 @@ class NFCIAgent(TrendAgent):
         super().__init__(
             ticker="NFCI",
             agent_name="nfci_agent",
-            tools=[self._create_fred_tool()],
+            tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart],
             context_instructions="""
             NFCI (National Financial Condition Index) Analysis:
             - NFCI = 0: Historical average financial conditions

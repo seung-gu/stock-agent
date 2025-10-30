@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Report Builder 통합 테스트 및 E2E 테스트"""
 
+import os
 import sys
 import unittest
+import asyncio
 from unittest.mock import patch
 from dotenv import load_dotenv
 from src.adapters.report_builder import upload_report_with_children
@@ -13,8 +15,6 @@ load_dotenv()
 
 def test_report_with_children():
     """리포트 업로드 테스트 (부모 + 자식 페이지)"""
-    import os
-    
     if not os.environ.get('NOTION_API_KEY') or not os.environ.get('NOTION_DATABASE_ID'):
         print("⚠️ Skipping test - Notion credentials not set")
         return
@@ -115,6 +115,5 @@ async def main():
 
 
 if __name__ == "__main__":
-    import asyncio
     asyncio.run(main())
 
