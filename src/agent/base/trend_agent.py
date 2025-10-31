@@ -14,7 +14,7 @@ class TrendAgent(AsyncAgent):
     Trend analysis agent for trend analysis with reusable tools and agent creation.
     """
     
-    def __init__(self, ticker: str, agent_name: str, context_instructions: str, tools: list = []):
+    def __init__(self, ticker: str, agent_name: str, context_instructions: str, tools: list = [], label: str = None, description: str = None):
         """
         Initialize trend analysis agent with ticker.
         
@@ -23,8 +23,12 @@ class TrendAgent(AsyncAgent):
             agent_name: Agent name identifier (e.g., "liquidity_agent_TNX")
             context_instructions: Specialized analysis instructions
             tools: List of tools to use (optional)
+            label: Human-readable label (e.g., "S&P 500" for "^GSPC"). Defaults to ticker.
+            description: Brief description of what this asset represents (optional)
         """
         self.ticker = ticker
+        self.label = label or ticker
+        self.description = description
         self.context_instructions = context_instructions
         self.tools = tools
         self.output_type = AnalysisReport
@@ -51,7 +55,7 @@ class TrendAgent(AsyncAgent):
         - Charts will be automatically displayed by the system after you use the tools
 
         WORKFLOW:
-        1. Analyze the ticker: {self.ticker}
+        1. Analyze {self.label} (ticker: {self.ticker}){f' - {self.description}' if self.description else ''}
         2. Call appropriate tool for each period using {self.ticker}
         3. When calling the tools, always call the longest period first and then call the shorter periods in reverse order
         4. FORMAT OUTPUT AS MARKDOWN TABLE
@@ -60,7 +64,7 @@ class TrendAgent(AsyncAgent):
         TOOL USAGE (unified for both sources):
         - Use fetch_data(source, symbol, period) once for the longest period to populate cache
         - Use analyze_OHLCV_data(source, symbol, period) for table rows (no chart link returned)
-        - Use generate_OHLCV_chart(source, symbol, period) to generate charts (returns "Chart saved: ...")
+        - Use generate_OHLCV_chart(source, symbol, period, label="{self.label}") to generate charts (returns "Chart saved: ...")
         - Tables and charts may require different period sets; call analyze_OHLCV_data and generate_OHLCV_chart independently
         - Do not include chart links inside table rows; list chart links after the table using the exact messages
       
@@ -87,9 +91,9 @@ class TrendAgent(AsyncAgent):
         
         IMPORTANT - ANALYSIS REPORT STRUCTURE:
         You must return a structured AnalysisReport with:
-        - title: Create a specific, descriptive title for {self.ticker} analysis
-        - summary: Executive summary of key findings for {self.ticker}
-        - content: The detailed analysis content above for {self.ticker}
+        - title: Create a specific, descriptive title for {self.label} analysis
+        - summary: Executive summary of key findings for {self.label}
+        - content: The detailed analysis content above for {self.label}
 
         {self.context_instructions}
         """

@@ -1,10 +1,10 @@
 
 ## Example Report
 English ver:
-https://seunggu-kang.notion.site/Market-Insights-Report-Week-4-of-October-2025-29c62b45fc80815c9d97e02ab6e75a4d 
+https://seunggu-kang.notion.site/Comprehensive-Market-Insights-and-Synthesis-Report-October-2025-Week-5-Year-2025-29d62b45fc808134ae62e76a2dc06ccf?pvs=74
 
 Korean ver:
-https://seunggu-kang.notion.site/2025-10-5-NVDA-29c62b45fc8081b68871f24bc39ef6d9
+https://seunggu-kang.notion.site/2025-10-29d62b45fc808174aeb6f355f8eaab1d?pvs=74
 
 ---
 ### Install uv
@@ -90,11 +90,12 @@ src/
 │   │   ├── orchestrator_agent.py  # Base class for orchestrators (parallel execution)
 │   │   └── trend_agent.py    # Base class for trend analysis (simplified, tool-agnostic)
 │   │
-│   ├── tools/                 # 🛠️ Modular function tools (NEW v5.0)
-│   │   └── agent_tools.py    # 9 independent @function_tool for agents
+│   ├── tools/                 # 🛠️ Modular function tools (v6.0 - Dynamic Thresholds)
+│   │   └── agent_tools.py    # 7 independent @function_tool for agents
 │   │                         # • fetch_data, analyze_OHLCV_data, generate_OHLCV_chart
-│   │                         # • analyze_SMA_data, analyze_disparity_data, analyze_RSI_data, analyze_MACD_data
-│   │                         # • generate_disparity_chart, generate_RSI_chart, generate_MACD_chart
+│   │                         # • analyze_SMA_data, analyze_disparity_data, analyze_RSI_data
+│   │                         # • generate_disparity_chart, generate_RSI_chart
+│   │                         # • Dynamic overbought/oversold thresholds (80th/10th percentile)
 │   │                         # • Cache-based, complete layer separation
 │   │
 │   ├── trend/                 # 📈 Trend analysis agents
@@ -105,9 +106,10 @@ src/
 │   │   └── equity_trend_agent.py  # Stock price trend analysis
 │   │
 │   ├── orchestrator/          # 🎭 Orchestrator agents (combine multiple agents)
-│   │   ├── __init__.py       # Exports: LiquidityAgent, MarketReportAgent
+│   │   ├── __init__.py       # Exports: LiquidityAgent, BroadIndexAgent, MarketReportAgent
 │   │   ├── liquidity_agent.py     # Liquidity orchestrator (TNX + NFCI + DX)
-│   │   └── market_report_agent.py  # Main report agent (Liquidity + Equity)
+│   │   ├── broad_index_agent.py   # Broad index orchestrator (^GSPC + ^IXIC + ^DJI)
+│   │   └── market_report_agent.py  # Main report agent (Liquidity + BroadIndex + Equity)
 │   │
 │   └── types/                 # 📋 Type definitions
 │       ├── __init__.py       # Package initialization
@@ -303,7 +305,9 @@ REPORT_LANGUAGE = "Korean"  # or "English"
 
 **TrendAgent (extends AsyncAgent):**
 - Tool-agnostic base class (simplified)
-- Context-aware instructions
+- Context-aware instructions with `label` and `description` parameters
+- `label`: Human-readable name (e.g., "S&P 500" for "^GSPC")
+- `description`: Brief asset description (optional)
 - Extensible for any ticker/indicator
 - Tools selected by subclasses from `agent_tools.py`
 
@@ -317,7 +321,8 @@ REPORT_LANGUAGE = "Korean"  # or "English"
 
 **Orchestrators (`agent/orchestrator/`):**
 - `LiquidityAgent`: Orchestrates TNXAgent + NFCIAgent + DXAgent
-- `MarketReportAgent`: Orchestrates LiquidityAgent + EquityTrendAgent
+- `BroadIndexAgent`: Orchestrates S&P 500 + Nasdaq + Dow Jones analysis
+- `MarketReportAgent`: Orchestrates LiquidityAgent + BroadIndexAgent + EquityTrendAgent
 
 ### Unified Data Source System
 
@@ -350,15 +355,13 @@ get_data_source("fred")      # → FREDSource
 **Analysis Layer:**
 - `analyze_OHLCV_data(source, symbol, period)`: Extract OHLCV metrics from cache
 - `analyze_SMA_data(symbol, period, windows)`: Calculate SMA indicators
-- `analyze_disparity_data(symbol, period, window)`: Calculate disparity from SMA
-- `analyze_RSI_data(symbol, period, window)`: Calculate RSI
-- `analyze_MACD_data(symbol, period, fast, slow, signal)`: Calculate MACD
+- `analyze_disparity_data(symbol, period, window)`: Calculate disparity with dynamic thresholds (80th/10th percentile)
+- `analyze_RSI_data(symbol, period, window)`: Calculate RSI with dynamic thresholds (80th/10th percentile)
 
 **Chart Layer:**
 - `generate_OHLCV_chart(source, symbol, period)`: Generate candlestick/line chart
-- `generate_disparity_chart(symbol, period, window)`: Generate disparity line chart
-- `generate_RSI_chart(symbol, period, window)`: Generate RSI line chart
-- `generate_MACD_chart(symbol, period, fast, slow, signal)`: Generate MACD line chart
+- `generate_disparity_chart(symbol, period, window)`: Generate disparity chart with dynamic threshold lines
+- `generate_RSI_chart(symbol, period, window)`: Generate RSI chart with dynamic threshold lines
 
 **Unified Charting (`charts.py`):**
 - `create_chart()`: Universal chart generator
@@ -405,6 +408,70 @@ get_data_source("fred")      # → FREDSource
 
 ## Recent Improvements
 
+### Dynamic Thresholds & Agent Enhancements (v6.0)
+
+**Date: October 31, 2025**
+
+**Major Updates:**
+
+**1. BroadIndexAgent - New Orchestrator:**
+- Dedicated orchestrator for major US market indices
+- Combines S&P 500 (^GSPC), Nasdaq Composite (^IXIC), Dow Jones (^DJI)
+- Provides comprehensive broad market analysis
+- Integrated into `MarketReportAgent` workflow
+
+**2. TrendAgent Label & Description:**
+- Added `label` parameter for human-readable asset names
+  - Example: `label="S&P 500"` instead of displaying `^GSPC`
+- Added `description` parameter for brief asset descriptions
+  - Example: `description="Gold-tracking ETF"` for IAU
+- Improves LLM context and report readability
+- Applied to all trend agents (TNX, NFCI, DX, Equity, BroadIndex)
+
+**3. Dynamic Overbought/Oversold Thresholds:**
+- **RSI Analysis**: Now uses 80th/10th percentile instead of fixed 70/30
+  - `analyze_RSI_data()`: Returns current RSI with dynamic thresholds
+  - `generate_RSI_chart()`: Visualizes thresholds with shaded regions
+- **Disparity Analysis**: Now uses 80th/10th percentile instead of fixed ±20%
+  - `analyze_disparity_data()`: Returns current disparity with dynamic thresholds
+  - `generate_disparity_chart()`: Visualizes thresholds with shaded regions
+- **Benefits**: Adapts to each asset's historical volatility patterns
+- **Chart Updates**: `create_line_chart()` now supports `threshold_upper`/`threshold_lower`
+
+**4. Code Cleanup:**
+- Removed MACD-related functions (`analyze_MACD_data`, `generate_MACD_chart`)
+- Removed `calculate_macd` from technical indicators
+- Simplified tool count from 9 to 7 focused tools
+- Maintained `baseline` parameter for FRED charts compatibility
+
+**Agent Tool Updates:**
+```python
+# analyze_RSI_data output (NEW)
+"RSI(14): 65.32 [Overbought>72.1, Oversold<31.5]"
+
+# analyze_disparity_data output (NEW)
+"Disparity(200): 15.23% [Overbought>18.5%, Oversold<-12.3%]"
+
+# EquityTrendAgent example with label & description
+EquityTrendAgent(
+    "IAU", 
+    label="iShares Gold Trust",
+    description="Gold-tracking ETF"
+)
+```
+
+**Files Modified:**
+- `src/agent/base/trend_agent.py`: Added `label`, `description` parameters
+- `src/agent/trend/equity_agent.py`: Updated to accept and pass new parameters
+- `src/agent/trend/tnx_agent.py`, `nfci_agent.py`, `dx_agent.py`: Applied labels
+- `src/agent/orchestrator/broad_index_agent.py`: NEW orchestrator
+- `src/agent/orchestrator/market_report_agent.py`: Integrated BroadIndexAgent
+- `src/agent/tools/agent_tools.py`: Dynamic thresholds, removed MACD
+- `src/utils/charts.py`: Enhanced `create_line_chart()` with threshold support
+- `src/utils/technical_indicators.py`: Removed `calculate_macd`
+
+---
+
 ### Modular Agent Tools Architecture (v5.0)
 
 **Revolutionary Refactor - Complete Layer Separation:**
@@ -420,17 +487,15 @@ class TrendAgent:
 
 **After (Modular):**
 ```python
-# 9 independent @function_tool in agent_tools.py
+# 7 independent @function_tool in agent_tools.py (v6.0: removed MACD)
 @function_tool async def fetch_data(source, symbol, period)
 @function_tool async def analyze_OHLCV_data(source, symbol, period)
 @function_tool async def generate_OHLCV_chart(source, symbol, period)
 @function_tool async def analyze_SMA_data(symbol, period, windows)
-@function_tool async def analyze_disparity_data(symbol, period, window)
-@function_tool async def analyze_RSI_data(symbol, period, window)
-@function_tool async def analyze_MACD_data(symbol, period, ...)
-@function_tool async def generate_disparity_chart(symbol, period, window)
-@function_tool async def generate_RSI_chart(symbol, period, window)
-@function_tool async def generate_MACD_chart(symbol, period, ...)
+@function_tool async def analyze_disparity_data(symbol, period, window)  # v6.0: dynamic thresholds
+@function_tool async def analyze_RSI_data(symbol, period, window)        # v6.0: dynamic thresholds
+@function_tool async def generate_disparity_chart(symbol, period, window)  # v6.0: threshold visualization
+@function_tool async def generate_RSI_chart(symbol, period, window)        # v6.0: threshold visualization
 ```
 
 **Design Principles:**
@@ -445,10 +510,11 @@ class TrendAgent:
 # TNXAgent: Basic OHLCV + SMA
 tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data]
 
-# EquityTrendAgent: Full suite including disparity
+# EquityTrendAgent: Full suite including disparity and RSI
 tools=[
     fetch_data, analyze_OHLCV_data, generate_OHLCV_chart,
-    analyze_SMA_data, analyze_disparity_data, generate_disparity_chart
+    analyze_SMA_data, analyze_disparity_data, generate_disparity_chart,
+    generate_RSI_chart, analyze_RSI_data
 ]
 
 # NFCIAgent: FRED-only (no technical indicators)
@@ -470,10 +536,10 @@ tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart]
   - Replaced with pure functions: `calculate_sma()`, `calculate_disparity()`, etc.
 
 **Files:**
-- **New**: `src/agent/tools/agent_tools.py` (174 lines, 9 tools)
-- **Modified**: `src/agent/base/trend_agent.py` (simplified to 110 lines)
-- **Modified**: All trend agents (TNX, DX, NFCI, Equity) with tool selection
-- **Modified**: `src/utils/technical_indicators.py` (TechnicalAnalyzer removed, pure functions remain)
+- **New**: `src/agent/tools/agent_tools.py` (v6.0: 7 tools with dynamic thresholds)
+- **Modified**: `src/agent/base/trend_agent.py` (simplified to 112 lines, added label/description)
+- **Modified**: All trend agents (TNX, DX, NFCI, Equity) with tool selection and labels
+- **Modified**: `src/utils/technical_indicators.py` (removed MACD, pure functions remain)
 
 ---
 
@@ -586,14 +652,23 @@ tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart]
 # Import from organized structure
 from src.agent.base import AsyncAgent, OrchestratorAgent, TrendAgent
 from src.agent.trend import TNXAgent, NFCIAgent, DXAgent, EquityTrendAgent
-from src.agent.orchestrator import LiquidityAgent, MarketReportAgent
+from src.agent.orchestrator import LiquidityAgent, BroadIndexAgent, MarketReportAgent
 
 # Initialize agents
-tnx_agent = TNXAgent()                      # ^TNX analysis
-nfci_agent = NFCIAgent()                    # NFCI analysis
-dx_agent = DXAgent()                        # DX=F analysis
-equity_agent = EquityTrendAgent("NVDA")     # NVDA analysis
+tnx_agent = TNXAgent()                      # ^TNX analysis with label "10-Year Treasury Yield"
+nfci_agent = NFCIAgent()                    # NFCI analysis with label "National Financial Conditions Index"
+dx_agent = DXAgent()                        # DX=F analysis with label "US Dollar Index"
+equity_agent = EquityTrendAgent(
+    "NVDA", 
+    label="NVIDIA"
+)                                           # NVDA analysis with custom label
+equity_etf = EquityTrendAgent(
+    "IAU",
+    label="iShares Gold Trust",
+    description="Gold-tracking ETF"
+)                                           # IAU with label and description
 liquidity_agent = LiquidityAgent()          # TNX + NFCI + DX orchestrator
+broad_index_agent = BroadIndexAgent()       # S&P 500 + Nasdaq + Dow Jones orchestrator
 manager = MarketReportAgent()               # Full analysis orchestrator
 ```
 

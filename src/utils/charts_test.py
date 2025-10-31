@@ -58,7 +58,7 @@ class TestYFinanceCharts(unittest.TestCase):
         mock_get_source.return_value = mock_source
         
         result = create_yfinance_chart(
-            ticker="AAPL",
+            label="AAPL",
             data=self.mock_data_5d['history'],
             period="5d",
             ylabel="Price (USD)",
@@ -78,7 +78,7 @@ class TestYFinanceCharts(unittest.TestCase):
         mock_get_source.return_value = mock_source
         
         result = create_yfinance_chart(
-            ticker="AAPL",
+            label="AAPL",
             data=self.mock_data_1mo['history'],
             period="1mo",
             ylabel="Price (USD)",
@@ -100,7 +100,7 @@ class TestYFinanceCharts(unittest.TestCase):
         mock_get_source.return_value = mock_source
         
         result = create_yfinance_chart(
-            ticker="AAPL",
+            label="AAPL",
             data=self.mock_data_1y['history'],
             period="1y",
             ylabel="Price (USD)",
@@ -135,7 +135,7 @@ class TestYFinanceCharts(unittest.TestCase):
         mock_get_source.return_value = mock_source
         
         result = create_yfinance_chart(
-            ticker="^TNX",
+            label="^TNX",
             data=mock_treasury_data['history'],
             period="6mo",
             ylabel="Yield (%)",
@@ -185,7 +185,7 @@ class TestFREDCharts(unittest.TestCase):
         
         result = create_fred_chart(
             data=self.mock_fred_data['data'],
-            indicator_name="National Financial Conditions Index",
+            label="National Financial Conditions Index",
             period="6mo",
             baseline=0,
             positive_label="Tighter Conditions",

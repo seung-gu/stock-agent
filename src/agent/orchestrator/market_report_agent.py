@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 
 from src.agent.orchestrator.liquidity_agent import LiquidityAgent
+from src.agent.orchestrator.broad_index_agent import BroadIndexAgent
 from src.agent.trend.equity_agent import EquityTrendAgent
 from src.agent.base.orchestrator_agent import OrchestratorAgent
 from src.config import REPORT_LANGUAGE
@@ -26,7 +27,12 @@ class MarketReportAgent(OrchestratorAgent):
         """Set up sub-agents and synthesis agent."""
         # Add sub-agents using method chaining
         self.add_sub_agent(LiquidityAgent())\
-            .add_sub_agent(EquityTrendAgent("NVDA"))
+            .add_sub_agent(BroadIndexAgent())\
+            .add_sub_agent(EquityTrendAgent("IAU", label="iShares Gold Trust", description="Gold-tracking ETF"))\
+            .add_sub_agent(EquityTrendAgent("QLD", label="ProShares Ultra QQQ", description="2x leveraged Nasdaq-100 ETF"))\
+            .add_sub_agent(EquityTrendAgent("NVDA", label="NVIDIA"))\
+            .add_sub_agent(EquityTrendAgent("MSFT", label="Microsoft"))\
+            .add_sub_agent(EquityTrendAgent("COPX", label="Global X Copper Miners ETF", description="Provides access to a broad range of copper mining companies"))
   
         # Create synthesis agent
         self.synthesis_agent = self._create_synthesis_agent(f"""

@@ -11,6 +11,7 @@ class DXAgent(TrendAgent):
         super().__init__(
             ticker="DX=F",
             agent_name="dx_agent",
+            label="US Dollar Index",
             tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data],
             context_instructions="""
             DX=F (Dollar Index) Analysis:

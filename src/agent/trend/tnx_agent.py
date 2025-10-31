@@ -11,6 +11,7 @@ class TNXAgent(TrendAgent):
         super().__init__(
             ticker="^TNX",
             agent_name="tnx_agent",
+            label="10-Year Treasury Yield",
             tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data],
             context_instructions="""
             TNX (10-Year Treasury Note) Analysis:

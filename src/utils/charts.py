@@ -5,22 +5,22 @@ from matplotlib.patches import Rectangle
 from src.config import CHART_OUTPUT_DIR
 
 
-def create_yfinance_chart(ticker: str, data, period: str, ylabel: str, value_format: str) -> str:
+def create_yfinance_chart(data, period: str, ylabel: str, value_format: str, label: str) -> str:
     """
     Create candlestick chart for yfinance data with SMA overlays.
     
     Args:
-        ticker: Stock ticker symbol
         data: DataFrame with OHLCV data
         period: Time period (5d, 1mo, 6mo, 1y, etc.)
         ylabel: Y-axis label
         value_format: Format string for values
+        label: Human-readable label for chart title (defaults to ticker)
         
     Returns:
         String with chart file path
     """
     if data.empty:
-        return f"{ticker} data not available"
+        return f"{label} data not available"
 
     # Period display names
     period_display = {
@@ -88,7 +88,7 @@ def create_yfinance_chart(ticker: str, data, period: str, ylabel: str, value_for
     ax.set_xticklabels(tick_labels, rotation=45, ha='right')
     
     # Title and labels
-    ax.set_title(f'{ticker} - {period_display}', fontsize=13, fontweight='bold')
+    ax.set_title(f'{label} - {period_display}', fontsize=13, fontweight='bold')
     ax.set_ylabel(ylabel, fontsize=11)
     ax.grid(True, alpha=0.3, linestyle='--')
     
@@ -110,8 +110,8 @@ def create_yfinance_chart(ticker: str, data, period: str, ylabel: str, value_for
     plt.tight_layout()
     
     # Save chart
-    ticker_clean = ticker.replace('^', '').replace('-', '_')
-    filename = f"{ticker_clean}_{period}_chart.png"
+    name_clean = label.replace('^', '').replace('-', '_').replace(' ', '_')
+    filename = f"{name_clean}_{period}_chart.png"
     filepath = os.path.join(CHART_OUTPUT_DIR, filename)
     plt.savefig(filepath, dpi=100, bbox_inches='tight')
     plt.close()
@@ -121,7 +121,7 @@ def create_yfinance_chart(ticker: str, data, period: str, ylabel: str, value_for
 
 def create_fred_chart(
     data, 
-    indicator_name: str,
+    label: str,
     period: str = "6mo",
     baseline: float = None,
     positive_label: str = "Above Baseline",
@@ -132,7 +132,7 @@ def create_fred_chart(
     
     Args:
         data: Pandas Series with economic data
-        indicator_name: Name of the indicator
+        label: Human-readable label for chart title
         period: Time period (5d, 1mo, 6mo, 1y, etc.)
         baseline: Optional baseline value (e.g., 0 for NFCI)
         positive_label: Label for values above baseline
@@ -142,7 +142,7 @@ def create_fred_chart(
         String with chart file path
     """
     if data.empty:
-        return f"{indicator_name} data not available"
+        return f"{label} data not available"
     
     values = data.values
     dates = data.index
@@ -176,8 +176,8 @@ def create_fred_chart(
         ax.legend(loc='upper left', fontsize=9)
     
     # Title and labels
-    ax.set_title(f'{indicator_name} - {period_display}', fontsize=13, fontweight='bold')
-    ax.set_ylabel(f'{indicator_name} Value', fontsize=11)
+    ax.set_title(f'{label} - {period_display}', fontsize=13, fontweight='bold')
+    ax.set_ylabel(f'{label} Value', fontsize=11)
     ax.grid(True, alpha=0.3, linestyle='--')
     
     # Value display
@@ -209,8 +209,8 @@ def create_fred_chart(
     plt.tight_layout()
     
     # Save chart
-    indicator_clean = indicator_name.replace(' ', '_').replace('(', '').replace(')', '')
-    filename = f"{indicator_clean}_{period}_chart.png"
+    label_clean = label.replace(' ', '_').replace('(', '').replace(')', '')
+    filename = f"{label_clean}_{period}_chart.png"
     filepath = os.path.join(CHART_OUTPUT_DIR, filename)
     plt.savefig(filepath, dpi=100, bbox_inches='tight')
     plt.close()
@@ -220,34 +220,37 @@ def create_fred_chart(
 
 def create_line_chart(
     data,
-    title: str,
+    label: str,
     ylabel: str,
     period: str = "1y",
     value_format: str = "{:.2f}",
-    baseline: float = None,
-    positive_label: str = "Above Baseline",
-    negative_label: str = "Below Baseline",
-    data_column: str = None
+    overbought_label: str = "Overbought Zone",
+    oversold_label: str = "Oversold Zone",
+    data_column: str = None,
+    threshold_upper: float = None,
+    threshold_lower: float = None
 ) -> str:
     """
-    Create generic line chart (for disparity, RSI, etc.).
+    Create generic line chart with dynamic threshold lines.
+    Mostly used for RSI, Disparity, MACD, etc for yfinance data.
     
     Args:
         data: DataFrame or Series
-        title: Chart title
+        label: Human-readable label for chart title
         ylabel: Y-axis label
         period: Time period
         value_format: Format string for values
-        baseline: Optional baseline value
-        positive_label: Label for values above baseline
-        negative_label: Label for values below baseline
+        overbought_label: Label for overbought zone
+        oversold_label: Label for oversold zone
         data_column: Column name if DataFrame
+        threshold_upper: Upper threshold line (overbought), None means no threshold
+        threshold_lower: Lower threshold line (oversold), None means no threshold
         
     Returns:
         String with chart file path
     """
     if data.empty:
-        return f"{title} data not available"
+        return f"{label} data not available"
     
     # Handle different data types
     if hasattr(data, 'columns') and data_column:
@@ -269,23 +272,29 @@ def create_line_chart(
     fig, ax = plt.subplots(figsize=(10, 4))
     
     # Line plot
-    ax.plot(dates, values, linewidth=2, color=color, marker='o', markersize=3, zorder=2)
-    ax.fill_between(dates, values, alpha=0.15, color=color, zorder=1)
+    ax.plot(dates, values, linewidth=2, color=color, marker='o', markersize=3, zorder=3, label='Value')
     
-    # Add baseline if provided
-    if baseline is not None:
-        ax.axhline(y=baseline, color='black', linestyle='--', linewidth=1, alpha=0.5, 
-                   label=f'Baseline ({baseline})')
-        
-        # Shade positive/negative regions
-        ax.fill_between(dates, baseline, values, 
-                         where=(values >= baseline), color='red', alpha=0.1, label=positive_label)
-        ax.fill_between(dates, baseline, values, 
-                         where=(values < baseline), color='green', alpha=0.1, label=negative_label)
+    # Add threshold lines if provided
+    if threshold_upper is not None:
+        ax.axhline(y=threshold_upper, color='red', linestyle='--', linewidth=1.5, alpha=0.7, 
+                   label=f'Overbought ({threshold_upper:.1f})', zorder=2)
+        # Shade overbought zone
+        ax.fill_between(dates, threshold_upper, values, 
+                         where=(values >= threshold_upper), color='red', alpha=0.1, label=overbought_label)
+    
+    if threshold_lower is not None:
+        ax.axhline(y=threshold_lower, color='green', linestyle='--', linewidth=1.5, alpha=0.7, 
+                   label=f'Oversold ({threshold_lower:.1f})', zorder=2)
+        # Shade oversold zone
+        ax.fill_between(dates, values, threshold_lower, 
+                         where=(values <= threshold_lower), color='green', alpha=0.1, label=oversold_label)
+    
+    # Show legend if any thresholds were added
+    if threshold_upper is not None or threshold_lower is not None:
         ax.legend(loc='upper left', fontsize=9)
     
     # Title and labels
-    ax.set_title(f'{title} - {period_display}', fontsize=13, fontweight='bold')
+    ax.set_title(f'{label} - {period_display}', fontsize=13, fontweight='bold')
     ax.set_ylabel(ylabel, fontsize=11)
     ax.grid(True, alpha=0.3, linestyle='--')
     
@@ -299,8 +308,8 @@ def create_line_chart(
     plt.tight_layout()
     
     # Save chart
-    title_clean = title.replace('^', '').replace('-', '_').replace(' ', '_').replace('(', '').replace(')', '')
-    filename = f"{title_clean}_{period}_chart.png"
+    label_clean = label.replace('^', '').replace('-', '_').replace(' ', '_').replace('(', '').replace(')', '')
+    filename = f"{label_clean}_{period}_chart.png"
     filepath = os.path.join(CHART_OUTPUT_DIR, filename)
     plt.savefig(filepath, dpi=100, bbox_inches='tight')
     plt.close()

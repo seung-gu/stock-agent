@@ -65,7 +65,7 @@ class DataSource(ABC):
         pass
     
     @abstractmethod
-    async def create_chart(self, data: dict[str, Any], symbol: str, period: str) -> str:
+    async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None) -> str:
         """
         Create chart from fetched data.
         
@@ -73,6 +73,7 @@ class DataSource(ABC):
             data: Data returned from fetch_data()
             symbol: Symbol or indicator code
             period: Time period
+            label: Human-readable label for chart title (optional)
             
         Returns:
             Chart information string with path
@@ -219,7 +220,7 @@ class YFinanceSource(DataSource):
             'symbol': symbol
         }
     
-    async def create_chart(self, data: dict[str, Any], symbol: str, period: str) -> str:
+    async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None) -> str:
         """Create stock/treasury chart."""
         hist = data['history']
         info = data['info']
@@ -228,11 +229,11 @@ class YFinanceSource(DataSource):
         chart_config = self._get_chart_config(symbol, info)
         
         return create_yfinance_chart(
-            ticker=symbol,
             data=hist,
             period=period,
             ylabel=chart_config['ylabel'],
-            value_format=chart_config['value_format']
+            value_format=chart_config['value_format'],
+            label=label or symbol
         )
     
     def _get_chart_config(self, symbol: str, info: dict) -> dict:
@@ -403,14 +404,14 @@ class FREDSource(DataSource):
             'config': config
         }
     
-    async def create_chart(self, data: dict[str, Any], symbol: str, period: str) -> str:
+    async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None) -> str:
         """Create FRED indicator chart."""
         series_data = data['data']
         config = data['config']
         
         return create_fred_chart(
             data=series_data,
-            indicator_name=config['name'],
+            label=label or config['name'],
             period=period,
             baseline=config.get('baseline'),
             positive_label=config.get('positive_label', 'Above Baseline'),
