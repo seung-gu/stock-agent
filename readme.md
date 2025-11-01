@@ -73,6 +73,9 @@ TODO:
 18. ~~Technical Indicator System Refactor~~ ✅ (TechnicalAnalyzer fluent API, chart separation, Equity disparity support)
 19. ~~SMA(200) Chart Cut-off Fix~~ ✅ (Extended buffer with BDay offset, pre-compute SMAs, smart slicing)
 20. ~~Modular Agent Tools Architecture~~ ✅ (9 independent function_tools, complete layer separation, agent autonomy)
+21. Chart analyzer (signal catcher - SMA 50&200, RSI, Disparity, W, M, Cup and handle)
+22. Cross chart checker
+23. ~~S&P 500 Stocks Above 200-Day MA ($S5TH)~~ ✅ (Investing.com scraping, auto-caching)
 
 
 ---
@@ -91,24 +94,27 @@ src/
 │   │   └── trend_agent.py    # Base class for trend analysis (simplified, tool-agnostic)
 │   │
 │   ├── tools/                 # 🛠️ Modular function tools (v6.0 - Dynamic Thresholds)
-│   │   └── agent_tools.py    # 7 independent @function_tool for agents
+│   │   └── agent_tools.py    # 9 independent @function_tool for agents
 │   │                         # • fetch_data, analyze_OHLCV_data, generate_OHLCV_chart
 │   │                         # • analyze_SMA_data, analyze_disparity_data, analyze_RSI_data
 │   │                         # • generate_disparity_chart, generate_RSI_chart
+│   │                         # • fetch_market_breadth, generate_market_breadth_chart
 │   │                         # • Dynamic overbought/oversold thresholds (80th/10th percentile)
 │   │                         # • Cache-based, complete layer separation
 │   │
 │   ├── trend/                 # 📈 Trend analysis agents
-│   │   ├── __init__.py       # Exports: TNXAgent, NFCIAgent, DXAgent, EquityTrendAgent
+│   │   ├── __init__.py       # Exports: TNXAgent, NFCIAgent, EquityTrendAgent, MarketBreadthAgent
 │   │   ├── tnx_agent.py      # Treasury yield (^TNX) analysis
 │   │   ├── nfci_agent.py     # NFCI (National Financial Conditions Index) analysis
 │   │   ├── dx_agent.py       # Dollar Index (DX=F) analysis
-│   │   └── equity_trend_agent.py  # Stock price trend analysis
+│   │   ├── equity_trend_agent.py  # Stock price trend analysis
+│   │   └── market_breadth_agent.py  # S&P 500 market breadth (% stocks above 200-MA)
 │   │
 │   ├── orchestrator/          # 🎭 Orchestrator agents (combine multiple agents)
-│   │   ├── __init__.py       # Exports: LiquidityAgent, BroadIndexAgent, MarketReportAgent
+│   │   ├── __init__.py       # Exports: LiquidityAgent, BroadIndexAgent, MarketIndicatorAgent, MarketReportAgent
 │   │   ├── liquidity_agent.py     # Liquidity orchestrator (TNX + NFCI + DX)
-│   │   ├── broad_index_agent.py   # Broad index orchestrator (^GSPC + ^IXIC + ^DJI)
+│   │   ├── broad_index_agent.py   # Broad index orchestrator (^GSPC + ^IXIC + ^DJI + MarketIndicator)
+│   │   ├── market_indicator_agent.py  # Market indicator orchestrator (MarketBreadth + future indicators)
 │   │   └── market_report_agent.py  # Main report agent (Liquidity + BroadIndex + Equity)
 │   │
 │   └── types/                 # 📋 Type definitions
@@ -124,7 +130,9 @@ src/
 │   │   └── create_line_chart()      # Generic line chart (disparity, RSI, etc.)
 │   ├── data_sources.py        # Unified data source system
 │   │                          # • YFinanceSource, FREDSource
+│   │                          # • get_market_breadth(symbol='S5TH'): Investing.com scraper
 │   │                          # • Smart caching (fetch once, slice multiple)
+│   │                          # • Auto-merge & accumulate to data/market_breadth_history.json
 │   │                          # • Raw OHLCV data only (no calculations)
 │   ├── technical_indicators.py  # Technical analysis pure functions
 │   │                          # • calculate_sma, calculate_disparity, calculate_rsi, calculate_macd
@@ -167,6 +175,9 @@ src/
 │  1. Direct Agent Execution                                  │
 │     ├── MarketReportAgent (Orchestrator)                    │
 │     │   ├── LiquidityAgent (TNX + NFCI + DX)                │
+│     │   ├── BroadIndexAgent (^GSPC + ^IXIC + ^DJI)          │
+│     │   │   └── MarketIndicatorAgent                        │
+│     │   │       └── MarketBreadthAgent (S5TH)               │
 │     │   └── EquityTrendAgent (Stock Analysis + SMA)         │
 │     │       • 4-period analysis (5d/1mo/6mo/1y)             │
 │     │       • Candlestick charts with moving averages       │
@@ -318,10 +329,12 @@ REPORT_LANGUAGE = "Korean"  # or "English"
 - `NFCIAgent`: Financial conditions analysis (NFCI via FRED)
 - `DXAgent`: Dollar Index analysis (DX=F via yfinance)
 - `EquityTrendAgent`: Stock price analysis (NVDA/SPY/etc via yfinance)
+- `MarketBreadthAgent`: S&P 500 market breadth (% stocks above 200-MA via Investing.com)
 
 **Orchestrators (`agent/orchestrator/`):**
 - `LiquidityAgent`: Orchestrates TNXAgent + NFCIAgent + DXAgent
-- `BroadIndexAgent`: Orchestrates S&P 500 + Nasdaq + Dow Jones analysis
+- `BroadIndexAgent`: Orchestrates S&P 500 + Nasdaq + Dow Jones + MarketIndicatorAgent
+- `MarketIndicatorAgent`: Orchestrates MarketBreadthAgent (+ future indicators)
 - `MarketReportAgent`: Orchestrates LiquidityAgent + BroadIndexAgent + EquityTrendAgent
 
 ### Unified Data Source System
@@ -340,6 +353,12 @@ REPORT_LANGUAGE = "Korean"  # or "English"
 - `FREDSource`: Economic indicators (NFCI, DFF, T10Y2Y)
   - Lazy initialization for FRED API key
   - Indicator-specific configurations
+- `get_market_breadth(symbol='S5TH')`: S&P 500 stocks above 200-day MA
+  - Web scraping from Investing.com historical data table
+  - 3-tier loading: Memory cache (1h) → Local file → Web scraping
+  - Auto-merge & accumulate to `data/market_breadth_history.json`
+  - Returns ~1 month of data per scrape, builds long-term dataset over time
+  - Used by `fetch_market_breadth()` agent tool
 
 **Explicit Source Selection:**
 ```python
@@ -357,11 +376,13 @@ get_data_source("fred")      # → FREDSource
 - `analyze_SMA_data(symbol, period, windows)`: Calculate SMA indicators
 - `analyze_disparity_data(symbol, period, window)`: Calculate disparity with dynamic thresholds (80th/10th percentile)
 - `analyze_RSI_data(symbol, period, window)`: Calculate RSI with dynamic thresholds (80th/10th percentile)
+- `fetch_market_breadth(symbol='S5TH')`: Get S&P 500 market breadth (% stocks above 200-MA)
 
 **Chart Layer:**
 - `generate_OHLCV_chart(source, symbol, period)`: Generate candlestick/line chart
 - `generate_disparity_chart(symbol, period, window)`: Generate disparity chart with dynamic threshold lines
 - `generate_RSI_chart(symbol, period, window)`: Generate RSI chart with dynamic threshold lines
+- `generate_market_breadth_chart(symbol='S5TH')`: Generate market breadth chart with 70%/30% thresholds
 
 **Unified Charting (`charts.py`):**
 - `create_chart()`: Universal chart generator

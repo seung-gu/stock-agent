@@ -1,6 +1,6 @@
 from agents import function_tool
 
-from src.utils.data_sources import get_data_source
+from src.utils.data_sources import get_data_source, get_market_breadth
 from src.utils.technical_indicators import calculate_rsi, calculate_disparity
 from src.utils.charts import create_line_chart
 
@@ -19,6 +19,45 @@ async def fetch_data(source: str, symbol: str, period: str) -> str:
     src = get_data_source(source)
     await src.fetch_data(symbol, period)
     return f"Fetched OK for {source}:{symbol} {period}"
+
+
+@function_tool
+async def fetch_market_breadth(symbol: str = "S5TH") -> str:
+    """Fetch S&P 500 market breadth (% stocks above 200-day MA) from Investing.com."""
+    data = get_market_breadth(symbol)
+    current = data['current']
+    series = data['data']
+    
+    signal = ("Strong Bullish" if current >= 70 else "Moderately Bullish" if current >= 50 
+              else "Moderately Bearish" if current >= 30 else "Strong Bearish")
+    
+    return f"""Market Breadth (S5TH): {current:.2f}% above 200-MA
+    Data points: {len(series)} | Date range: {series.index[0].date()} to {series.index[-1].date()}
+    Signal: {signal} | {'Healthy breadth' if current >= 50 else 'Weak breadth - caution'}"""
+
+
+@function_tool
+async def generate_market_breadth_chart(symbol: str = "S5TH") -> str:
+    """Generate market breadth chart (S&P 500 stocks above 200-day MA)."""
+    data = get_market_breadth(symbol)
+    series = data['data']
+    
+    if len(series) < 2:
+        return f"Not enough data for chart ({len(series)} points)"
+    
+    chart_path = create_line_chart(
+        data=series.to_frame(name='Breadth'),
+        label='S&P 500 Stocks Above 200-Day MA',
+        ylabel='% of Stocks Above 200-Day MA',
+        period='max',
+        overbought_label='Strong Breadth',
+        oversold_label='Weak Breadth',
+        data_column='Breadth',
+        threshold_upper=70,
+        threshold_lower=30
+    )
+    
+    return f"Chart created: {chart_path}"
 
 
 @function_tool

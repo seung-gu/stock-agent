@@ -12,6 +12,7 @@ class NFCIAgent(TrendAgent):
             ticker="NFCI",
             agent_name="nfci_agent",
             label="National Financial Conditions Index",
+            description="NFCI (National Financial Condition Index) analysis (금융 상황 종합 지수)",
             tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart],
             context_instructions="""
             NFCI (National Financial Condition Index) Analysis:

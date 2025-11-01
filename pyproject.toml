@@ -42,6 +42,7 @@ dependencies = [
     "sendgrid>=6.12.5",
     "boto3>=1.40.55",
     "fredapi>=0.5.1",
+    "beautifulsoup4>=4.12.0",
 ]
 
 [dependency-groups]

@@ -4,11 +4,14 @@ Unified data source system for financial indicators.
 Supports automatic source detection and data fetching from:
 - yfinance (stocks, ETFs, treasuries)
 - FRED (economic indicators)
+- investing.com (market breadth indicators via direct API)
 """
 
 import os
+import json
 import pandas as pd
 import yfinance as yf
+import requests
 from pandas.tseries.offsets import BDay
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
@@ -438,29 +441,62 @@ class FREDSource(DataSource):
         }
 
 
+# Market Breadth Helper Functions (Investing.com scraping)
+def _scrape_market_breadth(url: str = 'https://www.investing.com/indices/sp-500-stocks-above-200-day-average') -> pd.Series:
+    """Scrape market breadth from Investing.com historical data table."""
+    from bs4 import BeautifulSoup
+    response = requests.get(f"{url}-historical-data", headers={
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+    }, timeout=15)
+    response.raise_for_status()
+    table = BeautifulSoup(response.text, 'html.parser').find('table')
+    if not table:
+        raise ValueError("No data table found")
+    data = [(pd.to_datetime(row.find_all('td')[0].get_text(strip=True), format='%b %d, %Y'),
+             float(row.find_all('td')[1].get_text(strip=True).replace(',', '')))
+            for row in table.find_all('tr')[1:] if len(row.find_all('td')) >= 2]
+    return pd.Series(dict(data)).sort_index()
+
+def get_market_breadth(symbol: str = 'S5TH', use_cache: bool = True) -> dict[str, Any]:
+    """Get market breadth data with local file caching."""
+    from pathlib import Path
+    cache_file = Path('data/market_breadth_history.json')
+    
+    # Load local cache
+    local = None
+    if cache_file.exists():
+        try:
+            data = json.load(open(cache_file)).get(symbol, {})
+            if data:
+                local = pd.Series({pd.to_datetime(k): v['value'] for k, v in data.items()}).sort_index()
+        except: pass
+    
+    # Check if recent (yesterday or today)
+    if use_cache and local is not None and len(local) > 0:
+        if local.index[-1].date() >= (datetime.now() - timedelta(days=1)).date():
+            return {'data': local, 'current': float(local.iloc[-1])}
+    
+    # Scrape and merge
+    scraped = _scrape_market_breadth()
+    merged = pd.concat([local, scraped])[~pd.concat([local, scraped]).index.duplicated(keep='last')].sort_index() if local is not None else scraped
+    
+    # Save to cache
+    cache_file.parent.mkdir(parents=True, exist_ok=True)
+    all_data = json.load(open(cache_file)) if cache_file.exists() else {}
+    all_data.setdefault(symbol, {}).update({
+        d.strftime('%Y-%m-%d'): {'value': float(v), 'timestamp': datetime.now().isoformat()}
+        for d, v in merged.items()
+    })
+    json.dump(all_data, open(cache_file, 'w'), indent=2)
+    
+    return {'data': merged, 'current': float(merged.iloc[-1])}
+
+
 def get_data_source(source: str) -> DataSource:
-    """
-    Get data source by explicit name.
-    
-    Args:
-        source: Data source name ("yfinance" or "fred")
-        
-    Returns:
-        DataSource instance
-        
-    Raises:
-        ValueError: If source name is not recognized
-    """
-    sources = {
-        'yfinance': YFinanceSource,
-        'yf': YFinanceSource,
-        'fred': FREDSource,
-    }
-    
+    """Get data source by name."""
+    sources = {'yfinance': YFinanceSource, 'yf': YFinanceSource, 'fred': FREDSource}
     source_lower = source.lower()
     if source_lower not in sources:
         raise ValueError(f"Unknown source: {source}. Available: {list(sources.keys())}")
-    
-    # Return a new instance; cache is class-level and shared across instances
     return sources[source_lower]()
 
