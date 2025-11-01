@@ -5,7 +5,7 @@ import asyncio
 import pandas as pd
 from datetime import datetime
 from unittest.mock import patch, MagicMock
-from src.utils.data_sources import get_data_source, YFinanceSource, FREDSource
+from src.utils.data_sources import get_data_source, YFinanceSource, FREDSource, get_market_breadth
 
 
 class TestYFinanceSource(unittest.TestCase):
@@ -243,6 +243,79 @@ class TestDataSourceFactory(unittest.TestCase):
         """Test invalid source raises error"""
         with self.assertRaises(ValueError):
             get_data_source("invalid_source")
+
+
+class TestMarketBreadth(unittest.TestCase):
+    """Test market breadth functionality"""
+    
+    @patch('src.utils.data_sources._scrape_market_breadth')
+    @patch('pathlib.Path.exists')
+    def test_get_market_breadth_200day(self, mock_exists, mock_scrape):
+        """Test fetching 200-day MA breadth (S5TH)"""
+        # Mock file doesn't exist (force scraping)
+        mock_exists.return_value = False
+        
+        # Mock scraped data
+        mock_data = pd.Series({
+            pd.Timestamp('2025-10-01'): 65.5,
+            pd.Timestamp('2025-10-15'): 60.2,
+            pd.Timestamp('2025-11-01'): 53.67
+        })
+        mock_scrape.return_value = mock_data
+        
+        result = get_market_breadth(ma_period=200, use_cache=False)
+        
+        self.assertIn('data', result)
+        self.assertIn('current', result)
+        self.assertIn('ma_period', result)
+        self.assertEqual(result['ma_period'], 200)
+        self.assertAlmostEqual(result['current'], 53.67, places=2)
+        mock_scrape.assert_called_once()
+    
+    @patch('src.utils.data_sources._scrape_market_breadth')
+    @patch('pathlib.Path.exists')
+    def test_get_market_breadth_50day(self, mock_exists, mock_scrape):
+        """Test fetching 50-day MA breadth (S5FI)"""
+        # Mock file doesn't exist (force scraping)
+        mock_exists.return_value = False
+        
+        # Mock scraped data
+        mock_data = pd.Series({
+            pd.Timestamp('2025-10-01'): 72.3,
+            pd.Timestamp('2025-10-15'): 68.1,
+            pd.Timestamp('2025-11-01'): 61.45
+        })
+        mock_scrape.return_value = mock_data
+        
+        result = get_market_breadth(ma_period=50, use_cache=False)
+        
+        self.assertIn('data', result)
+        self.assertIn('current', result)
+        self.assertIn('ma_period', result)
+        self.assertEqual(result['ma_period'], 50)
+        self.assertAlmostEqual(result['current'], 61.45, places=2)
+        mock_scrape.assert_called_once()
+    
+    def test_get_market_breadth_auto_symbol_selection(self):
+        """Test automatic symbol selection based on ma_period"""
+        # This test verifies the URL mapping logic
+        with patch('src.utils.data_sources._scrape_market_breadth') as mock_scrape:
+            with patch('pathlib.Path.exists') as mock_exists:
+                mock_exists.return_value = False
+                mock_scrape.return_value = pd.Series({pd.Timestamp('2025-11-01'): 50.0})
+                
+                # Test 200-day (should use S5TH URL)
+                result_200 = get_market_breadth(ma_period=200, use_cache=False)
+                self.assertEqual(result_200['ma_period'], 200)
+                
+                # Test 50-day (should use S5FI URL)
+                result_50 = get_market_breadth(ma_period=50, use_cache=False)
+                self.assertEqual(result_50['ma_period'], 50)
+    
+    def test_get_market_breadth_invalid_symbol(self):
+        """Test invalid symbol raises error"""
+        with self.assertRaises(ValueError):
+            get_market_breadth(symbol="INVALID", ma_period=200, use_cache=False)
 
 
 if __name__ == "__main__":

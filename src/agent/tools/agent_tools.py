@@ -22,33 +22,39 @@ async def fetch_data(source: str, symbol: str, period: str) -> str:
 
 
 @function_tool
-async def fetch_market_breadth(symbol: str = "S5TH") -> str:
-    """Fetch S&P 500 market breadth (% stocks above 200-day MA) from Investing.com."""
-    data = get_market_breadth(symbol)
+async def fetch_market_breadth(ma_period: int = 200) -> str:
+    """Fetch S&P 500 market breadth (% stocks above MA) from Investing.com. 
+    Use ma_period=50 for S5FI (50-day) or ma_period=200 for S5TH (200-day)."""
+    data = get_market_breadth(ma_period=ma_period)
     current = data['current']
     series = data['data']
+    ma = data['ma_period']
+    symbol = 'S5FI' if ma == 50 else 'S5TH'
     
     signal = ("Strong Bullish" if current >= 70 else "Moderately Bullish" if current >= 50 
               else "Moderately Bearish" if current >= 30 else "Strong Bearish")
     
-    return f"""Market Breadth (S5TH): {current:.2f}% above 200-MA
+    return f"""Market Breadth ({symbol}): {current:.2f}% above {ma}-day MA
     Data points: {len(series)} | Date range: {series.index[0].date()} to {series.index[-1].date()}
     Signal: {signal} | {'Healthy breadth' if current >= 50 else 'Weak breadth - caution'}"""
 
 
 @function_tool
-async def generate_market_breadth_chart(symbol: str = "S5TH") -> str:
-    """Generate market breadth chart (S&P 500 stocks above 200-day MA)."""
-    data = get_market_breadth(symbol)
+async def generate_market_breadth_chart(ma_period: int = 200) -> str:
+    """Generate market breadth chart (S&P 500 stocks above MA). 
+    Use ma_period=50 for S5FI (50-day) or ma_period=200 for S5TH (200-day)."""
+    data = get_market_breadth(ma_period=ma_period)
     series = data['data']
+    ma = data['ma_period']
+    symbol = 'S5FI' if ma == 50 else 'S5TH'
     
     if len(series) < 2:
         return f"Not enough data for chart ({len(series)} points)"
     
     chart_path = create_line_chart(
         data=series.to_frame(name='Breadth'),
-        label='S&P 500 Stocks Above 200-Day MA',
-        ylabel='% of Stocks Above 200-Day MA',
+        label=f'S&P 500 Stocks Above {ma}-Day MA ({symbol})',
+        ylabel=f'% of Stocks Above {ma}-Day MA',
         period='max',
         overbought_label='Strong Breadth',
         oversold_label='Weak Breadth',

@@ -442,7 +442,7 @@ class FREDSource(DataSource):
 
 
 # Market Breadth Helper Functions (Investing.com scraping)
-def _scrape_market_breadth(url: str = 'https://www.investing.com/indices/sp-500-stocks-above-200-day-average') -> pd.Series:
+def _scrape_market_breadth(url: str) -> pd.Series:
     """Scrape market breadth from Investing.com historical data table."""
     from bs4 import BeautifulSoup
     response = requests.get(f"{url}-historical-data", headers={
@@ -457,16 +457,32 @@ def _scrape_market_breadth(url: str = 'https://www.investing.com/indices/sp-500-
             for row in table.find_all('tr')[1:] if len(row.find_all('td')) >= 2]
     return pd.Series(dict(data)).sort_index()
 
-def get_market_breadth(symbol: str = 'S5TH', use_cache: bool = True) -> dict[str, Any]:
-    """Get market breadth data with local file caching."""
+def get_market_breadth(symbol: str = None, ma_period: int = 200, use_cache: bool = True) -> dict[str, Any]:
+    """Get market breadth data with local file caching. Supports 50-day (S5FI) and 200-day (S5TH) MA."""
     from pathlib import Path
+    
+    # Auto-select symbol based on MA period if not provided
+    if symbol is None:
+        symbol = 'S5FI' if ma_period == 50 else 'S5TH'
+    
+    # Map symbol to URL
+    urls = {
+        'S5TH': 'https://www.investing.com/indices/sp-500-stocks-above-200-day-average',
+        'S5FI': 'https://www.investing.com/indices/s-p-500-stocks-above-50-day-average',
+    }
+    
+    url = urls.get(symbol)
+    if not url:
+        raise ValueError(f"Unsupported symbol: {symbol}. Use 'S5TH' (200-day) or 'S5FI' (50-day)")
+    
+    cache_key = symbol
     cache_file = Path('data/market_breadth_history.json')
     
     # Load local cache
     local = None
     if cache_file.exists():
         try:
-            data = json.load(open(cache_file)).get(symbol, {})
+            data = json.load(open(cache_file)).get(cache_key, {})
             if data:
                 local = pd.Series({pd.to_datetime(k): v['value'] for k, v in data.items()}).sort_index()
         except: pass
@@ -474,22 +490,22 @@ def get_market_breadth(symbol: str = 'S5TH', use_cache: bool = True) -> dict[str
     # Check if recent (yesterday or today)
     if use_cache and local is not None and len(local) > 0:
         if local.index[-1].date() >= (datetime.now() - timedelta(days=1)).date():
-            return {'data': local, 'current': float(local.iloc[-1])}
+            return {'data': local, 'current': float(local.iloc[-1]), 'ma_period': ma_period}
     
     # Scrape and merge
-    scraped = _scrape_market_breadth()
+    scraped = _scrape_market_breadth(url)
     merged = pd.concat([local, scraped])[~pd.concat([local, scraped]).index.duplicated(keep='last')].sort_index() if local is not None else scraped
     
     # Save to cache
     cache_file.parent.mkdir(parents=True, exist_ok=True)
     all_data = json.load(open(cache_file)) if cache_file.exists() else {}
-    all_data.setdefault(symbol, {}).update({
+    all_data.setdefault(cache_key, {}).update({
         d.strftime('%Y-%m-%d'): {'value': float(v), 'timestamp': datetime.now().isoformat()}
         for d, v in merged.items()
     })
     json.dump(all_data, open(cache_file, 'w'), indent=2)
     
-    return {'data': merged, 'current': float(merged.iloc[-1])}
+    return {'data': merged, 'current': float(merged.iloc[-1]), 'ma_period': ma_period}
 
 
 def get_data_source(source: str) -> DataSource:

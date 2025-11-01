@@ -2,7 +2,7 @@ import asyncio
 
 from src.agent.base.orchestrator_agent import OrchestratorAgent
 from src.agent.trend.equity_agent import EquityTrendAgent
-from src.agent.orchestrator.market_indicator_agent import MarketIndicatorAgent
+from src.agent.trend.market_breadth_agent import MarketBreadthAgent
 from src.config import REPORT_LANGUAGE
 
 
@@ -23,7 +23,7 @@ class BroadIndexAgent(OrchestratorAgent):
         self.add_sub_agent(EquityTrendAgent("^GSPC", label="S&P 500"))\
             .add_sub_agent(EquityTrendAgent("^IXIC", label="Nasdaq Composite"))\
             .add_sub_agent(EquityTrendAgent("^DJI", label="Dow Jones Industrial Average"))\
-            .add_sub_agent(MarketIndicatorAgent())
+            .add_sub_agent(MarketBreadthAgent())
         
         # Create synthesis agent
         self.synthesis_agent = self._create_synthesis_agent(f"""

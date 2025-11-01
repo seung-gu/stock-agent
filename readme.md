@@ -75,7 +75,9 @@ TODO:
 20. ~~Modular Agent Tools Architecture~~ ✅ (9 independent function_tools, complete layer separation, agent autonomy)
 21. Chart analyzer (signal catcher - SMA 50&200, RSI, Disparity, W, M, Cup and handle)
 22. Cross chart checker
-23. ~~S&P 500 Stocks Above 200-Day MA ($S5TH)~~ ✅ (Investing.com scraping, auto-caching)
+23. ~~S&P 500 Market Breadth ($S5FI 50-day, $S5TH 200-day)~~ ✅ (Investing.com scraping, dual timeframe analysis)
+24. Market_breadth_agent +market_indicator_agent 조합 좀 더 고려 필요
+25. market_breadth_agent의 링크 포함 이슈 https://www.investing.com/indices/sp-500-stocks-above-200-day-average-chart 
 
 
 ---
@@ -108,7 +110,7 @@ src/
 │   │   ├── nfci_agent.py     # NFCI (National Financial Conditions Index) analysis
 │   │   ├── dx_agent.py       # Dollar Index (DX=F) analysis
 │   │   ├── equity_trend_agent.py  # Stock price trend analysis
-│   │   └── market_breadth_agent.py  # S&P 500 market breadth (% stocks above 200-MA)
+│   │   └── market_breadth_agent.py  # S&P 500 market breadth (50-day & 200-day MA)
 │   │
 │   ├── orchestrator/          # 🎭 Orchestrator agents (combine multiple agents)
 │   │   ├── __init__.py       # Exports: LiquidityAgent, BroadIndexAgent, MarketIndicatorAgent, MarketReportAgent
@@ -130,7 +132,8 @@ src/
 │   │   └── create_line_chart()      # Generic line chart (disparity, RSI, etc.)
 │   ├── data_sources.py        # Unified data source system
 │   │                          # • YFinanceSource, FREDSource
-│   │                          # • get_market_breadth(symbol='S5TH'): Investing.com scraper
+│   │                          # • get_market_breadth(ma_period=50/200): Investing.com scraper
+│   │                          # • Dual timeframe: S5FI (50-day), S5TH (200-day)
 │   │                          # • Smart caching (fetch once, slice multiple)
 │   │                          # • Auto-merge & accumulate to data/market_breadth_history.json
 │   │                          # • Raw OHLCV data only (no calculations)
@@ -177,7 +180,7 @@ src/
 │     │   ├── LiquidityAgent (TNX + NFCI + DX)                │
 │     │   ├── BroadIndexAgent (^GSPC + ^IXIC + ^DJI)          │
 │     │   │   └── MarketIndicatorAgent                        │
-│     │   │       └── MarketBreadthAgent (S5TH)               │
+│     │   │       └── MarketBreadthAgent (S5FI + S5TH)        │
 │     │   └── EquityTrendAgent (Stock Analysis + SMA)         │
 │     │       • 4-period analysis (5d/1mo/6mo/1y)             │
 │     │       • Candlestick charts with moving averages       │
@@ -329,7 +332,7 @@ REPORT_LANGUAGE = "Korean"  # or "English"
 - `NFCIAgent`: Financial conditions analysis (NFCI via FRED)
 - `DXAgent`: Dollar Index analysis (DX=F via yfinance)
 - `EquityTrendAgent`: Stock price analysis (NVDA/SPY/etc via yfinance)
-- `MarketBreadthAgent`: S&P 500 market breadth (% stocks above 200-MA via Investing.com)
+- `MarketBreadthAgent`: S&P 500 market breadth (50-day & 200-day MA via Investing.com)
 
 **Orchestrators (`agent/orchestrator/`):**
 - `LiquidityAgent`: Orchestrates TNXAgent + NFCIAgent + DXAgent
@@ -353,12 +356,13 @@ REPORT_LANGUAGE = "Korean"  # or "English"
 - `FREDSource`: Economic indicators (NFCI, DFF, T10Y2Y)
   - Lazy initialization for FRED API key
   - Indicator-specific configurations
-- `get_market_breadth(symbol='S5TH')`: S&P 500 stocks above 200-day MA
+- `get_market_breadth(ma_period=50/200)`: S&P 500 stocks above 50-day or 200-day MA
+  - Dual timeframe: S5FI (50-day short-term), S5TH (200-day long-term)
   - Web scraping from Investing.com historical data table
   - 3-tier loading: Memory cache (1h) → Local file → Web scraping
   - Auto-merge & accumulate to `data/market_breadth_history.json`
   - Returns ~1 month of data per scrape, builds long-term dataset over time
-  - Used by `fetch_market_breadth()` agent tool
+  - Used by `fetch_market_breadth()` and `generate_market_breadth_chart()` tools
 
 **Explicit Source Selection:**
 ```python
@@ -376,13 +380,13 @@ get_data_source("fred")      # → FREDSource
 - `analyze_SMA_data(symbol, period, windows)`: Calculate SMA indicators
 - `analyze_disparity_data(symbol, period, window)`: Calculate disparity with dynamic thresholds (80th/10th percentile)
 - `analyze_RSI_data(symbol, period, window)`: Calculate RSI with dynamic thresholds (80th/10th percentile)
-- `fetch_market_breadth(symbol='S5TH')`: Get S&P 500 market breadth (% stocks above 200-MA)
+- `fetch_market_breadth(ma_period=50/200)`: Get S&P 500 market breadth (S5FI 50-day or S5TH 200-day)
 
 **Chart Layer:**
 - `generate_OHLCV_chart(source, symbol, period)`: Generate candlestick/line chart
 - `generate_disparity_chart(symbol, period, window)`: Generate disparity chart with dynamic threshold lines
 - `generate_RSI_chart(symbol, period, window)`: Generate RSI chart with dynamic threshold lines
-- `generate_market_breadth_chart(symbol='S5TH')`: Generate market breadth chart with 70%/30% thresholds
+- `generate_market_breadth_chart(ma_period=50/200)`: Generate market breadth chart with 70%/30% thresholds
 
 **Unified Charting (`charts.py`):**
 - `create_chart()`: Universal chart generator
