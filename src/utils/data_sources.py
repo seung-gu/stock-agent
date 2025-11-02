@@ -12,6 +12,8 @@ import json
 import pandas as pd
 import yfinance as yf
 import requests
+from pathlib import Path
+from bs4 import BeautifulSoup
 from pandas.tseries.offsets import BDay
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
@@ -441,78 +443,242 @@ class FREDSource(DataSource):
         }
 
 
-# Market Breadth Helper Functions (Investing.com scraping)
-def _scrape_market_breadth(url: str) -> pd.Series:
-    """Scrape market breadth from Investing.com historical data table."""
-    from bs4 import BeautifulSoup
-    response = requests.get(f"{url}-historical-data", headers={
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-    }, timeout=15)
-    response.raise_for_status()
-    table = BeautifulSoup(response.text, 'html.parser').find('table')
-    if not table:
-        raise ValueError("No data table found")
-    data = [(pd.to_datetime(row.find_all('td')[0].get_text(strip=True), format='%b %d, %Y'),
-             float(row.find_all('td')[1].get_text(strip=True).replace(',', '')))
-            for row in table.find_all('tr')[1:] if len(row.find_all('td')) >= 2]
-    return pd.Series(dict(data)).sort_index()
-
-def get_market_breadth(symbol: str = None, ma_period: int = 200, use_cache: bool = True) -> dict[str, Any]:
-    """Get market breadth data with local file caching. Supports 50-day (S5FI) and 200-day (S5TH) MA."""
-    from pathlib import Path
+class InvestingSource(DataSource):
+    """Data source for market breadth indicators via Investing.com scraping."""
     
-    # Auto-select symbol based on MA period if not provided
-    if symbol is None:
-        symbol = 'S5FI' if ma_period == 50 else 'S5TH'
-    
-    # Map symbol to URL
-    urls = {
+    # Symbol to URL mapping
+    SYMBOL_URLS = {
         'S5TH': 'https://www.investing.com/indices/sp-500-stocks-above-200-day-average',
         'S5FI': 'https://www.investing.com/indices/s-p-500-stocks-above-50-day-average',
     }
     
-    url = urls.get(symbol)
-    if not url:
-        raise ValueError(f"Unsupported symbol: {symbol}. Use 'S5TH' (200-day) or 'S5FI' (50-day)")
+    # Symbol to MA period mapping
+    SYMBOL_MA_PERIOD = {
+        'S5TH': 200,
+        'S5FI': 50,
+    }
     
-    cache_key = symbol
-    cache_file = Path('data/market_breadth_history.json')
+    def __init__(self):
+        """Initialize with file-based cache."""
+        super().__init__()
+        self._cache_file = Path('data/market_breadth_history.json')
     
-    # Load local cache
-    local = None
-    if cache_file.exists():
+    def _load_local_cache(self, symbol: str) -> tuple[pd.Series | None, bool]:
+        """Load historical data from local file.
+        
+        Returns:
+            (data, is_validated): data series and validation flag
+        """
+        if not self._cache_file.exists():
+            print(f"[INVESTING][CACHE] Cache file not found: {self._cache_file}")
+            return None, False
         try:
-            data = json.load(open(cache_file)).get(cache_key, {})
-            if data:
-                local = pd.Series({pd.to_datetime(k): v['value'] for k, v in data.items()}).sort_index()
-        except: pass
+            with open(self._cache_file, 'r') as f:
+                all_data = json.load(f)
+            
+            symbol_data = all_data.get(symbol, {})
+            if not symbol_data:
+                print(f"[INVESTING][CACHE] No data for symbol {symbol} in cache")
+                return None, False
+            
+            # Check validation flag
+            is_validated = symbol_data.get('_validated', False)
+            
+            # Extract data (skip metadata keys starting with _)
+            data_dict = {k: v for k, v in symbol_data.items() if not k.startswith('_')}
+            series = pd.Series({pd.to_datetime(k): v['value'] for k, v in data_dict.items()}).sort_index()
+            
+            print(f"[INVESTING][CACHE] Loaded {len(series)} records for {symbol}, latest: {series.index[-1].date()}, validated: {is_validated}")
+            return series, is_validated
+        except Exception as e:
+            print(f"[INVESTING][CACHE] Error loading cache: {e}")
+            return None, False
     
-    # Check if recent (yesterday or today)
-    if use_cache and local is not None and len(local) > 0:
-        if local.index[-1].date() >= (datetime.now() - timedelta(days=1)).date():
-            return {'data': local, 'current': float(local.iloc[-1]), 'ma_period': ma_period}
+    def _save_to_local_cache(self, symbol: str, data: pd.Series, is_validated: bool = False):
+        """Save historical data to local file with validation flag.
+        
+        Args:
+            symbol: Symbol to save
+            data: Data series
+            is_validated: True if data has been validated (complete up to latest scraped date)
+        """
+        self._cache_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Load existing data
+        if self._cache_file.exists():
+            with open(self._cache_file, 'r') as f:
+                all_data = json.load(f)
+        else:
+            all_data = {}
+        
+        # Update symbol data
+        symbol_data = {
+            d.strftime('%Y-%m-%d'): {'value': float(v), 'timestamp': datetime.now().isoformat()}
+            for d, v in data.items()
+        }
+        
+        # Add validation flag
+        symbol_data['_validated'] = is_validated
+        
+        all_data[symbol] = symbol_data
+        
+        # Save to file
+        with open(self._cache_file, 'w') as f:
+            json.dump(all_data, f, indent=2)
+        
+        print(f"[INVESTING][CACHE] Saved {len(data)} records for {symbol}, validated={is_validated}")
     
-    # Scrape and merge
-    scraped = _scrape_market_breadth(url)
-    merged = pd.concat([local, scraped])[~pd.concat([local, scraped]).index.duplicated(keep='last')].sort_index() if local is not None else scraped
+    def _scrape_data(self, url: str) -> pd.Series:
+        """Scrape market breadth from Investing.com historical data table."""
+        response = requests.get(f"{url}-historical-data", headers={
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+        }, timeout=15)
+        response.raise_for_status()
+        table = BeautifulSoup(response.text, 'html.parser').find('table')
+        if not table:
+            raise ValueError("No data table found")
+        data = [(pd.to_datetime(row.find_all('td')[0].get_text(strip=True), format='%b %d, %Y'),
+                 float(row.find_all('td')[1].get_text(strip=True).replace(',', '')))
+                for row in table.find_all('tr')[1:] if len(row.find_all('td')) >= 2]
+        return pd.Series(dict(data)).sort_index()
     
-    # Save to cache
-    cache_file.parent.mkdir(parents=True, exist_ok=True)
-    all_data = json.load(open(cache_file)) if cache_file.exists() else {}
-    all_data.setdefault(cache_key, {}).update({
-        d.strftime('%Y-%m-%d'): {'value': float(v), 'timestamp': datetime.now().isoformat()}
-        for d, v in merged.items()
-    })
-    json.dump(all_data, open(cache_file, 'w'), indent=2)
+    def _period_to_timedelta(self, period: str) -> timedelta:
+        """Convert period string to timedelta."""
+        period_map = {
+            '5d': timedelta(days=7),
+            '1mo': timedelta(days=30),
+            '3mo': timedelta(days=90),
+            '6mo': timedelta(days=182),
+            '1y': timedelta(days=365),
+            '2y': timedelta(days=730),
+            '5y': timedelta(days=1825),
+            '10y': timedelta(days=3650),
+        }
+        period_lower = (period or '1y').lower()
+        return period_map.get(period_lower, timedelta(days=365))
     
-    return {'data': merged, 'current': float(merged.iloc[-1]), 'ma_period': ma_period}
+    async def fetch_data(self, symbol: str, period: str = None) -> dict[str, Any]:
+        """Fetch market breadth data with local file caching and validation."""
+        if symbol not in self.SYMBOL_URLS:
+            raise ValueError(f"Unsupported symbol: {symbol}. Available: {list(self.SYMBOL_URLS.keys())}")
+        
+        url = self.SYMBOL_URLS[symbol]
+        ma_period = self.SYMBOL_MA_PERIOD[symbol]
+        period = period or '1y'
+        
+        print(f"[INVESTING][FETCH] symbol={symbol}, period={period}")
+        
+        # Load local cache with validation flag
+        local, is_validated = self._load_local_cache(symbol)
+        
+        # Always scrape first to check latest available date
+        print(f"[INVESTING][SCRAPE] Fetching from {url}")
+        scraped = self._scrape_data(url)
+        latest_scraped_date = scraped.index[-1].date()
+        print(f"[INVESTING][SCRAPE] Scraped {len(scraped)} records, range: {scraped.index[0].date()} to {latest_scraped_date}")
+        
+        # Determine if we need to update cache
+        need_update = True
+        
+        if local is not None and len(local) > 0:
+            latest_cached_date = local.index[-1].date()
+            
+            if is_validated and latest_cached_date >= latest_scraped_date:
+                # validated + cache has all scraped data → no update needed
+                print(f"[INVESTING][CACHE] Validated and up-to-date (cached: {latest_cached_date}, scraped: {latest_scraped_date}), using cache")
+                need_update = False
+                merged = local
+            elif is_validated and latest_cached_date < latest_scraped_date:
+                # validated + new data available → update needed
+                print(f"[INVESTING][CACHE] Validated but outdated (cached: {latest_cached_date}, scraped: {latest_scraped_date}), will update")
+            else:
+                # not validated → update needed (fill missing dates)
+                print(f"[INVESTING][CACHE] Not validated, will update and validate")
+        else:
+            print(f"[INVESTING][CACHE] No local cache found, will create")
+        
+        # Update cache if needed
+        if need_update:
+            if local is not None:
+                # Merge: keep all local data + add new scraped data
+                merged = pd.concat([local, scraped]).sort_index()
+                # Remove duplicates, keeping the scraped value (more recent)
+                merged = merged[~merged.index.duplicated(keep='last')]
+                
+                missing_dates = scraped.index.difference(local.index)
+                if len(missing_dates) > 0:
+                    print(f"[INVESTING][MERGE] Added {len(missing_dates)} missing dates")
+                print(f"[INVESTING][MERGE] Total after merge: {len(merged)} records")
+            else:
+                merged = scraped
+            
+            # Save with validation flag (validated)
+            self._save_to_local_cache(symbol, merged, is_validated=True)
+        
+        # Slice to requested period
+        end_date = datetime.now()
+        start_date = end_date - self._period_to_timedelta(period)
+        period_data = merged[merged.index >= start_date]
+        
+        print(f"[INVESTING][RETURN] Returning {len(period_data)} records for period {period}")
+        
+        return {
+            'data': period_data if len(period_data) > 0 else merged,
+            'symbol': symbol,
+            'ma_period': ma_period,
+            'current': float(merged.iloc[-1])
+        }
+    
+    async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None) -> str:
+        """Create market breadth chart."""
+        from src.utils.charts import create_line_chart
+        series_data = data['data']
+        ma_period = data['ma_period']
+        
+        # Convert Series to DataFrame for create_line_chart
+        df = series_data.to_frame(name='Breadth')
+        
+        return create_line_chart(
+            data=df,
+            label=label or f"S&P 500 Stocks Above {ma_period}-Day MA",
+            period=period or '1y',
+            ylabel='Percentage (%)',
+            data_column='Breadth',
+            threshold_upper=70.0,
+            threshold_lower=30.0,
+            overbought_label='Strong Breadth',
+            oversold_label='Weak Breadth'
+        )
+    
+    def get_analysis(self, data: dict[str, Any], period: str) -> dict[str, Any]:
+        """Extract analysis metrics from market breadth data."""
+        series_data = data['data']
+        
+        start_value = float(series_data.iloc[0])
+        end_value = float(series_data.iloc[-1])
+        change_pct = end_value - start_value  # Absolute change for percentage data
+        
+        return {
+            'period': period or '1y',
+            'start': start_value,
+            'end': end_value,
+            'change': change_pct,
+            'high': float(series_data.max()),
+            'low': float(series_data.min()),
+            'ma_period': data['ma_period']
+        }
 
 
 def get_data_source(source: str) -> DataSource:
     """Get data source by name."""
-    sources = {'yfinance': YFinanceSource, 'yf': YFinanceSource, 'fred': FREDSource}
+    sources = {
+        'yfinance': YFinanceSource,
+        'yf': YFinanceSource,
+        'fred': FREDSource,
+        'investing': InvestingSource,
+        'inv': InvestingSource
+    }
     source_lower = source.lower()
     if source_lower not in sources:
         raise ValueError(f"Unknown source: {source}. Available: {list(sources.keys())}")
     return sources[source_lower]()
-

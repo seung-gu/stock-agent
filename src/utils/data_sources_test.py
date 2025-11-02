@@ -5,7 +5,7 @@ import asyncio
 import pandas as pd
 from datetime import datetime
 from unittest.mock import patch, MagicMock
-from src.utils.data_sources import get_data_source, YFinanceSource, FREDSource, get_market_breadth
+from src.utils.data_sources import get_data_source, YFinanceSource, FREDSource, InvestingSource
 
 
 class TestYFinanceSource(unittest.TestCase):
@@ -245,77 +245,167 @@ class TestDataSourceFactory(unittest.TestCase):
             get_data_source("invalid_source")
 
 
-class TestMarketBreadth(unittest.TestCase):
-    """Test market breadth functionality"""
+class TestInvestingSource(unittest.TestCase):
+    """Test InvestingSource functionality"""
     
-    @patch('src.utils.data_sources._scrape_market_breadth')
+    @patch('src.utils.data_sources.InvestingSource._scrape_data')
     @patch('pathlib.Path.exists')
-    def test_get_market_breadth_200day(self, mock_exists, mock_scrape):
-        """Test fetching 200-day MA breadth (S5TH)"""
+    def test_fetch_data_s5th(self, mock_exists, mock_scrape):
+        """Test fetching S5TH (200-day MA breadth)"""
         # Mock file doesn't exist (force scraping)
         mock_exists.return_value = False
         
         # Mock scraped data
         mock_data = pd.Series({
-            pd.Timestamp('2025-10-01'): 65.5,
-            pd.Timestamp('2025-10-15'): 60.2,
+            pd.Timestamp('2024-10-01'): 65.5,
+            pd.Timestamp('2024-10-15'): 60.2,
             pd.Timestamp('2025-11-01'): 53.67
         })
         mock_scrape.return_value = mock_data
         
-        result = get_market_breadth(ma_period=200, use_cache=False)
+        source = InvestingSource()
+        result = asyncio.run(source.fetch_data('S5TH', '1y'))
         
         self.assertIn('data', result)
         self.assertIn('current', result)
         self.assertIn('ma_period', result)
+        self.assertEqual(result['symbol'], 'S5TH')
         self.assertEqual(result['ma_period'], 200)
         self.assertAlmostEqual(result['current'], 53.67, places=2)
         mock_scrape.assert_called_once()
     
-    @patch('src.utils.data_sources._scrape_market_breadth')
+    @patch('src.utils.data_sources.InvestingSource._scrape_data')
     @patch('pathlib.Path.exists')
-    def test_get_market_breadth_50day(self, mock_exists, mock_scrape):
-        """Test fetching 50-day MA breadth (S5FI)"""
+    def test_fetch_data_s5fi(self, mock_exists, mock_scrape):
+        """Test fetching S5FI (50-day MA breadth)"""
         # Mock file doesn't exist (force scraping)
         mock_exists.return_value = False
         
         # Mock scraped data
         mock_data = pd.Series({
-            pd.Timestamp('2025-10-01'): 72.3,
-            pd.Timestamp('2025-10-15'): 68.1,
+            pd.Timestamp('2024-10-01'): 72.3,
+            pd.Timestamp('2024-10-15'): 68.1,
             pd.Timestamp('2025-11-01'): 61.45
         })
         mock_scrape.return_value = mock_data
         
-        result = get_market_breadth(ma_period=50, use_cache=False)
+        source = InvestingSource()
+        result = asyncio.run(source.fetch_data('S5FI', '1y'))
         
         self.assertIn('data', result)
         self.assertIn('current', result)
         self.assertIn('ma_period', result)
+        self.assertEqual(result['symbol'], 'S5FI')
         self.assertEqual(result['ma_period'], 50)
         self.assertAlmostEqual(result['current'], 61.45, places=2)
         mock_scrape.assert_called_once()
     
-    def test_get_market_breadth_auto_symbol_selection(self):
-        """Test automatic symbol selection based on ma_period"""
-        # This test verifies the URL mapping logic
-        with patch('src.utils.data_sources._scrape_market_breadth') as mock_scrape:
-            with patch('pathlib.Path.exists') as mock_exists:
-                mock_exists.return_value = False
-                mock_scrape.return_value = pd.Series({pd.Timestamp('2025-11-01'): 50.0})
-                
-                # Test 200-day (should use S5TH URL)
-                result_200 = get_market_breadth(ma_period=200, use_cache=False)
-                self.assertEqual(result_200['ma_period'], 200)
-                
-                # Test 50-day (should use S5FI URL)
-                result_50 = get_market_breadth(ma_period=50, use_cache=False)
-                self.assertEqual(result_50['ma_period'], 50)
-    
-    def test_get_market_breadth_invalid_symbol(self):
+    def test_fetch_data_invalid_symbol(self):
         """Test invalid symbol raises error"""
+        source = InvestingSource()
         with self.assertRaises(ValueError):
-            get_market_breadth(symbol="INVALID", ma_period=200, use_cache=False)
+            asyncio.run(source.fetch_data('INVALID', '1y'))
+    
+    def test_get_data_source_investing(self):
+        """Test get_data_source returns InvestingSource"""
+        source = get_data_source('investing')
+        self.assertIsInstance(source, InvestingSource)
+        
+        source = get_data_source('inv')
+        self.assertIsInstance(source, InvestingSource)
+
+
+class TestInvestingCacheValidation(unittest.TestCase):
+    """Test InvestingSource caching with validation flag (parity bit)"""
+    
+    def setUp(self):
+        """Set up test cache file"""
+        from pathlib import Path
+        self.source = InvestingSource()
+        self.test_cache_file = Path('data/test_market_breadth_cache.json')
+        self.source._cache_file = self.test_cache_file
+        
+        # Clean up test file
+        if self.test_cache_file.exists():
+            self.test_cache_file.unlink()
+    
+    def tearDown(self):
+        """Clean up test cache file"""
+        if self.test_cache_file.exists():
+            self.test_cache_file.unlink()
+    
+    def test_scenario1_no_validation_flag(self):
+        """Scenario 1: No validation flag - should return False"""
+        import json
+        test_data = {
+            "TEST": {
+                "2025-10-30": {"value": 50.0, "timestamp": "2025-11-01T10:00:00"},
+                "2025-10-31": {"value": 51.0, "timestamp": "2025-11-01T10:00:00"}
+                # No _validated flag
+            }
+        }
+        self.test_cache_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.test_cache_file, 'w') as f:
+            json.dump(test_data, f, indent=2)
+        
+        local, is_validated = self.source._load_local_cache("TEST")
+        
+        self.assertIsNotNone(local)
+        self.assertEqual(len(local), 2)
+        self.assertFalse(is_validated, "Should be not validated when _validated flag is missing")
+    
+    def test_scenario2_validated_but_outdated(self):
+        """Scenario 2: Validated but outdated - should return True (will compare with scraped date in fetch_data)"""
+        import json
+        from datetime import date
+        
+        test_data = {
+            "TEST": {
+                "_validated": True,
+                "2025-10-30": {"value": 50.0, "timestamp": "2025-11-01T10:00:00"},
+                "2025-10-31": {"value": 51.0, "timestamp": "2025-11-01T10:00:00"}
+                # Latest date is 2025-10-31 (will be compared with scraped data in fetch_data)
+            }
+        }
+        self.test_cache_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.test_cache_file, 'w') as f:
+            json.dump(test_data, f, indent=2)
+        
+        local, is_validated = self.source._load_local_cache("TEST")
+        latest_date = local.index[-1].date()
+        
+        self.assertIsNotNone(local)
+        self.assertEqual(len(local), 2)
+        self.assertTrue(is_validated, "Should be validated")
+        # Note: fetch_data will compare latest_date with scraped data's last date, not today
+    
+    def test_scenario3_validated_and_uptodate(self):
+        """Scenario 3: Validated and has recent data - should return True (will compare with scraped date in fetch_data)"""
+        import json
+        from datetime import date
+        
+        today_str = date.today().strftime('%Y-%m-%d')
+        test_data = {
+            "TEST": {
+                "_validated": True,
+                "2025-10-30": {"value": 50.0, "timestamp": "2025-11-01T10:00:00"},
+                "2025-10-31": {"value": 51.0, "timestamp": "2025-11-01T10:00:00"},
+                today_str: {"value": 52.0, "timestamp": "2025-11-02T10:00:00"}
+            }
+        }
+        self.test_cache_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.test_cache_file, 'w') as f:
+            json.dump(test_data, f, indent=2)
+        
+        local, is_validated = self.source._load_local_cache("TEST")
+        latest_date = local.index[-1].date()
+        today = date.today()
+        
+        self.assertIsNotNone(local)
+        self.assertEqual(len(local), 3)
+        self.assertTrue(is_validated, "Should be validated")
+        self.assertGreaterEqual(latest_date, today, "Has today's data")
+        # Note: fetch_data will compare latest_date with scraped data's last date, not today
 
 
 if __name__ == "__main__":

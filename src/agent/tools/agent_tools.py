@@ -1,6 +1,6 @@
 from agents import function_tool
 
-from src.utils.data_sources import get_data_source, get_market_breadth
+from src.utils.data_sources import get_data_source
 from src.utils.technical_indicators import calculate_rsi, calculate_disparity
 from src.utils.charts import create_line_chart
 
@@ -22,51 +22,6 @@ async def fetch_data(source: str, symbol: str, period: str) -> str:
 
 
 @function_tool
-async def fetch_market_breadth(ma_period: int = 200) -> str:
-    """Fetch S&P 500 market breadth (% stocks above MA) from Investing.com. 
-    Use ma_period=50 for S5FI (50-day) or ma_period=200 for S5TH (200-day)."""
-    data = get_market_breadth(ma_period=ma_period)
-    current = data['current']
-    series = data['data']
-    ma = data['ma_period']
-    symbol = 'S5FI' if ma == 50 else 'S5TH'
-    
-    signal = ("Strong Bullish" if current >= 70 else "Moderately Bullish" if current >= 50 
-              else "Moderately Bearish" if current >= 30 else "Strong Bearish")
-    
-    return f"""Market Breadth ({symbol}): {current:.2f}% above {ma}-day MA
-    Data points: {len(series)} | Date range: {series.index[0].date()} to {series.index[-1].date()}
-    Signal: {signal} | {'Healthy breadth' if current >= 50 else 'Weak breadth - caution'}"""
-
-
-@function_tool
-async def generate_market_breadth_chart(ma_period: int = 200) -> str:
-    """Generate market breadth chart (S&P 500 stocks above MA). 
-    Use ma_period=50 for S5FI (50-day) or ma_period=200 for S5TH (200-day)."""
-    data = get_market_breadth(ma_period=ma_period)
-    series = data['data']
-    ma = data['ma_period']
-    symbol = 'S5FI' if ma == 50 else 'S5TH'
-    
-    if len(series) < 2:
-        return f"Not enough data for chart ({len(series)} points)"
-    
-    chart_path = create_line_chart(
-        data=series.to_frame(name='Breadth'),
-        label=f'S&P 500 Stocks Above {ma}-Day MA ({symbol})',
-        ylabel=f'% of Stocks Above {ma}-Day MA',
-        period='max',
-        overbought_label='Strong Breadth',
-        oversold_label='Weak Breadth',
-        data_column='Breadth',
-        threshold_upper=70,
-        threshold_lower=30
-    )
-    
-    return f"Chart created: {chart_path}"
-
-
-@function_tool
 async def analyze_OHLCV_data(source: str, symbol: str, period: str) -> str:
     """Analyze cached data and return OHLCV(Open, High, Low, Close, Volatility) analysis."""
     src = get_data_source(source)
@@ -81,7 +36,7 @@ async def analyze_OHLCV_data(source: str, symbol: str, period: str) -> str:
             - High: {analysis['high']:.3f}
             - Low: {analysis['low']:.3f}
             - Volatility: {analysis['volatility']:.3f}"""
-
+            
 
 @function_tool
 async def generate_OHLCV_chart(source: str, symbol: str, period: str, label: str = None) -> str:
@@ -136,31 +91,7 @@ async def analyze_disparity_data(symbol: str, period: str, window: int = 200) ->
     
     return (f"Disparity({window}): {current_disp:.2f}% "
             f"[Overbought>{upper_threshold:.1f}%, Oversold<{lower_threshold:.1f}%]")
-
-
-@function_tool
-async def analyze_RSI_data(symbol: str, period: str, window: int = 14) -> str:
-    """
-    Build RSI indicator text with dynamic overbought/oversold levels.
-    Returns current RSI with 80th percentile (overbought) and 20th percentile (oversold) thresholds.
-    """
-    src = get_data_source("yfinance")
-    data = await src.fetch_data(symbol, period)
-    hist = data['history']
-    rsi = calculate_rsi(hist, window=window)
     
-    if rsi.empty or rsi.iloc[-1] != rsi.iloc[-1]:
-        return ""
-    
-    current_rsi = float(rsi.iloc[-1])
-    
-    # Calculate historical percentiles for dynamic thresholds
-    upper_threshold = float(rsi.quantile(0.80))  # 80th percentile (overbought)
-    lower_threshold = float(rsi.quantile(0.10))  # 10th percentile (oversold)
-    
-    return (f"RSI({window}): {current_rsi:.2f} "
-            f"[Overbought>{upper_threshold:.1f}, Oversold<{lower_threshold:.1f}]")
-
 
 @function_tool
 async def generate_disparity_chart(symbol: str, period: str = "5y", window: int = 200, label: str = None) -> str:
@@ -190,6 +121,30 @@ async def generate_disparity_chart(symbol: str, period: str = "5y", window: int 
 
 
 @function_tool
+async def analyze_RSI_data(symbol: str, period: str, window: int = 14) -> str:
+    """
+    Build RSI indicator text with dynamic overbought/oversold levels.
+    Returns current RSI with 80th percentile (overbought) and 20th percentile (oversold) thresholds.
+    """
+    src = get_data_source("yfinance")
+    data = await src.fetch_data(symbol, period)
+    hist = data['history']
+    rsi = calculate_rsi(hist, window=window)
+    
+    if rsi.empty or rsi.iloc[-1] != rsi.iloc[-1]:
+        return ""
+    
+    current_rsi = float(rsi.iloc[-1])
+    
+    # Calculate historical percentiles for dynamic thresholds
+    upper_threshold = float(rsi.quantile(0.80))  # 80th percentile (overbought)
+    lower_threshold = float(rsi.quantile(0.10))  # 10th percentile (oversold)
+    
+    return (f"RSI({window}): {current_rsi:.2f} "
+            f"[Overbought>{upper_threshold:.1f}, Oversold<{lower_threshold:.1f}]")
+
+
+@function_tool
 async def generate_RSI_chart(symbol: str, period: str, window: int = 14, label: str = None) -> str:
     """Generate RSI line chart with dynamic overbought/oversold threshold lines."""
     src = get_data_source("yfinance")
@@ -214,4 +169,54 @@ async def generate_RSI_chart(symbol: str, period: str, window: int = 14, label: 
         threshold_upper=upper_threshold,
         threshold_lower=lower_threshold
     )
+
+
+@function_tool
+async def analyze_market_breadth(symbol: str, period: str) -> str:
+    """Analyze S&P 500 market breadth data (% stocks above MA).
+    
+    Args:
+        symbol: 'S5FI' (50-day MA) or 'S5TH' (200-day MA)
+        period: Time period (5d, 1mo, 6mo, 1y, etc.)
+    """
+    src = get_data_source('investing')
+    data = await src.fetch_data(symbol, period)
+    analysis = src.get_analysis(data, period)
+    period_name = get_period_name(period)
+    
+    ma_period = analysis['ma_period']
+    signal = ("Strong Bullish" if analysis['end'] >= 70 else "Moderately Bullish" if analysis['end'] >= 50 
+              else "Moderately Bearish" if analysis['end'] >= 30 else "Strong Bearish")
+    
+    return f"""{period_name} Market Breadth ({symbol} - {ma_period}day MA):
+            - Start: {analysis['start']:.2f}%
+            - End: {analysis['end']:.2f}%
+            - Change: {analysis['change']:+.2f}%
+            - High: {analysis['high']:.2f}%
+            - Low: {analysis['low']:.2f}%
+            - Signal: {signal}
+            - Interpretation: {'Healthy breadth' if analysis['end'] >= 50 else 'Weak breadth - caution'}"""
+
+
+@function_tool
+async def generate_market_breadth_chart(symbol: str, period: str) -> str:
+    """Generate S&P 500 market breadth chart (% stocks above MA).
+    
+    Args:
+        symbol: 'S5FI' (50-day MA) or 'S5TH' (200-day MA)
+        period: Time period (5d, 1mo, 6mo, 1y, etc.)
+    """
+    src = get_data_source('investing')
+    data = await src.fetch_data(symbol, period)
+    chart_info = await src.create_chart(data, symbol, period)
+    return chart_info
+
+
+
+
+
+
+
+
+
 

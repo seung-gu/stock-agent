@@ -75,7 +75,11 @@ TODO:
 20. ~~Modular Agent Tools Architecture~~ ✅ (9 independent function_tools, complete layer separation, agent autonomy)
 21. Chart analyzer (signal catcher - SMA 50&200, RSI, Disparity, W, M, Cup and handle)
 22. Cross chart checker
-23. ~~S&P 500 Market Breadth ($S5FI 50-day, $S5TH 200-day)~~ ✅ (Investing.com scraping, dual timeframe analysis)
+23. ~~S&P 500 Market Breadth ($S5FI 50-day, $S5TH 200-day)~~ ✅
+    - InvestingSource class with validation-based caching
+    - Dual timeframe analysis (50-day & 200-day MA)
+    - Smart cache: validated flag prevents unnecessary scraping
+    - Auto-merge & accumulate to data/market_breadth_history.json
 24. Market_breadth_agent +market_indicator_agent 조합 좀 더 고려 필요
 25. market_breadth_agent의 링크 포함 이슈 https://www.investing.com/indices/sp-500-stocks-above-200-day-average-chart 
 
@@ -131,10 +135,10 @@ src/
 │   │   ├── create_fred_chart()      # FRED line chart with baseline
 │   │   └── create_line_chart()      # Generic line chart (disparity, RSI, etc.)
 │   ├── data_sources.py        # Unified data source system
-│   │                          # • YFinanceSource, FREDSource
-│   │                          # • get_market_breadth(ma_period=50/200): Investing.com scraper
-│   │                          # • Dual timeframe: S5FI (50-day), S5TH (200-day)
-│   │                          # • Smart caching (fetch once, slice multiple)
+│   │                          # • YFinanceSource, FREDSource, InvestingSource
+│   │                          # • InvestingSource: S5FI (50-day), S5TH (200-day) market breadth
+│   │                          # • Validation-based caching (_validated flag as parity bit)
+│   │                          # • Compare cached vs scraped last date (not today)
 │   │                          # • Auto-merge & accumulate to data/market_breadth_history.json
 │   │                          # • Raw OHLCV data only (no calculations)
 │   ├── technical_indicators.py  # Technical analysis pure functions
@@ -356,18 +360,19 @@ REPORT_LANGUAGE = "Korean"  # or "English"
 - `FREDSource`: Economic indicators (NFCI, DFF, T10Y2Y)
   - Lazy initialization for FRED API key
   - Indicator-specific configurations
-- `get_market_breadth(ma_period=50/200)`: S&P 500 stocks above 50-day or 200-day MA
-  - Dual timeframe: S5FI (50-day short-term), S5TH (200-day long-term)
+- `InvestingSource`: S&P 500 market breadth data source
+  - Symbols: S5FI (50-day MA), S5TH (200-day MA)
   - Web scraping from Investing.com historical data table
-  - 3-tier loading: Memory cache (1h) → Local file → Web scraping
+  - Validation-based caching with `_validated` flag (parity bit)
+  - Logic: Always scrape → Compare cached vs scraped last date → Update if needed
   - Auto-merge & accumulate to `data/market_breadth_history.json`
   - Returns ~1 month of data per scrape, builds long-term dataset over time
-  - Used by `fetch_market_breadth()` and `generate_market_breadth_chart()` tools
 
 **Explicit Source Selection:**
 ```python
-get_data_source("yfinance")  # → YFinanceSource
-get_data_source("fred")      # → FREDSource
+get_data_source("yfinance")   # → YFinanceSource
+get_data_source("fred")       # → FREDSource
+get_data_source("investing")  # → InvestingSource
 ```
 
 **Modular Agent Tools (`agent/tools/agent_tools.py`):**
@@ -380,7 +385,8 @@ get_data_source("fred")      # → FREDSource
 - `analyze_SMA_data(symbol, period, windows)`: Calculate SMA indicators
 - `analyze_disparity_data(symbol, period, window)`: Calculate disparity with dynamic thresholds (80th/10th percentile)
 - `analyze_RSI_data(symbol, period, window)`: Calculate RSI with dynamic thresholds (80th/10th percentile)
-- `fetch_market_breadth(ma_period=50/200)`: Get S&P 500 market breadth (S5FI 50-day or S5TH 200-day)
+- `analyze_market_breadth(symbol, period)`: Analyze S&P 500 market breadth with signal interpretation
+- `generate_market_breadth_chart(symbol, period)`: Generate market breadth chart with thresholds (70%/30%)
 
 **Chart Layer:**
 - `generate_OHLCV_chart(source, symbol, period)`: Generate candlestick/line chart
