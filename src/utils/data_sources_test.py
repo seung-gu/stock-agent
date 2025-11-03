@@ -414,5 +414,99 @@ class TestInvestingCacheValidation(unittest.TestCase):
         # Note: fetch_data will compare latest_date with scraped data's last date, not today
 
 
+class TestFinnhubSource(unittest.TestCase):
+    """Test FinnhubSource functionality"""
+    
+    def test_get_data_source_finnhub(self):
+        """Test get_data_source returns FinnhubSource"""
+        from src.utils.data_sources import FinnhubSource
+        source = get_data_source('finnhub')
+        self.assertIsInstance(source, FinnhubSource)
+        
+        source = get_data_source('fh')
+        self.assertIsInstance(source, FinnhubSource)
+    
+    @patch('finnhub.Client')
+    def test_fetch_fundamentals(self, mock_finnhub_client):
+        """Test fetching company fundamentals"""
+        from src.utils.data_sources import FinnhubSource
+        
+        # Mock Finnhub response
+        mock_client = mock_finnhub_client.return_value
+        mock_client.company_basic_financials.return_value = {
+            'metric': {
+                'peBasicExclExtraTTM': 35.82,
+                'marketCapitalization': 4012396,
+                'beta': 1.11,
+                'epsExclExtraItemsTTM': 7.46,
+                'revenuePerShareTTM': 27.99,
+                'roeTTM': 164.05,
+                'roaTTM': 32.8
+            },
+            'series': {
+                'annual': {
+                    'eps': [
+                        {'period': '2025-09-27', 'v': 7.465},
+                        {'period': '2024-09-28', 'v': 6.08}
+                    ]
+                },
+                'quarterly': {
+                    'eps': [
+                        {'period': '2025-09-27', 'v': 1.8479},
+                        {'period': '2025-06-28', 'v': 1.57}
+                    ]
+                }
+            }
+        }
+        
+        # Patch environment variable
+        with patch.dict('os.environ', {'FINNHUB_API_KEY': 'test_key'}):
+            source = FinnhubSource()
+            result = asyncio.run(source.fetch_data('AAPL'))
+        
+        self.assertEqual(result['symbol'], 'AAPL')
+        self.assertIn('metrics', result)
+        self.assertIn('eps_annual', result)
+        self.assertIn('eps_quarterly', result)
+        self.assertEqual(len(result['eps_annual']), 2)
+        self.assertEqual(len(result['eps_quarterly']), 2)
+        mock_client.company_basic_financials.assert_called_once_with('AAPL', 'all')
+    
+    @patch('finnhub.Client')
+    def test_get_analysis(self, mock_finnhub_client):
+        """Test fundamental analysis extraction"""
+        from src.utils.data_sources import FinnhubSource
+        
+        mock_client = mock_finnhub_client.return_value
+        mock_client.company_basic_financials.return_value = {
+            'metric': {
+                'peBasicExclExtraTTM': 35.82,
+                'marketCapitalization': 4012396,
+                'epsExclExtraItemsTTM': 7.46
+            },
+            'series': {
+                'annual': {
+                    'eps': [{'period': '2025-09-27', 'v': 7.465}]
+                },
+                'quarterly': {
+                    'eps': [{'period': '2025-09-27', 'v': 1.8479}]
+                }
+            }
+        }
+        
+        with patch.dict('os.environ', {'FINNHUB_API_KEY': 'test_key'}):
+            source = FinnhubSource()
+            data = asyncio.run(source.fetch_data('AAPL'))
+            analysis = source.get_analysis(data)
+        
+        self.assertEqual(analysis['symbol'], 'AAPL')
+        self.assertEqual(analysis['eps_annual_latest'], 7.465)
+        self.assertEqual(analysis['eps_annual_period'], '2025-09-27')
+        self.assertEqual(analysis['eps_quarterly_latest'], 1.8479)
+        self.assertEqual(analysis['pe_ratio'], 35.82)
+        self.assertEqual(analysis['market_cap'], 4012396)
+        self.assertEqual(analysis['eps_ttm'], 7.46)
+
+
 if __name__ == "__main__":
     unittest.main()

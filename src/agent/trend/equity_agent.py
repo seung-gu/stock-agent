@@ -2,7 +2,7 @@ import asyncio
 
 from src.agent.base.trend_agent import TrendAgent
 from src.agent.tools.agent_tools import fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data, \
-analyze_disparity_data, generate_disparity_chart, generate_RSI_chart, analyze_RSI_data
+analyze_disparity_data, generate_disparity_chart, generate_RSI_chart, analyze_RSI_data, generate_forward_PE_ratio_chart
 
 
 class EquityTrendAgent(TrendAgent):
@@ -30,7 +30,7 @@ class EquityTrendAgent(TrendAgent):
             label=label,
             description=description,
             tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data, analyze_disparity_data, 
-                   generate_disparity_chart, generate_RSI_chart, analyze_RSI_data],
+                   generate_disparity_chart, generate_RSI_chart, analyze_RSI_data, generate_forward_PE_ratio_chart],
             context_instructions="""
             EQUITY ANALYSIS FOCUS:
             You are an equity analyst specializing in stock or index price analysis.
@@ -68,6 +68,7 @@ class EquityTrendAgent(TrendAgent):
             - generate_disparity_chart (5y period) to generate disparity chart
             - generate_RSI_chart (14 window for 1y period) to generate RSI chart
             - analyze_RSI_data (14 window for 1y period) to analyze RSI data
+            - generate_forward_PE_ratio_chart to generate Forward P/E Ratio chart (call only for stocks, not for indices or ETFs)
             """
         )
 
