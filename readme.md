@@ -80,8 +80,15 @@ TODO:
     - Dual timeframe analysis (50-day & 200-day MA)
     - Smart cache: validated flag prevents unnecessary scraping
     - Auto-merge & accumulate to data/market_breadth_history.json
-24. Market_breadth_agent +market_indicator_agent 조합 좀 더 고려 필요
-25. market_breadth_agent의 링크 포함 이슈 https://www.investing.com/indices/sp-500-stocks-above-200-day-average-chart 
+24. ~~Market breadth integration~~ ✅ (BroadIndexAgent directly includes MarketBreadthAgent)
+25. ~~Markdown link parsing for Notion~~ ✅
+    - Auto-convert `[text](https://...)` to Notion hyperlinks
+    - Standalone URLs (`https://...`) auto-converted to clickable links
+    - Chart links (`sandbox:`) remain separate (R2 image embeds)
+26. ~~Agent instruction refactoring~~ ✅
+    - TrendAgent: Common instructions in base (fetch_data, output format)
+    - Subclasses: Only specific tool usage and analysis focus
+    - Orchestrators: Explicit content preservation rules (tables, charts, links) 
 
 
 ---
@@ -117,10 +124,9 @@ src/
 │   │   └── market_breadth_agent.py  # S&P 500 market breadth (50-day & 200-day MA)
 │   │
 │   ├── orchestrator/          # 🎭 Orchestrator agents (combine multiple agents)
-│   │   ├── __init__.py       # Exports: LiquidityAgent, BroadIndexAgent, MarketIndicatorAgent, MarketReportAgent
+│   │   ├── __init__.py       # Exports: LiquidityAgent, BroadIndexAgent, MarketReportAgent
 │   │   ├── liquidity_agent.py     # Liquidity orchestrator (TNX + NFCI + DX)
-│   │   ├── broad_index_agent.py   # Broad index orchestrator (^GSPC + ^IXIC + ^DJI + MarketIndicator)
-│   │   ├── market_indicator_agent.py  # Market indicator orchestrator (MarketBreadth + future indicators)
+│   │   ├── broad_index_agent.py   # Broad index orchestrator (^GSPC + ^IXIC + ^DJI + MarketBreadth)
 │   │   └── market_report_agent.py  # Main report agent (Liquidity + BroadIndex + Equity)
 │   │
 │   └── types/                 # 📋 Type definitions
@@ -180,11 +186,15 @@ src/
 │                    run_market_report.py                     │
 │                                                             │
 │  1. Direct Agent Execution                                  │
-│     ├── MarketReportAgent (Orchestrator)                    │
+│     ├── MarketReportAgent (Top-level Orchestrator)          │
 │     │   ├── LiquidityAgent (TNX + NFCI + DX)                │
-│     │   ├── BroadIndexAgent (^GSPC + ^IXIC + ^DJI)          │
-│     │   │   └── MarketIndicatorAgent                        │
-│     │   │       └── MarketBreadthAgent (S5FI + S5TH)        │
+│     │   ├── BroadIndexAgent (Major Indices + Market Breadth)│
+│     │   │   ├── S&P 500 (^GSPC)                             │
+│     │   │   ├── Nasdaq Composite (^IXIC)                    │
+│     │   │   ├── Dow Jones Industrial Average (^DJI)         │
+│     │   │   └── MarketBreadthAgent (S5FI + S5TH)            │
+│     │   │       • S5FI: 50-day MA (short-term participation)│
+│     │   │       • S5TH: 200-day MA (long-term participation)│
 │     │   └── EquityTrendAgent (Stock Analysis + SMA)         │
 │     │       • 4-period analysis (5d/1mo/6mo/1y)             │
 │     │       • Candlestick charts with moving averages       │
@@ -196,8 +206,8 @@ src/
 │     • find_local_images() - Parse chart links               │
 │     • upload_images_to_cloudflare() - R2 storage            │
 │     • upload_report_with_children() - Parent-child pages    │
-│     • Child pages: Liquidity | Equity | Synthesis           │
-│     • Enhanced equity analysis with moving averages         │
+│     • Child pages: Liquidity | BroadIndex | Equity | etc.   │
+│     • Markdown → Notion with hyperlink support              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -207,56 +217,58 @@ src/
 ```
 User Request → run_market_report()
                         ↓
-        ┌───────────────┴───────────────┐
-        ↓                               ↓
-  LiquidityAgent                  EquityTrendAgent
-  (TNX + NFCI + DX)              (Stock Analysis)
-        ↓                               ↓
-  ┌─────┴─────┐                   • get_yf_data(NVDA, 5d/1mo/6mo/1y)
-  ↓           ↓                   • create_yfinance_chart() for 1mo, 1y only
-TNXAgent   NFCIAgent              • Candlestick charts with SMA overlays:
-  ↓           ↓                     - 1mo: SMA 5, 20 (short-term trends)
-  ↓           ↓                     - 1y: SMA 5, 20, 200 (comprehensive analysis)
-  ↓           ↓                   • Technical analysis with moving averages
-• get_yf    • get_fred
-  _data       _data
-• create    • create
-  _yf_        _fred_
-  chart       chart
+        ┌───────────────┼───────────────┐
+        ↓               ↓               ↓
+  LiquidityAgent  BroadIndexAgent  EquityTrendAgent
+  (3 agents)      (4 agents)       (Stock Analysis)
+        ↓               ↓               ↓
+                                        
+┌─── LiquidityAgent ───┐  ┌──── BroadIndexAgent ────┐
+│ • TNXAgent           │  │ • S&P 500 (^GSPC)       │
+│ • NFCIAgent          │  │ • Nasdaq (^IXIC)        │
+│ • DXAgent            │  │ • Dow Jones (^DJI)      │
+│ ↓                    │  │ • MarketBreadthAgent    │
+│ Synthesis (Liquidity)│  │   - S5FI (50-day MA)    │
+└──────────────────────┘  │   - S5TH (200-day MA)   │
+                          │ ↓                       │
+                          │ Synthesis (Broad Index) │
+                          └─────────────────────────┘
 
-DXAgent
-  ↓
-• get_yf_data(DX=F, 5d/1mo/6mo/1y)
-• create_yfinance_chart() for 1y only
-• Currency index analysis (Dollar strength/weakness)rt
-  ↓           ↓
-  └─────┬─────┘
-        ↓
-  Synthesis
-  (Combined
-   Liquidity)
-        ↓
-        └───────────────┬───────────────┘
+                          EquityTrendAgent
+                          • fetch_data (longest period first)
+                          • analyze_OHLCV_data (all periods)
+                          • generate_OHLCV_chart (with SMAs)
+                          • Markdown table output
+
+        ↓               ↓               ↓
+        └───────────────┼───────────────┘
                         ↓
-            Combined Analysis Results
+            MarketReportAgent Synthesis
+            (Combined Analysis Results)
 ```
 
 #### Phase 2: Report Synthesis
 ```
-Synthesis Agent (GPT-4.1-mini)
+MarketReportAgent Synthesis (GPT-4o-mini)
   ↓
-  • Correlation Analysis (liquidity vs equity)
-  • Strategic Insights & Recommendations
-  • AnalysisReport Generation
+  Inputs:
+  • LiquidityAgent result (TNX + NFCI + DX analysis)
+  • BroadIndexAgent result (S&P 500 + Nasdaq + Dow + MarketBreadth)
+  • EquityTrendAgent results (Multiple stock analyses)
+  ↓
+  • Cross-market correlation analysis
+  • Identify divergences and confirmations
+  • Strategic insights & recommendations
+  • AnalysisReport generation
   ↓
 AnalysisReport {
-  title: str                      # Specific, descriptive title
+  title: str                      # Week-specific title
   summary: str                    # Executive summary
-  content: str                    # Detailed analysis content
+  content: str                    # Comprehensive analysis with preserved links/tables
 }
 ```
 
-#### Phase 2: Image Processing & Notion Publishing
+#### Phase 3: Image Processing & Notion Publishing
 ```
 upload_report_with_children(title, date, summary, child_pages, uploaded_map)
   ↓
@@ -277,6 +289,8 @@ upload_report_with_children(title, date, summary, child_pages, uploaded_map)
        • MarkdownToNotionParser.parse(content)
          - Parse markdown: headings, lists, tables, code blocks
          - Convert formatting: **bold**, *italic*, `code`
+         - Convert hyperlinks: [text](https://...) → Notion links
+         - Convert standalone URLs: https://... → clickable links
          - Handle 3-level nested lists (numbered → bulleted → bulleted)
          - Smart indentation detection and hierarchy recognition
          - Replace placeholders with embed blocks
@@ -285,10 +299,11 @@ upload_report_with_children(title, date, summary, child_pages, uploaded_map)
          - POST to Notion API with parent_page_id
          - PATCH remaining blocks (100 per batch)
      ↓
-  3 Child Pages:
-     • Liquidity Analysis (with charts)
-     • Equity Analysis (with candlestick charts + SMA overlays)  
-     • Market Strategy Summary (with synthesis)
+  Child Pages (varies by sub-agents):
+     • Liquidity Analysis (TNX + NFCI + DX charts)
+     • Broad Index Analysis (indices + market breadth with reference links)
+     • Equity Analysis (multiple stocks with candlestick + SMA charts)  
+     • Market Strategy Summary (comprehensive synthesis)
      ↓
   ✅ Published Notion Page with Children
 ```
@@ -328,6 +343,11 @@ REPORT_LANGUAGE = "Korean"  # or "English"
 - `description`: Brief asset description (optional)
 - Extensible for any ticker/indicator
 - Tools selected by subclasses from `agent_tools.py`
+- **Common Instructions** (in base class):
+  * `fetch_data()` must be called for longest period first (cache optimization)
+  * Markdown table output format
+  * Chart link inclusion rules
+- **Subclass Instructions**: Only specific tool usage and analysis focus
 
 #### Concrete Implementations
 
@@ -340,9 +360,13 @@ REPORT_LANGUAGE = "Korean"  # or "English"
 
 **Orchestrators (`agent/orchestrator/`):**
 - `LiquidityAgent`: Orchestrates TNXAgent + NFCIAgent + DXAgent
-- `BroadIndexAgent`: Orchestrates S&P 500 + Nasdaq + Dow Jones + MarketIndicatorAgent
-- `MarketIndicatorAgent`: Orchestrates MarketBreadthAgent (+ future indicators)
+- `BroadIndexAgent`: Orchestrates S&P 500 + Nasdaq + Dow Jones + MarketBreadthAgent
 - `MarketReportAgent`: Orchestrates LiquidityAgent + BroadIndexAgent + EquityTrendAgent
+- **Synthesis Instructions**: Explicit content preservation rules
+  * All chart links must be included (count and verify)
+  * All reference links (external URLs) must be preserved
+  * Tables: Can summarize but must include full structure
+  * Analysis text: Can summarize if too long, but never omit links
 
 ### Unified Data Source System
 
@@ -432,12 +456,67 @@ get_data_source("investing")  # → InvestingSource
   - **Notion API Compatibility**: `paragraph` + `children` structure
   - **Supports**: headings (h1-h6), tables, code blocks, formatting
   - **Handles**: bold, italic, bold-italic, inline code
+  - **Hyperlink Support**: 
+    * Auto-converts `[text](https://...)` markdown links to Notion hyperlinks
+    * Auto-converts standalone URLs (`https://...`) to clickable links
+    * Chart links (`sandbox:`) remain separate (converted to R2 image embeds)
   - **Respects Notion limits**: 2000 chars per block, 100 blocks per page
   - **Test Coverage**: 30 comprehensive tests, all passing
 
 ---
 
 ## Recent Improvements
+
+### Markdown Link Parsing & Agent Instruction Refactoring (v6.1)
+
+**Date: November 3, 2025**
+
+**Major Updates:**
+
+**1. Markdown Hyperlink Support in MarkdownToNotionParser:**
+- **Auto-convert markdown links**: `[text](https://...)` → Notion hyperlinks
+- **Auto-convert standalone URLs**: `https://...` → clickable links
+- **Chart links preserved**: `[View Chart](sandbox:/path)` → R2 image embeds (unchanged)
+- **Implementation**: Refactored `_parse_rich_text()` with helper methods:
+  - `_create_text_object()`: Unified rich text object creation
+  - `_create_link_rich_text()`: Handle markdown link format
+  - `_parse_text_with_urls()`: Convert standalone URLs to hyperlinks
+- **Benefits**: External reference links (e.g., Investing.com) now clickable in Notion
+
+**2. TrendAgent Instruction Refactoring:**
+- **Moved common instructions to base class**:
+  - `fetch_data()` must be called for longest period first (WORKFLOW)
+  - Markdown table output format (OUTPUT FORMAT)
+  - Chart link inclusion rules (CRITICAL - CHART LINKS)
+- **Subclass instructions simplified**:
+  - Only tool-specific usage (e.g., `analyze_OHLCV_data` for equity agents)
+  - Only analysis-specific focus (e.g., "50-day vs 200-day" for MarketBreadthAgent)
+- **Benefits**: Less redundancy, easier maintenance, consistent behavior
+
+**3. Orchestrator Content Preservation Rules:**
+- **Enhanced synthesis agent instructions**:
+  - Explicit rule: "Count chart links and verify none are missing"
+  - Explicit rule: "All reference links (https://...) must be preserved"
+  - Tables: Can summarize but must include full markdown structure
+  - Text: Can summarize if too long, but NEVER omit links
+- **Applied to**: `BroadIndexAgent`, `LiquidityAgent`
+
+**4. Test Isolation Fix:**
+- **TestInvestingSource now uses separate test cache file**:
+  - Before: Tests overwrote `data/market_breadth_history.json`
+  - After: Tests use `data/test_investing_source_cache.json`
+  - Automatic cleanup in `setUp()` and `tearDown()`
+- **Benefits**: Production cache protected from test runs
+
+**Files Modified:**
+- `src/adapters/markdown_to_notion.py`: Hyperlink parsing with comprehensive comments
+- `src/agent/base/trend_agent.py`: Common instructions in base, WORKFLOW updated
+- `src/agent/orchestrator/broad_index_agent.py`: Content preservation rules
+- `src/agent/orchestrator/liquidity_agent.py`: Content preservation rules
+- `src/agent/trend/market_breadth_agent.py`: Corrected reference link format
+- `src/utils/data_sources_test.py`: Test isolation for InvestingSource
+
+---
 
 ### Dynamic Thresholds & Agent Enhancements (v6.0)
 

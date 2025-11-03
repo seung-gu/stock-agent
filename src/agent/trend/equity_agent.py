@@ -61,7 +61,7 @@ class EquityTrendAgent(TrendAgent):
             
             PERIOD REQUIREMENTS:
             - Tables: "5d", "1mo", "6mo", "1y"
-            - Charts: "1mo", "1y" (use get_yf_data with include_chart=True)
+            - Charts: "1mo", "1y"
             
             ADDITIONAL TOOLS:
             - analyze_SMA_data to analyze SMA data (Mandatory)

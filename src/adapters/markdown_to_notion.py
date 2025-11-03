@@ -32,54 +32,130 @@ class MarkdownToNotionParser:
         return children
     
     def _parse_rich_text(self, text: str) -> list[dict]:
-        """Parse markdown text into Notion rich_text array (bold, italic, code only)"""
+        """
+        Parse markdown text into Notion rich_text array (links, bold, italic, code).
+        
+        Processing order (critical for correct parsing):
+        1. Markdown links: [text](url) - converts to Notion links
+        2. Bold italic: ***text*** - must come before bold/italic
+        3. Bold: **text**
+        4. Italic: *text*
+        5. Code: `text`
+        6. Plain text with standalone URLs: https://... becomes clickable
+        
+        Note: [text](sandbox:/path) should already be {{IMAGE_PLACEHOLDER}}
+        """
         rich_texts = []
         
-        # Pattern: ***bold italic***, **bold**, *italic*, `code`
-        # Order matters: bold italic must come before bold
-        pattern = r'(\*\*\*.*?\*\*\*|\*\*.*?\*\*|\*.*?\*|`.*?`)'
+        # Split by markdown patterns (links, bold, italic, code)
+        # Order matters: links and bold italic must come before bold
+        pattern = r'(\[[^\]]+\]\([^\)]+\)|\*\*\*.*?\*\*\*|\*\*.*?\*\*|\*.*?\*|`.*?`)'
         parts = re.split(pattern, text)
         
         for part in parts:
             if not part:
                 continue
             
+            # Markdown link: [text](url)
+            if link_match := re.match(r'\[([^\]]+)\]\(([^\)]+)\)', part):
+                rich_texts.extend(self._create_link_rich_text(link_match.group(1), link_match.group(2)))
             # Bold Italic: ***text***
-            if part.startswith('***') and part.endswith('***'):
-                rich_texts.append({
-                    'type': 'text',
-                    'text': {'content': part[3:-3]},
-                    'annotations': {'bold': True, 'italic': True}
-                })
+            elif part.startswith('***') and part.endswith('***'):
+                rich_texts.append(self._create_text_object(part[3:-3], bold=True, italic=True))
             # Bold: **text**
             elif part.startswith('**') and part.endswith('**'):
-                rich_texts.append({
-                    'type': 'text',
-                    'text': {'content': part[2:-2]},
-                    'annotations': {'bold': True}
-                })
+                rich_texts.append(self._create_text_object(part[2:-2], bold=True))
             # Italic: *text* (but not **text** or ***text***)
             elif part.startswith('*') and part.endswith('*') and not part.startswith('**'):
-                rich_texts.append({
-                    'type': 'text',
-                    'text': {'content': part[1:-1]},
-                    'annotations': {'italic': True}
-                })
+                rich_texts.append(self._create_text_object(part[1:-1], italic=True))
             # Code: `text`
             elif part.startswith('`') and part.endswith('`'):
-                rich_texts.append({
-                    'type': 'text',
-                    'text': {'content': part[1:-1]},
-                    'annotations': {'code': True}
-                })
-            # Plain text
+                rich_texts.append(self._create_text_object(part[1:-1], code=True))
+            # Plain text - check for standalone URLs
             else:
-                rich_texts.append({
-                    'type': 'text',
-                    'text': {'content': part}
-                })
+                rich_texts.extend(self._parse_text_with_urls(part))
         
         return rich_texts if rich_texts else [{'type': 'text', 'text': {'content': ''}}]
+    
+    def _create_text_object(self, content: str, bold: bool = False, italic: bool = False, code: bool = False, link_url: str = None) -> dict:
+        """
+        Create a Notion rich text object with optional formatting and link.
+        
+        Notion API format:
+        {
+            'type': 'text',
+            'text': {'content': '...', 'link': {'url': '...'}},  # link is optional
+            'annotations': {'bold': True, 'italic': True, ...}  # annotations is optional
+        }
+        
+        Args:
+            content: Text content
+            bold: Apply bold formatting
+            italic: Apply italic formatting
+            code: Apply code formatting
+            link_url: Make text clickable with this URL
+        """
+        text_obj = {'type': 'text', 'text': {'content': content}}
+        
+        # Add link if provided (for hyperlinks)
+        if link_url:
+            text_obj['text']['link'] = {'url': link_url}
+        
+        # Add annotations if any formatting is applied
+        if bold or italic or code:
+            text_obj['annotations'] = {}
+            if bold:
+                text_obj['annotations']['bold'] = True
+            if italic:
+                text_obj['annotations']['italic'] = True
+            if code:
+                text_obj['annotations']['code'] = True
+        
+        return text_obj
+    
+    def _create_link_rich_text(self, link_text: str, link_url: str) -> list[dict]:
+        """
+        Create rich text for markdown links [text](url).
+        
+        Link handling:
+        - http/https: Convert to Notion hyperlink
+        - sandbox: Should already be {{IMAGE_PLACEHOLDER}} (handled in find_local_images)
+        - Other protocols: Fallback to plain text (edge case)
+        
+        Returns list for consistency with _parse_text_with_urls()
+        """
+        if link_url.startswith(('http://', 'https://')):
+            return [self._create_text_object(link_text, link_url=link_url)]
+        else:
+            # Non-http link (shouldn't happen), treat as plain text
+            return [self._create_text_object(link_text)]
+    
+    def _parse_text_with_urls(self, text: str) -> list[dict]:
+        """
+        Parse plain text and convert standalone URLs to hyperlinks.
+        
+        Example: "Check out https://example.com for more"
+        Becomes: ["Check out ", "https://example.com"(clickable), " for more"]
+        
+        This handles URLs that aren't in markdown link format [text](url).
+        Prevents: User having to manually add whitespace to make URLs clickable.
+        """
+        rich_texts = []
+        url_pattern = r'(https?://[^\s\)<>{}\[\]\*`]+)'
+        url_parts = re.split(url_pattern, text)
+        
+        for url_part in url_parts:
+            if not url_part:
+                continue
+            
+            # Standalone URL: make it clickable
+            if re.match(r'https?://', url_part):
+                rich_texts.append(self._create_text_object(url_part, link_url=url_part))
+            else:
+                # Regular plain text
+                rich_texts.append(self._create_text_object(url_part))
+        
+        return rich_texts
     
     def _create_text_block(self, block_type: str, text: str, children: list[dict] = None) -> list[dict]:
         """Convert text to Notion block with markdown parsing and length limits"""
@@ -302,7 +378,9 @@ class MarkdownToNotionParser:
             elif re.match(r'^\s*\d+\.\s', next_line):
                 # Process numbered item as paragraph
                 child_text = re.sub(r'^\s*\d+\.\s+', '', next_line)
-                child_block = self._create_text_block('paragraph', f"{re.match(r'^\s*(\d+)\.\s', next_line).group(1)}. {child_text}")
+                number_match = re.match(r'^\s*(\d+)\.\s', next_line)
+                number = number_match.group(1) if number_match else ""
+                child_block = self._create_text_block('paragraph', f"{number}. {child_text}")
                 children.extend(child_block)
                 next_index += 1
             else:

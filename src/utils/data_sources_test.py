@@ -248,13 +248,25 @@ class TestDataSourceFactory(unittest.TestCase):
 class TestInvestingSource(unittest.TestCase):
     """Test InvestingSource functionality"""
     
-    @patch('src.utils.data_sources.InvestingSource._scrape_data')
-    @patch('pathlib.Path.exists')
-    def test_fetch_data_s5th(self, mock_exists, mock_scrape):
-        """Test fetching S5TH (200-day MA breadth)"""
-        # Mock file doesn't exist (force scraping)
-        mock_exists.return_value = False
+    def setUp(self):
+        """Set up test with isolated cache file"""
+        from pathlib import Path
+        self.source = InvestingSource()
+        self.test_cache_file = Path('data/test_investing_source_cache.json')
+        self.source._cache_file = self.test_cache_file
         
+        # Clean up test file
+        if self.test_cache_file.exists():
+            self.test_cache_file.unlink()
+    
+    def tearDown(self):
+        """Clean up test cache file"""
+        if self.test_cache_file.exists():
+            self.test_cache_file.unlink()
+    
+    @patch('src.utils.data_sources.InvestingSource._scrape_data')
+    def test_fetch_data_s5th(self, mock_scrape):
+        """Test fetching S5TH (200-day MA breadth)"""
         # Mock scraped data
         mock_data = pd.Series({
             pd.Timestamp('2024-10-01'): 65.5,
@@ -263,8 +275,7 @@ class TestInvestingSource(unittest.TestCase):
         })
         mock_scrape.return_value = mock_data
         
-        source = InvestingSource()
-        result = asyncio.run(source.fetch_data('S5TH', '1y'))
+        result = asyncio.run(self.source.fetch_data('S5TH', '1y'))
         
         self.assertIn('data', result)
         self.assertIn('current', result)
@@ -275,12 +286,8 @@ class TestInvestingSource(unittest.TestCase):
         mock_scrape.assert_called_once()
     
     @patch('src.utils.data_sources.InvestingSource._scrape_data')
-    @patch('pathlib.Path.exists')
-    def test_fetch_data_s5fi(self, mock_exists, mock_scrape):
+    def test_fetch_data_s5fi(self, mock_scrape):
         """Test fetching S5FI (50-day MA breadth)"""
-        # Mock file doesn't exist (force scraping)
-        mock_exists.return_value = False
-        
         # Mock scraped data
         mock_data = pd.Series({
             pd.Timestamp('2024-10-01'): 72.3,
@@ -289,8 +296,7 @@ class TestInvestingSource(unittest.TestCase):
         })
         mock_scrape.return_value = mock_data
         
-        source = InvestingSource()
-        result = asyncio.run(source.fetch_data('S5FI', '1y'))
+        result = asyncio.run(self.source.fetch_data('S5FI', '1y'))
         
         self.assertIn('data', result)
         self.assertIn('current', result)

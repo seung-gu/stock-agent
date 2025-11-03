@@ -40,10 +40,11 @@ class BroadIndexAgent(OrchestratorAgent):
             - Look for warning signs (e.g., indices rising but breadth weakening)
             - Provide actionable insights on market direction and risk
             
-            CRITICAL - CHART LINKS AND TABLES:
-            - You MUST include ALL chart links and table structures from the original analyses
-            - Please include the charts and tables as closely as possible to the original analyses
-            - Do not mix up the requested periods for charts and tables
+            CRITICAL - CONTENT REQUIREMENTS:
+            - You MUST include ALL chart links ([View Chart](sandbox:/path)) - count them and verify none are missing
+            - You MUST include ALL reference links ([text](https://...))
+            - Tables: You can summarize key findings, but include the full markdown table structure
+            - If output is too long, summarize analysis text but NEVER omit chart/reference links
             """
         )
 

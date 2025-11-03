@@ -47,10 +47,9 @@ class MarketBreadthAgent(TrendAgent):
             CRITICAL:
             - MUST include BOTH charts (S5FI and S5TH)
             - This is a leading market indicator
-            - Add reference links at end:
-              * 50-day: https://www.investing.com/indices/sp-500-stocks-above-200-day-average-chart 
-              * 200-day: https://www.investing.com/indices/s-p-500-stocks-above-50-day-average-chart 
-              Add a white space at the end of the link to make it clickable
+            - Add reference links at end in markdown format:
+              * [50-day MA Stock Breadth](https://www.investing.com/indices/sp-500-stocks-above-50-day-average-chart)
+              * [200-day MA Stock Breadth](https://www.investing.com/indices/sp-500-stocks-above-200-day-average-chart)
             """
         )
         

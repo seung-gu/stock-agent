@@ -58,15 +58,14 @@ class TrendAgent(AsyncAgent):
         1. Analyze {self.label} (ticker: {self.ticker}){f' - {self.description}' if self.description else ''}
         2. Call appropriate tool for each period using {self.ticker}
         3. When calling the tools, always call the longest period first and then call the shorter periods in reverse order
-        4. FORMAT OUTPUT AS MARKDOWN TABLE
-        5. Include ALL chart links from tool responses in the order of the periods
+        4. CRITICAL: Use fetch_data(source, symbol, period) once for the longest period FIRST to populate cache before analyzing other periods
+        5. FORMAT OUTPUT AS MARKDOWN TABLE
+        6. Include ALL chart links from tool responses in the order of the periods
         
-        TOOL USAGE (unified for both sources):
-        - Use fetch_data(source, symbol, period) once for the longest period to populate cache
+        TOOL USAGE (for OHLCV data):
         - Use analyze_OHLCV_data(source, symbol, period) for table rows (no chart link returned)
-        - Use generate_OHLCV_chart(source, symbol, period, label="{self.label}") to generate charts (returns "Chart saved: ...")
+        - Use generate_OHLCV_chart(source, symbol, period, label) to generate charts (returns "Chart saved: ...")
         - Tables and charts may require different period sets; call analyze_OHLCV_data and generate_OHLCV_chart independently
-        - Do not include chart links inside table rows; list chart links after the table using the exact messages
       
         OUTPUT FORMAT (REQUIRED):
         Start with a brief introduction.

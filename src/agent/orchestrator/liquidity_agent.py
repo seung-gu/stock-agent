@@ -39,7 +39,8 @@ class LiquidityAgent(OrchestratorAgent):
         - Maintain the unique characteristics of each indicator
         
         CRITICAL - CHART LINKS AND TABLES:
-        - You MUST include ALL chart links and table structures from the original analyses
+        - You MUST include ALL chart links ([View Chart](sandbox:/path)) - count them and verify none are missing
+        - Tables: You can summarize key findings, but include the full markdown table structure
         - Please include the charts and tables as closely as possible to the original analyses
         - Do not mix up the requested periods for charts and tables
         """
