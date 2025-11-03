@@ -467,6 +467,71 @@ get_data_source("investing")  # → InvestingSource
 
 ## Recent Improvements
 
+### Forward P/E (NTM) Analysis & FinnhubSource (v6.2)
+
+**Date: November 3, 2025**
+
+**Major Updates:**
+
+**1. Forward P/E (NTM) Chart Generation via Koyfin Automation:**
+- **New Tool**: `generate_forward_PE_ratio_chart(ticker)`
+  - Selenium + Firefox automation to capture Koyfin charts
+  - 10-year Forward P/E ratio + Historical Price overlay
+  - Auto-extracts current Forward P/E value from page source
+  - Returns: Chart path + current P/E value (e.g., "NVDA: 35.7x")
+  - ~12-15 seconds per ticker
+- **Implementation**: 
+  - `src/utils/koyfin_chart_capture.py`: `KoyfinChartCapture` class
+  - `src/utils/koyfin_parallel.py`: Parallel execution helper
+  - Headless/visible mode support
+  - Handles popup dismissal, period selection (1Y, 3Y, 5Y, 10Y, 20Y), chart image extraction
+  - Uses `asyncio.to_thread()` to avoid blocking event loop
+
+**2. FinnhubSource Data Layer:**
+- **New DataSource**: `FinnhubSource` in `src/utils/data_sources.py`
+- **Forward P/E Calculation**: Last actual quarter + Next 3 estimated quarters = NTM EPS
+  - Example: NVDA = 39.11x (Finnhub) vs 35.7x (Koyfin)
+- **Methods**:
+  - `fetch_data()`: Quote + EPS estimates from earnings calendar
+  - `get_analysis()`: Calculate Forward P/E ratio
+
+**Current Status & Limitations:**
+
+⚠️ **Unstable Components:**
+- Koyfin automation may break if page structure changes
+- Selenium dependency requires Firefox WebDriver
+- Headless mode occasional rendering issues
+
+⚠️ **Design Philosophy Conflict:**
+- **Issue**: Web automation with Selenium is not an agentic approach
+  - Hardcoded script instead of agent decision-making
+  - Brittle to UI changes, high maintenance burden
+- **Unavoidable Reason**: **No free API provides historical Forward P/E (NTM) data**
+  - Finnhub, yfinance, Alpha Vantage: Only current value or inaccurate
+  - Koyfin: Accurate market consensus but no API
+  - Investing.com: Bot protection on equities pages
+- **Future Direction**:
+  - Replace with paid API (Bloomberg, FactSet) when available
+  - Consider LLM vision models to interpret chart images directly
+
+**Test Results:**
+| Ticker | Forward P/E (NTM) | Source |
+|--------|-------------------|--------|
+| NVDA   | 35.7x            | Koyfin (accurate) |
+| NVDA   | 39.11x           | Finnhub |
+| MSFT   | 30.9x            | Koyfin |
+| AAPL   | 32.8x            | Koyfin |
+
+**Files Added:**
+- `src/utils/koyfin_chart_capture.py`: Selenium automation class
+- `src/utils/koyfin_parallel.py`: Parallel execution helper
+
+**Files Modified:**
+- `src/agent/tools/agent_tools.py`: Added `generate_forward_PE_ratio_chart()`
+- `src/utils/data_sources.py`: Added `FinnhubSource` class
+
+---
+
 ### Markdown Link Parsing & Agent Instruction Refactoring (v6.1)
 
 **Date: November 3, 2025**

@@ -1,8 +1,10 @@
+import asyncio
 from agents import function_tool
 
 from src.utils.data_sources import get_data_source
 from src.utils.technical_indicators import calculate_rsi, calculate_disparity
 from src.utils.charts import create_line_chart
+from src.utils.koyfin_chart_capture import KoyfinChartCapture
 
 
 def get_period_name(period: str) -> str:
@@ -212,11 +214,41 @@ async def generate_market_breadth_chart(symbol: str, period: str) -> str:
     return chart_info
 
 
+@function_tool
+async def generate_forward_PE_ratio_chart(ticker: str, period: str = '10Y') -> str:
+    """
+    Generate Forward P/E (NTM) chart with Historical Price overlay using Koyfin automation.
+    
+    This tool captures a chart showing:
+    - Forward P/E ratio (blue line)
+    - Historical stock price (orange line)
+    
+    Also extracts the current Forward P/E value from the chart.
+    
+    Args:
+        ticker: Stock ticker symbol (e.g., 'NVDA', 'AAPL', 'MSFT')
+        period: Chart period - '1Y', '3Y', '5Y', '10Y', '20Y' (default: '10Y')
+    
+    Returns:
+        Chart path and current P/E value, or error message
+    
+    Note:
+        - Chart captures take ~12-15 seconds per ticker
+        - For multiple tickers, consider using koyfin_parallel for faster execution
+        - Chart saved to 'charts/{ticker}_Koyfin_ForwardPE.png'
+    """
 
-
-
-
-
-
-
-
+    # Run blocking Selenium code in thread pool to avoid blocking event loop
+    def _capture():
+        capturer = KoyfinChartCapture(headless=True, verbose=False)
+        return capturer.capture(ticker, period=period.upper())
+    
+    chart_path, pe_value = await asyncio.to_thread(_capture)
+    
+    if chart_path:
+        result = f"Chart saved: {chart_path}"
+        if pe_value:
+            result += f"\nCurrent Forward P/E (NTM): {pe_value:.2f}x"
+        return result
+    else:
+        return f"Failed to capture Forward P/E chart for {ticker}. Try with headless=False for better reliability."
