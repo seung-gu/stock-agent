@@ -572,49 +572,65 @@ class InvestingSource(DataSource):
         # Load local cache with validation flag
         local, is_validated = self._load_local_cache(symbol)
         
-        # Always scrape first to check latest available date
-        print(f"[INVESTING][SCRAPE] Fetching from {url}")
-        scraped = self._scrape_data(url)
-        latest_scraped_date = scraped.index[-1].date()
-        print(f"[INVESTING][SCRAPE] Scraped {len(scraped)} records, range: {scraped.index[0].date()} to {latest_scraped_date}")
+        # Optimization: Skip scraping if validated cache has today's data
+        today = datetime.now().date()
+        skip_scrape = False
         
-        # Determine if we need to update cache
-        need_update = True
-        
-        if local is not None and len(local) > 0:
+        if local is not None and len(local) > 0 and is_validated:
             latest_cached_date = local.index[-1].date()
-            
-            if is_validated and latest_cached_date >= latest_scraped_date:
-                # validated + cache has all scraped data → no update needed
-                print(f"[INVESTING][CACHE] Validated and up-to-date (cached: {latest_cached_date}, scraped: {latest_scraped_date}), using cache")
-                need_update = False
+            # Check if cache has today's data (or very recent data within 1 day)
+            if latest_cached_date >= today:
+                print(f"[INVESTING][CACHE] Validated cache has today's data ({latest_cached_date}), skipping scrape")
+                skip_scrape = True
                 merged = local
-            elif is_validated and latest_cached_date < latest_scraped_date:
-                # validated + new data available → update needed
-                print(f"[INVESTING][CACHE] Validated but outdated (cached: {latest_cached_date}, scraped: {latest_scraped_date}), will update")
+                need_update = False
             else:
-                # not validated → update needed (fill missing dates)
-                print(f"[INVESTING][CACHE] Not validated, will update and validate")
-        else:
-            print(f"[INVESTING][CACHE] No local cache found, will create")
+                print(f"[INVESTING][CACHE] Validated cache outdated (latest: {latest_cached_date}), will scrape")
         
-        # Update cache if needed
-        if need_update:
-            if local is not None:
-                # Merge: keep all local data + add new scraped data
-                merged = pd.concat([local, scraped]).sort_index()
-                # Remove duplicates, keeping the scraped value (more recent)
-                merged = merged[~merged.index.duplicated(keep='last')]
-                
-                missing_dates = scraped.index.difference(local.index)
-                if len(missing_dates) > 0:
-                    print(f"[INVESTING][MERGE] Added {len(missing_dates)} missing dates")
-                print(f"[INVESTING][MERGE] Total after merge: {len(merged)} records")
-            else:
-                merged = scraped
+        # Scrape if needed
+        if not skip_scrape:
+            print(f"[INVESTING][SCRAPE] Fetching from {url}")
+            scraped = self._scrape_data(url)
+            latest_scraped_date = scraped.index[-1].date()
+            print(f"[INVESTING][SCRAPE] Scraped {len(scraped)} records, range: {scraped.index[0].date()} to {latest_scraped_date}")
             
-            # Save with validation flag (validated)
-            self._save_to_local_cache(symbol, merged, is_validated=True)
+            # Determine if we need to update cache
+            need_update = True
+            
+            if local is not None and len(local) > 0:
+                latest_cached_date = local.index[-1].date()
+                
+                if is_validated and latest_cached_date >= latest_scraped_date:
+                    # validated + cache has all scraped data → no update needed
+                    print(f"[INVESTING][CACHE] Validated and up-to-date (cached: {latest_cached_date}, scraped: {latest_scraped_date}), using cache")
+                    need_update = False
+                    merged = local
+                elif is_validated and latest_cached_date < latest_scraped_date:
+                    # validated + new data available → update needed
+                    print(f"[INVESTING][CACHE] Validated but outdated (cached: {latest_cached_date}, scraped: {latest_scraped_date}), will update")
+                else:
+                    # not validated → update needed (fill missing dates)
+                    print(f"[INVESTING][CACHE] Not validated, will update and validate")
+            else:
+                print(f"[INVESTING][CACHE] No local cache found, will create")
+            
+            # Update cache if needed
+            if need_update:
+                if local is not None:
+                    # Merge: keep all local data + add new scraped data
+                    merged = pd.concat([local, scraped]).sort_index()
+                    # Remove duplicates, keeping the scraped value (more recent)
+                    merged = merged[~merged.index.duplicated(keep='last')]
+                    
+                    missing_dates = scraped.index.difference(local.index)
+                    if len(missing_dates) > 0:
+                        print(f"[INVESTING][MERGE] Added {len(missing_dates)} missing dates")
+                    print(f"[INVESTING][MERGE] Total after merge: {len(merged)} records")
+                else:
+                    merged = scraped
+                
+                # Save with validation flag (validated)
+                self._save_to_local_cache(symbol, merged, is_validated=True)
         
         # Slice to requested period
         end_date = datetime.now()
@@ -780,18 +796,41 @@ class FinnhubSource(DataSource):
         }
 
 
+# Singleton cache for data source instances
+_source_instances: dict[str, DataSource] = {}
+
 def get_data_source(source: str) -> DataSource:
-    """Get data source by name."""
+    """
+    Get data source by name (singleton pattern for performance).
+    
+    Returns cached instance if available, otherwise creates new instance.
+    This reduces object creation overhead during tool calls.
+    """
+    source_lower = source.lower()
+    
+    # Map aliases to canonical names
+    canonical_map = {
+        'yf': 'yfinance',
+        'inv': 'investing',
+        'fh': 'finnhub'
+    }
+    canonical_name = canonical_map.get(source_lower, source_lower)
+    
+    # Return cached instance if available
+    if canonical_name in _source_instances:
+        return _source_instances[canonical_name]
+    
+    # Create new instance and cache it
     sources = {
         'yfinance': YFinanceSource,
-        'yf': YFinanceSource,
         'fred': FREDSource,
         'investing': InvestingSource,
-        'inv': InvestingSource,
         'finnhub': FinnhubSource,
-        'fh': FinnhubSource
     }
-    source_lower = source.lower()
-    if source_lower not in sources:
+    
+    if canonical_name not in sources:
         raise ValueError(f"Unknown source: {source}. Available: {list(sources.keys())}")
-    return sources[source_lower]()
+    
+    instance = sources[canonical_name]()
+    _source_instances[canonical_name] = instance
+    return instance
