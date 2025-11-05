@@ -57,6 +57,8 @@ class EquityTrendAgent(TrendAgent):
             - 200-day Disparity for 5y period
             - RSI (14 window) for 1y period
             - P/E & PEG Valuation (Must analyze both)
+              * If it is in the middle range, it is a neutral range
+              * Evaluate whether it is closer to the lower bound or the upper bound
             - Synthesize all indicators for comprehensive valuation assessment
               
             PERIOD REQUIREMENTS:

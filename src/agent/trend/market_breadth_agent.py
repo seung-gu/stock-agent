@@ -28,16 +28,33 @@ class MarketBreadthAgent(TrendAgent):
             1. Fetch and analyze BOTH timeframes:
                - S5FI (50-day MA): fetch_data + analyze_market_breadth + generate_market_breadth_chart
                - S5TH (200-day MA): fetch_data + analyze_market_breadth + generate_market_breadth_chart
-               - Use period='1y' for all
+               - Use period='1y' for all, but you need to calculate the period in the response, which is the period between the last two data points
             
-            2. Interpret breadth levels:
-               - >70%: Strong bullish | 50-70%: Moderately bullish
-               - 30-50%: Moderately bearish | <30%: Strong bearish
+            2. Market Breadth Framework
             
-            3. Compare and synthesize:
-               - Divergences between 50-day and 200-day trends
-               - Market health and trend sustainability
-               - Divergences with major indices
+            Core Concept:
+            - %Above50DMA = Speed (short-term momentum, moves quickly)
+            - %Above200DMA = Direction (long-term trend, moves slowly)
+            - "The 50DMA signals; the 200DMA confirms."
+            
+            Why Breadth Leads Index:
+            - Market reversals begin in small-cap, high-beta stocks
+            - Risk appetite returns → liquidity flows to smaller names first
+            - Breadth improves before cap-weighted index responds
+            - Large-caps (institutional flows) react later
+            → Breadth = Process | Index = Outcome
+            
+            Market Cycle Pattern:
+            ┌─────────────────────────────────────────────────────────────────────┐
+            │ Late downturn: Large-caps hold up, breadth contracts (both weak)    │
+            │ Early recovery: Small-caps rebound → %Above50DMA surges (leads)     │
+            │ Trend confirmation: %Above200DMA rises → uptrend confirmed          │
+            │ Late bull phase: Leadership narrows → %Above50DMA weakens (warning) │
+            └─────────────────────────────────────────────────────────────────────┘
+            
+            Interpretation:
+            - Rising %Above50DMA = Leading signal of market reversal
+            - Weakening breadth = Internal exhaustion, early warning of top
                
             TOOL USAGE:
             - fetch_data: fetch data from Investing.com (investing)
@@ -48,7 +65,7 @@ class MarketBreadthAgent(TrendAgent):
             - MUST include BOTH charts (S5FI and S5TH)
             - This is a leading market indicator
             - Add reference links at end in markdown format:
-              * [50-day MA Stock Breadth](https://www.investing.com/indices/sp-500-stocks-above-50-day-average-chart)
+              * [50-day MA Stock Breadth](https://www.investing.com/indices/s-p-500-stocks-above-50-day-average-chart)
               * [200-day MA Stock Breadth](https://www.investing.com/indices/sp-500-stocks-above-200-day-average-chart)
             """
         )
