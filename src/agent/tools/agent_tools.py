@@ -215,22 +215,20 @@ async def generate_market_breadth_chart(symbol: str, period: str) -> str:
 
 
 @function_tool
-async def generate_forward_PE_ratio_chart(ticker: str, period: str = '10Y') -> str:
+async def generate_PE_PEG_ratio_chart(ticker: str, period: str = '10Y') -> str:
     """
-    Generate Forward P/E (NTM) chart with Historical Price overlay using Koyfin automation.
-    
-    This tool captures a chart showing:
-    - Forward P/E ratio (blue line)
-    - Historical stock price (orange line)
-    
-    Also extracts the current Forward P/E value from the chart.
+    Generate P/E (NTM) and PEG (NTM) ratio charts with Historical Price overlay using Koyfin automation.
     
     Args:
         ticker: Stock ticker symbol (e.g., 'NVDA', 'AAPL', 'MSFT')
         period: Chart period - '1Y', '3Y', '5Y', '10Y', '20Y' (default: '10Y')
     
     Returns:
-        Chart path and current P/E value, or error message
+        Chart path and metrics including:
+        - P/E (NTM): current value, plus1_std, minus1_std
+        - PEG (NTM): current value, plus1_std, minus1_std
+        
+        IMPORTANT: You MUST analyze BOTH P/E and PEG values in your response.
     
     Note:
         - Chart captures take ~12-15 seconds per ticker
@@ -243,12 +241,25 @@ async def generate_forward_PE_ratio_chart(ticker: str, period: str = '10Y') -> s
         capturer = KoyfinChartCapture(headless=True, verbose=False)
         return capturer.capture(ticker, period=period.upper())
     
-    chart_path, pe_value = await asyncio.to_thread(_capture)
+    chart_path, metrics = await asyncio.to_thread(_capture)
     
-    if chart_path:
-        result = f"Chart saved: {chart_path}"
-        if pe_value:
-            result += f"\nCurrent Forward P/E (NTM): {pe_value:.2f}x"
-        return result
+    if chart_path and metrics:
+        # Parse metrics dict into clear format
+        pe = metrics.get('pe', {})
+        peg = metrics.get('peg', {})
+        
+        formatted_metrics = f"""
+        P/E (NTM):
+        - Current value: {pe.get('value')}
+        - Undervalued < {pe.get('minus1_std')}
+        - Overvalued > {pe.get('plus1_std')}
+
+        PEG (NTM):
+        - Current value: {peg.get('value')}
+        - Undervalued < {peg.get('minus1_std')}
+        - Overvalued > {peg.get('plus1_std')}
+        """.strip()
+        
+        return f"Chart saved: {chart_path}\n\n{formatted_metrics}"
     else:
-        return f"Failed to capture Forward P/E chart for {ticker}. Try with headless=False for better reliability."
+        return f"Failed to capture P/E and PEG chart for {ticker}. Try with headless=False for better reliability."

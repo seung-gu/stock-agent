@@ -32,6 +32,11 @@ class MarketReportAgent(OrchestratorAgent):
             .add_sub_agent(EquityTrendAgent("QLD", label="ProShares Ultra QQQ", description="2x leveraged Nasdaq-100 ETF"))\
             .add_sub_agent(EquityTrendAgent("NVDA", label="NVIDIA"))\
             .add_sub_agent(EquityTrendAgent("MSFT", label="Microsoft"))\
+            .add_sub_agent(EquityTrendAgent("AHR", label="American Health Care REITs", description="Provides access to a broad range of health care real estate investment trusts (REITs)"))\
+            .add_sub_agent(EquityTrendAgent("SBUX", label="Starbucks"))\
+            .add_sub_agent(EquityTrendAgent("JPM", label="JPMorgan Chase"))\
+            .add_sub_agent(EquityTrendAgent("ADBE", label="Adobe Systems"))\
+            .add_sub_agent(EquityTrendAgent("PLTR", label="Palantir Technologies"))\
             .add_sub_agent(EquityTrendAgent("COPX", label="Global X Copper Miners ETF", description="Provides access to a broad range of copper mining companies"))
   
         # Create synthesis agent

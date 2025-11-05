@@ -13,6 +13,16 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from src.config import CHART_OUTPUT_DIR
 
+try:
+    import tkinter as tk
+    root = tk.Tk()
+    SCREEN_WIDTH = root.winfo_screenwidth()
+    SCREEN_HEIGHT = root.winfo_screenheight()
+    root.destroy()
+except:
+    SCREEN_WIDTH = 1920
+    SCREEN_HEIGHT = 1080
+
 
 class KoyfinChartCapture:
     """
@@ -58,6 +68,10 @@ class KoyfinChartCapture:
         self.driver = webdriver.Firefox(options=options)
         self.driver.maximize_window()
         
+        # Headless maximize doesn't work reliably, set explicit size from screen
+        if self.headless:
+            self.driver.set_window_size(SCREEN_WIDTH, SCREEN_HEIGHT)
+        
         mode = "headless" if self.headless else "visible"
         self._log(f"✅ Firefox initialized ({mode}, maximized)")
     
@@ -100,7 +114,7 @@ class KoyfinChartCapture:
     
     def _search_and_select_chart(self, ticker: str):
         """
-        Search for ticker and select GF.PE (NTM P/E) chart.
+        Search for ticker and select Historical Price chart first.
         
         Args:
             ticker: Stock ticker symbol
@@ -108,7 +122,7 @@ class KoyfinChartCapture:
         Returns:
             Search box element for reuse
         """
-        self._log(f"Searching for '{ticker} GF.PE'...")
+        self._log(f"Searching for '{ticker} Historical Price'...")
         
         # Click search trigger
         search_trigger = self.driver.find_element(
@@ -130,22 +144,22 @@ class KoyfinChartCapture:
         time.sleep(0.3)
         
         # Search for GF.PE chart
-        search_box.send_keys(" GF.PE")
+        search_box.send_keys(" Historical Price Graph")
         time.sleep(0.5)
         search_box.send_keys(Keys.RETURN)
         time.sleep(2)
         
-        self._log(f"✅ Selected {ticker} GF.PE chart")
+        self._log(f"✅ Selected {ticker} Historical Price Graph")
         return search_box
     
-    def _add_historical_price(self, search_box):
+    def _add_pe(self, search_box):
         """
-        Add 'Historical Price' metric to the chart.
+        Add 'P/E (NTM P/E)' metric to the chart.
         
         Args:
             search_box: Previously found search box element
         """
-        self._log("Adding Historical Price metric...")
+        self._log("Adding P/E metric...")
         time.sleep(1)
         
         # Click 'Add Metric' button
@@ -165,13 +179,112 @@ class KoyfinChartCapture:
         if not metric_input:
             raise Exception("Metric input not found")
         
-        # Type and select Historical Price
-        metric_input.send_keys("Historical Price")
+        # Type and select PE
+        metric_input.send_keys("P/E")
+        time.sleep(1)
+        metric_input.send_keys(Keys.RETURN)
+        time.sleep(2)
+        
+        # Select NTM option (Arrow Down + Return)
+        self._log("Selecting NTM option...")
+        metric_input.send_keys(Keys.ARROW_DOWN)
+        time.sleep(0.5)
+        metric_input.send_keys(Keys.RETURN)
+        
+        time.sleep(3 if self.headless else 2)
+        self._log("✅ P/E (NTM) added")
+    
+    def _add_peg(self, search_box):
+        """
+        Add 'PEG (NTM)' metric to the chart.
+        
+        Args:
+            search_box: Previously found search box element
+        """
+        self._log("Adding PEG metric...")
+        time.sleep(1)
+        
+        # Click 'Add Metric' button
+        if not self._click_button_by_text('Add Metric', case_sensitive=True):
+            raise Exception("Add Metric button not found")
+        
+        time.sleep(2)
+        
+        # Find metric input
+        inputs = self.driver.find_elements(By.TAG_NAME, "input")
+        metric_input = next((inp for i, inp in enumerate(inputs) 
+                           if inp.is_displayed() and (i > 0 or inp != search_box)), None)
+        
+        if not metric_input:
+            raise Exception("Metric input not found")
+        
+        # Type and select PEG (NTM will be auto-selected)
+        metric_input.send_keys("PEG")
         time.sleep(1)
         metric_input.send_keys(Keys.RETURN)
         
         time.sleep(3 if self.headless else 2)
-        self._log("✅ Historical Price added")
+        self._log("✅ PEG (NTM) added")
+    
+    def _click_indicator_settings(self, indicator_name: str = "P/E (NTM)"):
+        """Enable Statistical Bands for indicator."""
+        self._log(f"Configuring {indicator_name} settings...")
+        try:
+            # Find element containing indicator name
+            indicator_elem = next((e for e in self.driver.find_elements(By.XPATH, f'//*[contains(text(), "{indicator_name}")]')
+                                  if e.is_displayed() and indicator_name in e.text), None)
+            
+            if not indicator_elem:
+                return False
+            
+            # Find cog icon in same container
+            parent = indicator_elem
+            for _ in range(3):
+                parent = parent.find_element(By.XPATH, '..')
+                cog = next((c for c in parent.find_elements(By.CSS_SELECTOR, 'i.fa-cog') if c.is_displayed()), None)
+                if cog:
+                    settings_btn = cog.find_element(By.XPATH, '..')
+                    settings_btn.click()
+                    time.sleep(2)
+                    break
+            else:
+                return False
+            
+            # Click Statistical Bands dropdown
+            stat_elem = next((e for e in self.driver.find_elements(By.XPATH, '//*[contains(text(), "Statistical Bands")]') 
+                             if e.is_displayed()), None)
+            if stat_elem:
+                parent = stat_elem.find_element(By.XPATH, '..')
+                btn = next((b for b in parent.find_elements(By.TAG_NAME, 'button') if b.is_displayed()), None)
+                if btn:
+                    btn.click()
+                    time.sleep(1)
+            
+            # Enable +1/-1 Standard Deviations
+            for dev in ['+1 Standard Deviations', '-1 Standard Deviations']:
+                elem = next((e for e in self.driver.find_elements(By.XPATH, f'//*[contains(text(), "{dev}")]') 
+                           if e.is_displayed()), None)
+                if elem:
+                    elem.click()
+                    time.sleep(0.5)
+            
+            # Click "Area" button in Chart Type section
+            area_btn = next((b for b in self.driver.find_elements(By.XPATH, '//button[@title="Area"]') 
+                           if b.is_displayed()), None)
+            if area_btn:
+                area_btn.click()
+                self._log("✅ Set chart type to Area")
+                time.sleep(1)
+            
+            # Close dialog by clicking settings icon again
+            settings_btn.click()
+            time.sleep(1)
+            
+            self._log("✅ Statistical Bands configured")
+            return True
+        except Exception as e:
+            self._log(f"⚠️  Error: {e}")
+            return False
     
     def _try_direct_period_button(self, period: str) -> bool:
         """Try to click period button directly (for maximized windows)."""
@@ -280,46 +393,33 @@ class KoyfinChartCapture:
         
         return False
     
-    def extract_current_pe(self) -> Optional[float]:
-        """
-        Extract current Forward P/E (NTM) value from the chart page.
+    def extract_metrics(self, metric_name: str) -> dict:
+        """Extract metrics for a given indicator."""
+        metrics = {'value': None, 'plus1_std': None, 'minus1_std': None}
         
-        Returns:
-            Current Forward P/E value or None if not found
-        """
         try:
             page_source = self.driver.page_source
+            metric_escaped = re.escape(metric_name)
             
-            # Pattern: "P/E (NTM)</div><div>35.7x</div>"
-            # Look for P/E (NTM) followed by a number with decimal
-            pattern = r'P/E \(NTM\)</div><div>([0-9]+\.[0-9]+)x</div>'
-            matches = re.findall(pattern, page_source)
-            
+            # Extract main value (x suffix is optional)
+            value_pattern = rf'{metric_escaped}</div><div>([0-9]+\.[0-9]+)x?</div>'
+            matches = re.findall(value_pattern, page_source)
             if matches:
-                # Filter out invalid values and get first valid one
-                for match in matches:
-                    pe_value = float(match)
-                    if pe_value > 1.0:  # P/E should be > 1
-                        self._log(f"✅ Extracted Forward P/E (NTM): {pe_value}x")
-                        return pe_value
+                metrics['value'] = float(matches[0])
+                self._log(f"✅ {metric_name}: {metrics['value']}")
             
-            # Fallback: broader pattern
-            pattern2 = r'P/E\s*\(NTM\).*?([0-9]+\.[0-9]+)x'
-            matches2 = re.findall(pattern2, page_source, re.DOTALL)
+            # Extract Std Dev values
+            for dev, key in [(r'\+1', 'plus1_std'), ('-1', 'minus1_std')]:
+                std_pattern = rf'{dev} Std Dev \({metric_escaped}\)</div><div>([0-9]+\.[0-9]+)x?</div>'
+                matches = re.findall(std_pattern, page_source)
+                if matches:
+                    metrics[key] = float(matches[0])
+                    self._log(f"✅ {metric_name} {key.replace('_', ' ').title()}: {metrics[key]}")
             
-            if matches2:
-                for match in matches2:
-                    pe_value = float(match)
-                    if pe_value > 1.0:
-                        self._log(f"✅ Extracted Forward P/E (NTM): {pe_value}x")
-                        return pe_value
-            
-            self._log("⚠️  Could not extract valid P/E value from page")
-            return None
-            
+            return metrics
         except Exception as e:
-            self._log(f"❌ Error extracting P/E: {e}")
-            return None
+            self._log(f"❌ Error extracting {metric_name} metrics: {e}")
+            return metrics
     
     def _save_chart(self, output_path: str) -> bool:
         """
@@ -338,7 +438,7 @@ class KoyfinChartCapture:
             self._log("⚠️  SHARE button not found")
             return False
         
-        time.sleep(2)
+        time.sleep(3)
         
         try:
             # Find chart image
@@ -369,24 +469,24 @@ class KoyfinChartCapture:
         ticker: str, 
         output_path: Optional[str] = None,
         period: str = '10Y'
-    ) -> tuple[Optional[str], Optional[float]]:
+    ) -> tuple[Optional[str], Optional[dict]]:
         """
-        Capture Koyfin chart for the given ticker and extract current P/E value.
+        Capture Koyfin chart for the given ticker and extract current P/E and PEG values.
         
         Args:
             ticker: Stock ticker symbol (e.g., 'NVDA', 'AAPL')
             output_path: Optional custom output path.
-                        Defaults to 'charts/{ticker}_Koyfin_ForwardPE.png'
+                        Defaults to 'charts/{ticker}_Koyfin_PE_PEG.png'
             period: Chart period ('1Y', '3Y', '5Y', '10Y', '20Y'). Default: '10Y'
         
         Returns:
-            Tuple of (chart_path, pe_value) or (None, None) if failed
+            Tuple of (chart_path, metrics_dict) or (None, None) if failed
         """
         if output_path is None:
-            output_path = os.path.join(CHART_OUTPUT_DIR, f'{ticker}_Koyfin_ForwardPE.png')
+            output_path = os.path.join(CHART_OUTPUT_DIR, f'{ticker}_Koyfin_PE_PEG.png')
         
         self._log("=" * 80)
-        self._log(f"Koyfin Forward P/E Chart: {ticker}")
+        self._log(f"Koyfin P/E & PEG Chart: {ticker}")
         self._log("=" * 80)
         
         try:
@@ -397,17 +497,29 @@ class KoyfinChartCapture:
             
             self._close_popup()
             search_box = self._search_and_select_chart(ticker)
-            self._add_historical_price(search_box)
             self._set_period(period)
             
-            # Extract P/E value before saving chart
-            pe_value = self.extract_current_pe()
+            # Add P/E (NTM)
+            pe_metric_name = "P/E (NTM)"
+            self._add_pe(search_box)
+            self._click_indicator_settings(pe_metric_name)
+            
+            # Add PEG (NTM)
+            peg_metric_name = "PEG (NTM)"
+            self._add_peg(search_box)
+            self._click_indicator_settings(peg_metric_name)
+
+            # Extract metrics as dict
+            pe_data = self.extract_metrics(pe_metric_name)
+            peg_data = self.extract_metrics(peg_metric_name)
+            
+            metrics = {'pe': pe_data, 'peg': peg_data}
             
             # Save chart
             if self._save_chart(output_path):
                 url = self.driver.current_url
                 self._log(f"URL: {url}")
-                return output_path, pe_value
+                return output_path, metrics
             
             return None, None
         
@@ -425,20 +537,3 @@ class KoyfinChartCapture:
                 except:
                     pass
     
-    def capture_multiple(self, tickers: list[str], output_dir: str = 'charts') -> dict[str, Optional[str]]:
-        """
-        Capture charts for multiple tickers sequentially.
-        
-        Args:
-            tickers: List of ticker symbols
-            output_dir: Directory to save charts (default: 'charts')
-        
-        Returns:
-            Dictionary mapping tickers to their output paths (or None if failed)
-        """
-        results = {}
-        for ticker in tickers:
-            output_path = f'{output_dir}/{ticker}_Koyfin_ForwardPE.png'
-            results[ticker] = self.capture(ticker, output_path)
-        
-        return results

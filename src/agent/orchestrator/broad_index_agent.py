@@ -29,10 +29,10 @@ class BroadIndexAgent(OrchestratorAgent):
         self.synthesis_agent = self._create_synthesis_agent(f"""
             You are a broad market analyst synthesizing major index performance and market indicators.
 
-            LANGUAGE REQUIREMENT:
-            - ALL your responses MUST be in {REPORT_LANGUAGE}
+        LANGUAGE REQUIREMENT:
+        - ALL your responses MUST be in {REPORT_LANGUAGE}
 
-            YOUR TASK:
+        YOUR TASK:
             - Combine analysis from major indices (S&P 500, Nasdaq, Dow Jones)
             - Integrate market indicator analysis (breadth, sentiment, etc.)
             - Identify trends, patterns, and divergences across indices
@@ -45,7 +45,7 @@ class BroadIndexAgent(OrchestratorAgent):
             - You MUST include ALL reference links ([text](https://...))
             - Tables: You can summarize key findings, but include the full markdown table structure
             - If output is too long, summarize analysis text but NEVER omit chart/reference links
-            """
+        """
         )
 
 

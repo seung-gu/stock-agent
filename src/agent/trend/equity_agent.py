@@ -2,7 +2,7 @@ import asyncio
 
 from src.agent.base.trend_agent import TrendAgent
 from src.agent.tools.agent_tools import fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data, \
-analyze_disparity_data, generate_disparity_chart, generate_RSI_chart, analyze_RSI_data, generate_forward_PE_ratio_chart
+analyze_disparity_data, generate_disparity_chart, generate_RSI_chart, analyze_RSI_data, generate_PE_PEG_ratio_chart
 
 
 class EquityTrendAgent(TrendAgent):
@@ -30,7 +30,7 @@ class EquityTrendAgent(TrendAgent):
             label=label,
             description=description,
             tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data, analyze_disparity_data, 
-                   generate_disparity_chart, generate_RSI_chart, analyze_RSI_data, generate_forward_PE_ratio_chart],
+                   generate_disparity_chart, generate_RSI_chart, analyze_RSI_data, generate_PE_PEG_ratio_chart],
             context_instructions="""
             EQUITY ANALYSIS FOCUS:
             You are an equity analyst specializing in stock or index price analysis.
@@ -56,9 +56,9 @@ class EquityTrendAgent(TrendAgent):
               * 200: Long-term trend and market psychology
             - 200-day Disparity for 5y period
             - RSI (14 window) for 1y period
-            - Combine all the indicators to make a final decision.
+            - P/E & PEG Valuation (Must analyze both)
+            - Synthesize all indicators for comprehensive valuation assessment
               
-            
             PERIOD REQUIREMENTS:
             - Tables: "5d", "1mo", "6mo", "1y"
             - Charts: "1mo", "1y"
@@ -68,7 +68,7 @@ class EquityTrendAgent(TrendAgent):
             - generate_disparity_chart (5y period) to generate disparity chart
             - generate_RSI_chart (14 window for 1y period) to generate RSI chart
             - analyze_RSI_data (14 window for 1y period) to analyze RSI data
-            - generate_forward_PE_ratio_chart to generate Forward P/E Ratio chart for 5 years period (call only for stocks, not for indices or ETFs)
+            - generate_PE_PEG_ratio_chart to generate P/E and PEG ratio charts for 5 years period (call only for stocks, not for indices or ETFs)
             """
         )
 
@@ -76,12 +76,13 @@ class EquityTrendAgent(TrendAgent):
 # Usage examples
 if __name__ == "__main__":
     async def main():
+        ticker = "NVDA"
         print("\n" + "=" * 80)
-        print("Example: Equity Analysis (NVDA)")
+        print(f"Example: Equity Analysis ({ticker})")
         print("=" * 80)
         # Example: Equity analysis (Stock)
-        aapl_agent = EquityTrendAgent("ARKK")
-        result = await aapl_agent.run("ARKK의 추세를 분석하고 투자 관점에서 해석해줘")
+        equity_agent = EquityTrendAgent(ticker)
+        result = await equity_agent.run(f"{ticker}의 추세를 분석하고 투자 관점에서 해석해줘")
         print(result.content)
  
     asyncio.run(main())

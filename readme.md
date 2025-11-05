@@ -467,6 +467,47 @@ get_data_source("investing")  # → InvestingSource
 
 ## Recent Improvements
 
+### P/E & PEG (NTM) Chart Capture with Headless Fix (v6.3)
+
+**Date: November 5, 2025**
+
+**Major Updates:**
+
+**1. Enhanced P/E & PEG (NTM) Chart Generation:**
+- **Tool**: `generate_PE_PEG_ratio_chart(ticker, period='10Y')`
+  - Captures both P/E (NTM) and PEG (NTM) with Historical Price overlay
+  - Extracts current values + ±1 standard deviations for both metrics
+  - Flexible period selection: 1Y, 3Y, 5Y, 10Y, 20Y
+  - Returns formatted metrics for LLM interpretation
+
+**2. Headless Mode Fix:**
+- **Problem**: Headless `maximize_window()` doesn't work → small window → UI rendering issues → "Add Metric" dialog fails
+- **Solution**: Detect screen size with `tkinter.winfo_screenwidth/height()`, fallback to 1920x1080
+- **Implementation**: `set_window_size(SCREEN_WIDTH, SCREEN_HEIGHT)` after driver initialization
+- **Result**: Headless mode now works reliably for chart capture
+
+**3. Metric Formatting:**
+- Moved parsing from `koyfin_chart_capture.py` to `agent_tools.py`
+- Clear output format:
+```
+P/E (NTM):
+- Current value: 34.7
+- Undervalued < 30.7
+- Overvalued > 50.8
+
+PEG (NTM):
+- Current value: 0.97
+- Undervalued < 1.48
+- Overvalued > 4.21
+```
+
+**Files Modified:**
+- `src/utils/koyfin_chart_capture.py`: Screen size detection, return dict instead of string
+- `src/agent/tools/agent_tools.py`: Parse metrics dict into formatted string
+- `src/agent/trend/equity_agent.py`: Simplified P/E & PEG valuation prompts
+
+---
+
 ### Forward P/E (NTM) Analysis & FinnhubSource (v6.2)
 
 **Date: November 3, 2025**
@@ -500,7 +541,7 @@ get_data_source("investing")  # → InvestingSource
 ⚠️ **Unstable Components:**
 - Koyfin automation may break if page structure changes
 - Selenium dependency requires Firefox WebDriver
-- Headless mode occasional rendering issues
+- Headless mode rendering issues (fixed in v6.3)
 
 ⚠️ **Design Philosophy Conflict:**
 - **Issue**: Web automation with Selenium is not an agentic approach

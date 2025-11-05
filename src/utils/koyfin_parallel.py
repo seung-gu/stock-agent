@@ -12,7 +12,7 @@ async def capture_ticker_async(
     headless: bool = False,
     verbose: bool = False,
     period: str = '10Y'
-) -> tuple[str, Optional[str], Optional[float]]:
+) -> tuple[str, Optional[str], Optional[str]]:
     """
     Capture chart for a single ticker asynchronously.
     
@@ -23,7 +23,7 @@ async def capture_ticker_async(
         period: Chart period ('1Y', '3Y', '5Y', '10Y', '20Y')
     
     Returns:
-        Tuple of (ticker, chart_path, pe_value)
+        Tuple of (ticker, chart_path, metrics_str)
     """
     loop = asyncio.get_event_loop()
     
@@ -32,9 +32,9 @@ async def capture_ticker_async(
         return capturer.capture(ticker, period=period)
     
     with ThreadPoolExecutor() as executor:
-        chart_path, pe_value = await loop.run_in_executor(executor, _capture)
+        chart_path, metrics = await loop.run_in_executor(executor, _capture)
     
-    return ticker, chart_path, pe_value
+    return ticker, chart_path, metrics
 
 
 async def capture_multiple_parallel(
@@ -42,7 +42,7 @@ async def capture_multiple_parallel(
     headless: bool = False,
     verbose: bool = True,
     period: str = '10Y'
-) -> dict[str, tuple[Optional[str], Optional[float]]]:
+) -> dict[str, tuple[Optional[str], Optional[str]]]:
     """
     Capture charts for multiple tickers in parallel.
     
@@ -52,8 +52,8 @@ async def capture_multiple_parallel(
         verbose: Print progress and summary
         period: Chart period ('1Y', '3Y', '5Y', '10Y', '20Y')
     
-    Returns:
-        Dictionary mapping tickers to (chart_path, pe_value) tuples
+        Returns:
+        Dictionary mapping tickers to (chart_path, metrics_str) tuples
     """
     if verbose:
         print("\n⚡ PARALLEL MODE")
@@ -78,8 +78,8 @@ async def capture_multiple_parallel(
             if verbose:
                 print(f"❌ Error: {result}")
             continue
-        ticker, (chart_path, pe_value) = result
-        output[ticker] = (chart_path, pe_value)
+        ticker, chart_path, metrics_str = result
+        output[ticker] = (chart_path, metrics_str)
     
     # Print summary
     if verbose:
@@ -88,10 +88,10 @@ async def capture_multiple_parallel(
         for ticker in tickers:
             result = output.get(ticker)
             if result:
-                chart_path, pe_value = result
+                chart_path, metrics_str = result
                 status = "✅" if chart_path else "❌"
-                pe_str = f" | P/E: {pe_value:.2f}x" if pe_value else ""
-                print(f"  {status} {ticker}: {chart_path or 'Failed'}{pe_str}")
+                metrics_display = f" | {metrics_str}" if metrics_str else ""
+                print(f"  {status} {ticker}: {chart_path or 'Failed'}{metrics_display}")
             else:
                 print(f"  ❌ {ticker}: Failed (not in results)")
         print("=" * 80)
