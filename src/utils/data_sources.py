@@ -99,6 +99,42 @@ class DataSource(ABC):
             Dictionary with analysis metrics
         """
         pass
+    
+    def get_actual_period_approx(self, data: dict[str, Any]) -> str:
+        """
+        Find closest matching period by comparing actual days with standard periods.
+        
+        Args:
+            data: Data returned from fetch_data()
+            
+        Returns:
+            Approximated period string (e.g., '1y', '6mo')
+        """
+        data_with_index = data['data']
+        
+        # Remove NaN values to get actual valid data range
+        if hasattr(data_with_index, 'dropna'):
+            data_with_index = data_with_index.dropna()
+        
+        if len(data_with_index) == 0:
+            return "5d"  # Default fallback
+        
+        actual_days = (data_with_index.index[-1] - data_with_index.index[0]).days
+        
+        # Try all standard periods and find closest match
+        periods = ["5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y"]
+        
+        best_match = periods[0]
+        min_diff = float('inf')
+        
+        for period in periods:
+            expected_days = self._period_to_timedelta(period).days
+            diff = abs(actual_days - expected_days)
+            if diff < min_diff:
+                min_diff = diff
+                best_match = period
+
+        return best_match
 
 
 class YFinanceSource(DataSource):
@@ -119,6 +155,7 @@ class YFinanceSource(DataSource):
             '2y': timedelta(days=730),    # ~504 trading days with weekends
             '5y': timedelta(days=1825),   # ~1260 trading days with weekends
             '10y': timedelta(days=3650),  # ~2520 trading days with weekends
+            'max': timedelta(days=36500),  # ~100 years for max
         }
         period_lower = period.lower()
         if period_lower not in period_map:
@@ -221,14 +258,14 @@ class YFinanceSource(DataSource):
             hist_display = hist.iloc[pos:]
 
         return {
-            'history': hist_display,
+            'data': hist_display,
             'info': info,
             'symbol': symbol
         }
     
     async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None) -> str:
         """Create stock/treasury chart."""
-        hist = data['history']
+        hist = data['data']
         info = data['info']
         
         # Determine chart configuration
@@ -266,7 +303,7 @@ class YFinanceSource(DataSource):
     
     def get_analysis(self, data: dict[str, Any], period: str) -> dict[str, Any]:
         """Extract basic analysis metrics from yfinance data (without technical indicators)."""
-        hist = data['history']
+        hist = data['data']
         
         start_price = float(hist['Close'].iloc[0])
         end_price = float(hist['Close'].iloc[-1])
@@ -331,6 +368,7 @@ class FREDSource(DataSource):
             '2y': timedelta(days=730),    # ~104 weeks for weekly data
             '5y': timedelta(days=1825),   # ~260 weeks for weekly data
             '10y': timedelta(days=3650),  # ~520 weeks for weekly data
+            'max': timedelta(days=36500),  # ~100 years for max
         }
         period_lower = period.lower()
         if period_lower not in period_map:
@@ -554,6 +592,7 @@ class InvestingSource(DataSource):
             '2y': timedelta(days=730),
             '5y': timedelta(days=1825),
             '10y': timedelta(days=3650),
+            'max': timedelta(days=36500),  # ~100 years for max
         }
         period_lower = (period or '1y').lower()
         return period_map.get(period_lower, timedelta(days=365))

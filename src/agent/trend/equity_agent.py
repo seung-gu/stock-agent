@@ -57,8 +57,8 @@ class EquityTrendAgent(TrendAgent):
             - 200-day Disparity for 5y period
             - RSI (14 window) for 1y period
             - P/E & PEG Valuation (Must analyze both)
-              * If it is in the middle range, it is a neutral range
-              * Evaluate whether it is closer to the lower bound or the upper bound
+              * If it is in the middle range (lowerbound < value < upperbound), it is a neutral range
+              * Evaluate whether it is closer to the lowerbound (Undervalued) or the upperbound (Overvalued)
             - Synthesize all indicators for comprehensive valuation assessment
               
             PERIOD REQUIREMENTS:
@@ -68,6 +68,7 @@ class EquityTrendAgent(TrendAgent):
             ADDITIONAL TOOLS:
             - analyze_SMA_data to analyze SMA data (Mandatory)
             - generate_disparity_chart (5y period) to generate disparity chart
+            - analyze_disparity_data (5y period) to analyze disparity data
             - generate_RSI_chart (14 window for 1y period) to generate RSI chart
             - analyze_RSI_data (14 window for 1y period) to analyze RSI data
             - generate_PE_PEG_ratio_chart to generate P/E and PEG ratio charts for 5 years period (call only for stocks, not for indices or ETFs)
@@ -78,12 +79,12 @@ class EquityTrendAgent(TrendAgent):
 # Usage examples
 if __name__ == "__main__":
     async def main():
-        ticker = "NVDA"
+        ticker = "MSFT"
         print("\n" + "=" * 80)
         print(f"Example: Equity Analysis ({ticker})")
         print("=" * 80)
         # Example: Equity analysis (Stock)
-        equity_agent = EquityTrendAgent(ticker)
+        equity_agent = EquityTrendAgent(ticker, label="Microsoft", description="Microsoft Corporation is a technology company that develops and sells software, services, and devices.")
         result = await equity_agent.run(f"{ticker}의 추세를 분석하고 투자 관점에서 해석해줘")
         print(result.content)
  

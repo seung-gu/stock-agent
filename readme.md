@@ -467,6 +467,72 @@ get_data_source("investing")  # → InvestingSource
 
 ## Recent Improvements
 
+### Chart Period Accuracy & Data Consistency (v6.4)
+
+**Date: November 6, 2025**
+
+**Major Updates:**
+
+**1. Actual Period Calculation System:**
+- **New Method**: `DataSource.get_actual_period_approx(data)`
+  - Automatically calculates actual data range from fetched data
+  - Removes NaN values to get true valid data range
+  - Approximates to nearest standard period (5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y)
+  - Uses each DataSource's `_period_to_timedelta()` for accurate comparison
+  - Works consistently across all data sources (yfinance, FRED, Investing)
+
+**2. Dynamic Period Detection:**
+- **Problem**: Requested "5y" but actual data only 2 months → Chart showed "5 Years" (misleading)
+- **Solution**: All charts now display actual data period
+  - `analyze_OHLCV_data`: Uses actual period for analysis
+  - `generate_*_chart`: Uses actual period for chart title and filename
+  - Example: Request "5y" → Get 56 days → Display "1 Month"
+
+**3. Chart Improvements:**
+- **Invalid Data Filtering**: `create_yfinance_chart()` filters out rows where High/Low/Open != 0
+  - Fixes abnormally tall candlesticks from incomplete data
+  - Handles negative values (e.g., negative interest rates)
+- **Continuous X-axis**: `create_line_chart()` now uses integer positions (no weekend gaps)
+- **NaN Handling**: Automatic removal in all chart functions
+- **Consistent Date Format**: All charts show `%Y-%m-%d` format (year always included)
+
+**4. Data Key Unification:**
+- **Before**: YFinanceSource used `'history'`, others used `'data'`
+- **After**: All DataSources now use `'data'` key
+- Simplifies `get_actual_period_approx()` implementation
+- Consistent data access pattern across all tools
+
+**5. Agent Instruction Refinements:**
+- **Label Parameter**: Made required for chart generation functions
+  - Prevents Agent from omitting or mistranslating labels
+  - Instruction: "MUST pass label=\"{self.label}\" exactly without adding period information"
+- **Fetch Optimization**: "Call fetch_data ONCE with longest period, NEVER use 'max'"
+  - Prevents unnecessary max period fetches that waste API calls
+- **Period Support**: Added "max" support to all DataSources (36500 days)
+
+**6. Market Breadth Simplification:**
+- **Removed**: Redundant "Signal" calculation in `analyze_market_breadth`
+- **Reason**: Agent has detailed Market Breadth Framework for interpretation
+- Tool now provides pure data, Agent does all interpretation
+
+**Files Modified:**
+- `src/utils/data_sources.py`: Added `get_actual_period_approx()`, unified 'data' key, added 'max' period support
+- `src/agent/tools/agent_tools.py`: Use actual_period throughout, made label required, simplified market_breadth output
+- `src/utils/charts.py`: Invalid data filtering, NaN removal, consistent date format, integer positions for line charts
+- `src/agent/base/trend_agent.py`: Enhanced label instructions, fetch optimization
+- `src/agent/trend/equity_agent.py`: Simplified P/E & PEG valuation instructions
+- `src/agent/trend/market_breadth_agent.py`: Removed redundant interpretation
+
+**Impact:**
+- ✅ Chart titles accurately reflect actual data period
+- ✅ No more misleading "5 Years" when data is only 2 months
+- ✅ Cleaner chart rendering (no invalid data spikes)
+- ✅ Consistent data access across all sources
+- ✅ Better Agent adherence to instructions
+- ✅ Fewer API calls (optimized fetch strategy)
+
+---
+
 ### P/E & PEG (NTM) Chart Capture with Headless Fix (v6.3)
 
 **Date: November 5, 2025**

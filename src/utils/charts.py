@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.patches import Rectangle
@@ -32,6 +33,12 @@ def create_yfinance_chart(data, period: str, ylabel: str, value_format: str, lab
     
     # Candlestick plot using integer positions (no gaps for weekends)
     ohlc = data[['Open', 'High', 'Low', 'Close']]
+    
+    # Filter out invalid data (where High/Low/Open are all 0)
+    valid_mask = (ohlc['High'] != 0) & (ohlc['Low'] != 0) & (ohlc['Open'] != 0)
+    ohlc = ohlc[valid_mask]
+    data = data[valid_mask]
+    
     dates = data.index
     num_candles = len(ohlc)
     positions = range(num_candles)
@@ -82,8 +89,7 @@ def create_yfinance_chart(data, period: str, ylabel: str, value_format: str, lab
     tick_positions = list(range(0, num_candles, tick_spacing))
     if tick_positions[-1] != num_candles - 1:
         tick_positions.append(num_candles - 1)
-    tick_labels = [dates[i].strftime('%Y-%m-%d') if period not in ["5d", "1mo"] else dates[i].strftime('%m/%d') 
-                   for i in tick_positions]
+    tick_labels = [dates[i].strftime('%Y-%m-%d') for i in tick_positions]
     ax.set_xticks(tick_positions)
     ax.set_xticklabels(tick_labels, rotation=45, ha='right')
     
@@ -93,9 +99,9 @@ def create_yfinance_chart(data, period: str, ylabel: str, value_format: str, lab
     ax.grid(True, alpha=0.3, linestyle='--')
     
     # Value display
-    close_values = data['Close']
-    start_val = float(close_values.iloc[0])
-    end_val = float(close_values.iloc[-1])
+    close_values = data['Close'].values
+    start_val = close_values[0]
+    end_val = close_values[-1]
     change = ((end_val - start_val) / start_val) * 100 if start_val != 0 else 0
     change_color = 'green' if change < 0 else 'red'
     
@@ -260,6 +266,12 @@ def create_line_chart(
         values = data.values if hasattr(data, 'values') else data
         dates = data.index
     
+    # Remove NaN values
+    if isinstance(values, pd.Series):
+        valid_mask = values.notna()
+        values = values[valid_mask]
+        dates = dates[valid_mask]
+    
     # Period display names
     period_display = {
         "5d": "5 Days", "1mo": "1 Month", "3mo": "3 Months", "6mo": "6 Months",
@@ -271,22 +283,26 @@ def create_line_chart(
     
     fig, ax = plt.subplots(figsize=(10, 4))
     
+    # Use integer positions (no gaps for weekends/holidays)
+    num_points = len(values)
+    positions = range(num_points)
+    
     # Line plot
-    ax.plot(dates, values, linewidth=2, color=color, marker='o', markersize=3, zorder=3, label='Value')
+    ax.plot(positions, values, linewidth=2, color=color, marker='o', markersize=3, zorder=3, label='Value')
     
     # Add threshold lines if provided
     if threshold_upper is not None:
         ax.axhline(y=threshold_upper, color='red', linestyle='--', linewidth=1.5, alpha=0.7, 
                    label=f'Overbought ({threshold_upper:.1f})', zorder=2)
         # Shade overbought zone
-        ax.fill_between(dates, threshold_upper, values, 
+        ax.fill_between(positions, threshold_upper, values, 
                          where=(values >= threshold_upper), color='red', alpha=0.1, label=overbought_label)
     
     if threshold_lower is not None:
         ax.axhline(y=threshold_lower, color='green', linestyle='--', linewidth=1.5, alpha=0.7, 
                    label=f'Oversold ({threshold_lower:.1f})', zorder=2)
         # Shade oversold zone
-        ax.fill_between(dates, values, threshold_lower, 
+        ax.fill_between(positions, values, threshold_lower, 
                          where=(values <= threshold_lower), color='green', alpha=0.1, label=oversold_label)
     
     # Show legend if any thresholds were added
@@ -298,12 +314,15 @@ def create_line_chart(
     ax.set_ylabel(ylabel, fontsize=11)
     ax.grid(True, alpha=0.3, linestyle='--')
     
-    # Date formatting
-    if period in ["5d", "1mo"]:
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
-    else:
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
-    plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right')
+    # X-axis: dates at integer positions
+    ax.set_xlim(-0.5, num_points - 0.5)
+    tick_spacing = max(1, num_points // 10)
+    tick_positions = list(range(0, num_points, tick_spacing))
+    if tick_positions[-1] != num_points - 1:
+        tick_positions.append(num_points - 1)
+    tick_labels = [dates[i].strftime('%Y-%m-%d') for i in tick_positions]
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels(tick_labels, rotation=45, ha='right')
     
     plt.tight_layout()
     

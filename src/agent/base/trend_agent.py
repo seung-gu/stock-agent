@@ -53,18 +53,19 @@ class TrendAgent(AsyncAgent):
         - ONLY use the provided tools to generate charts
         - DO NOT use markdown image syntax like ![image] in your responses
         - Charts will be automatically displayed by the system after you use the tools
-
+        - When calling chart generation functions, you MUST pass label="{self.label}" exactly without adding period information or translating it
+        
         WORKFLOW:
-        1. Analyze {self.label} (ticker: {self.ticker}){f' - {self.description}' if self.description else ''}
-        2. Call appropriate tool for each period using {self.ticker}
-        3. When calling the tools, always call the longest period first and then call the shorter periods in reverse order
-        4. CRITICAL: Use fetch_data(source, symbol, period) once for the longest period FIRST to populate cache before analyzing other periods
+        1. FIRST STEP - MANDATORY: Call fetch_data ONCE with the longest period you will need (NEVER use "max")
+        2. Then analyze {self.label} (ticker: {self.ticker}) for all requested periods{f' - {self.description}' if self.description else ''}
+        3. DO NOT call fetch_data again for shorter periods - all shorter period data is already cached
+        4. Call analysis and chart tools for each period (they will use cached data automatically)
         5. FORMAT OUTPUT AS MARKDOWN TABLE
         6. Include ALL chart links from tool responses in the order of the periods
         
         TOOL USAGE (for OHLCV data):
-        - Use analyze_OHLCV_data(source, symbol, period) for table rows (no chart link returned)
-        - Use generate_OHLCV_chart(source, symbol, period, label) to generate charts (returns "Chart saved: ...")
+        - Use analyze_OHLCV_data for table rows (no chart link returned)
+        - Use generate_OHLCV_chart to generate charts (returns "Chart saved: ...")
         - Tables and charts may require different period sets; call analyze_OHLCV_data and generate_OHLCV_chart independently
       
         OUTPUT FORMAT (REQUIRED):
