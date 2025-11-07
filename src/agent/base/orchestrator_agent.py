@@ -2,7 +2,7 @@
 
 from src.agent.base.async_agent import AsyncAgent
 from src.types.analysis_report import AnalysisReport
-from agents import Agent, Runner
+from agents import Agent, Runner, ModelSettings
 import asyncio
 from src.config import REPORT_LANGUAGE
         
@@ -48,6 +48,7 @@ class OrchestratorAgent(AsyncAgent):
             name=f"{self.agent_name}_synthesis",
             model="gpt-4.1-mini",
             instructions=instructions,
+            model_settings=ModelSettings(temperature=0.1),
             output_type=AnalysisReport
         )
     

@@ -19,7 +19,7 @@ class TestYFinanceSource(unittest.TestCase):
         end_date = datetime.now()
         
         self.mock_data_5d = {
-            'history': pd.DataFrame({
+            'data': pd.DataFrame({
                 'Open': [100, 101, 102, 103, 104],
                 'High': [105, 106, 107, 108, 109],
                 'Low': [99, 100, 101, 102, 103],
@@ -30,7 +30,7 @@ class TestYFinanceSource(unittest.TestCase):
         }
         
         self.mock_data_1mo = {
-            'history': pd.DataFrame({
+            'data': pd.DataFrame({
                 'Open': [100 + i for i in range(30)],
                 'High': [105 + i for i in range(30)],
                 'Low': [99 + i for i in range(30)],
@@ -41,7 +41,7 @@ class TestYFinanceSource(unittest.TestCase):
         }
         
         self.mock_data_1y = {
-            'history': pd.DataFrame({
+            'data': pd.DataFrame({
                 'Open': [100 + i*0.1 for i in range(650)],
                 'High': [105 + i*0.1 for i in range(650)],
                 'Low': [99 + i*0.1 for i in range(650)],
@@ -73,7 +73,7 @@ class TestYFinanceSource(unittest.TestCase):
         async def run():
             source = YFinanceSource()
             data = await source.fetch_data("^TNX", "1y")
-            hist = data['history']
+            hist = data['data']
             self.assertIn('SMA_200', hist.columns)
             # First row of sliced 1y history should already have valid SMA_200 (not NaN)
             self.assertFalse(pd.isna(hist['SMA_200'].iloc[0]))
@@ -100,7 +100,7 @@ class TestYFinanceSource(unittest.TestCase):
         async def run():
             source = YFinanceSource()
             data = await source.fetch_data("DX=F", "1y")
-            hist = data['history']
+            hist = data['data']
             self.assertIn('SMA_200', hist.columns)
             self.assertFalse(pd.isna(hist['SMA_200'].iloc[0]))
 
@@ -111,12 +111,12 @@ class TestYFinanceSource(unittest.TestCase):
         """Test fetching 5-day data (without SMAs)"""
         # Mock yfinance Ticker and its history method
         mock_ticker = MagicMock()
-        mock_ticker.history.return_value = self.mock_data_5d['history']
+        mock_ticker.history.return_value = self.mock_data_5d['data']
         mock_ticker_class.return_value = mock_ticker
         
         async def run():
             data = await self.source.fetch_data("AAPL", "5d")
-            hist = data['history']
+            hist = data['data']
             self.assertIsNotNone(hist)
             self.assertGreater(len(hist), 0)
             self.assertIn('Close', hist.columns)
@@ -129,12 +129,12 @@ class TestYFinanceSource(unittest.TestCase):
         """Test fetching 1-month data (without SMAs)"""
         # Mock yfinance Ticker and its history method
         mock_ticker = MagicMock()
-        mock_ticker.history.return_value = self.mock_data_1mo['history']
+        mock_ticker.history.return_value = self.mock_data_1mo['data']
         mock_ticker_class.return_value = mock_ticker
         
         async def run():
             data = await self.source.fetch_data("AAPL", "1mo")
-            hist = data['history']
+            hist = data['data']
             self.assertIsNotNone(hist)
             self.assertGreater(len(hist), 0)
             # SMAs are no longer calculated in fetch_data
@@ -146,12 +146,12 @@ class TestYFinanceSource(unittest.TestCase):
         """Test fetching 1-year data (without SMAs)"""
         # Mock yfinance Ticker and its history method
         mock_ticker = MagicMock()
-        mock_ticker.history.return_value = self.mock_data_1y['history']
+        mock_ticker.history.return_value = self.mock_data_1y['data']
         mock_ticker_class.return_value = mock_ticker
         
         async def run():
             data = await self.source.fetch_data("AAPL", "1y")
-            hist = data['history']
+            hist = data['data']
             self.assertIsNotNone(hist)
             self.assertGreater(len(hist), 0)
             # SMAs are no longer calculated in fetch_data
@@ -412,6 +412,40 @@ class TestInvestingCacheValidation(unittest.TestCase):
         self.assertTrue(is_validated, "Should be validated")
         self.assertGreaterEqual(latest_date, today, "Has today's data")
         # Note: fetch_data will compare latest_date with scraped data's last date, not today
+    
+    @patch('src.utils.data_sources.InvestingSource._scrape_data')
+    def test_skip_scrape_when_cache_has_today(self, mock_scrape):
+        """Test that scraping is skipped when cache has today's data"""
+        import json
+        from datetime import datetime, timedelta
+        
+        # Create cache with today's data
+        today = datetime.now().date()
+        today_str = today.strftime('%Y-%m-%d')
+        yesterday_str = (today - timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        test_data = {
+            "S5TH": {
+                yesterday_str: {"value": 50.0, "timestamp": datetime.now().isoformat()},
+                today_str: {"value": 55.0, "timestamp": datetime.now().isoformat()},
+                "_validated": True
+            }
+        }
+        
+        self.test_cache_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.test_cache_file, 'w') as f:
+            json.dump(test_data, f, indent=2)
+        
+        # Fetch data - should skip scrape
+        result = asyncio.run(self.source.fetch_data('S5TH', '1mo'))
+        
+        # Verify scrape was NOT called
+        mock_scrape.assert_not_called()
+        
+        # Verify data was returned from cache
+        self.assertIn('data', result)
+        self.assertEqual(result['symbol'], 'S5TH')
+        self.assertAlmostEqual(result['current'], 55.0, places=2)
 
 
 class TestFinnhubSource(unittest.TestCase):
@@ -465,12 +499,9 @@ class TestFinnhubSource(unittest.TestCase):
             result = asyncio.run(source.fetch_data('AAPL'))
         
         self.assertEqual(result['symbol'], 'AAPL')
-        self.assertIn('metrics', result)
-        self.assertIn('eps_annual', result)
-        self.assertIn('eps_quarterly', result)
-        self.assertEqual(len(result['eps_annual']), 2)
-        self.assertEqual(len(result['eps_quarterly']), 2)
-        mock_client.company_basic_financials.assert_called_once_with('AAPL', 'all')
+        self.assertIn('current_price', result)
+        self.assertIn('forward_eps_ntm', result)
+        self.assertIn('fetched_at', result)
     
     @patch('finnhub.Client')
     def test_get_analysis(self, mock_finnhub_client):
@@ -478,34 +509,25 @@ class TestFinnhubSource(unittest.TestCase):
         from src.utils.data_sources import FinnhubSource
         
         mock_client = mock_finnhub_client.return_value
-        mock_client.company_basic_financials.return_value = {
-            'metric': {
-                'peBasicExclExtraTTM': 35.82,
-                'marketCapitalization': 4012396,
-                'epsExclExtraItemsTTM': 7.46
-            },
-            'series': {
-                'annual': {
-                    'eps': [{'period': '2025-09-27', 'v': 7.465}]
-                },
-                'quarterly': {
-                    'eps': [{'period': '2025-09-27', 'v': 1.8479}]
-                }
-            }
+        mock_client.quote.return_value = {'c': 150.0}
+        mock_client.company_earnings.return_value = [{'actual': 1.5}]
+        mock_client.earnings_calendar.return_value = {
+            'earningsCalendar': [
+                {'epsEstimate': 1.6},
+                {'epsEstimate': 1.7},
+                {'epsEstimate': 1.8}
+            ]
         }
         
         with patch.dict('os.environ', {'FINNHUB_API_KEY': 'test_key'}):
             source = FinnhubSource()
             data = asyncio.run(source.fetch_data('AAPL'))
-            analysis = source.get_analysis(data)
+            analysis = source.get_analysis(data, period=None)
         
         self.assertEqual(analysis['symbol'], 'AAPL')
-        self.assertEqual(analysis['eps_annual_latest'], 7.465)
-        self.assertEqual(analysis['eps_annual_period'], '2025-09-27')
-        self.assertEqual(analysis['eps_quarterly_latest'], 1.8479)
-        self.assertEqual(analysis['pe_ratio'], 35.82)
-        self.assertEqual(analysis['market_cap'], 4012396)
-        self.assertEqual(analysis['eps_ttm'], 7.46)
+        self.assertEqual(analysis['current_price'], 150.0)
+        self.assertIn('forward_eps_ntm', analysis)
+        self.assertIn('forward_pe_ntm', analysis)
 
 
 if __name__ == "__main__":

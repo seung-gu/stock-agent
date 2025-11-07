@@ -611,7 +611,27 @@ class InvestingSource(DataSource):
         # Load local cache with validation flag
         local, is_validated = self._load_local_cache(symbol)
         
-        # Always scrape first to check latest available date
+        # Check if cache is up-to-date (skip scrape if latest cached date >= today)
+        today = datetime.now().date()
+        if local is not None and len(local) > 0 and is_validated:
+            latest_cached_date = local.index[-1].date()
+            if latest_cached_date >= today:
+                print(f"[INVESTING][CACHE] Up-to-date (cached: {latest_cached_date} >= today: {today}), skipping scrape")
+                merged = local
+                need_update = False
+                # Skip to return section
+                end_date = datetime.now()
+                start_date = end_date - self._period_to_timedelta(period)
+                period_data = merged[merged.index >= start_date]
+                print(f"[INVESTING][RETURN] Returning {len(period_data)} records for period {period}")
+                return {
+                    'data': period_data if len(period_data) > 0 else merged,
+                    'symbol': symbol,
+                    'ma_period': ma_period,
+                    'current': float(merged.iloc[-1])
+                }
+        
+        # Scrape to check latest available date
         print(f"[INVESTING][SCRAPE] Fetching from {url}")
         scraped = self._scrape_data(url)
         latest_scraped_date = scraped.index[-1].date()

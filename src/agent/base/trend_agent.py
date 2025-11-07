@@ -106,7 +106,7 @@ class TrendAgent(AsyncAgent):
             instructions=instructions,
             model="gpt-4.1-mini",
             tools=self.tools,
-            model_settings=ModelSettings(tool_choice=tool_choice),
+            model_settings=ModelSettings(tool_choice=tool_choice, temperature=0.1),
             output_type=self.output_type
         )
         

@@ -26,9 +26,8 @@ class MarketBreadthAgent(TrendAgent):
             
             ANALYSIS WORKFLOW:
             1. Fetch and analyze BOTH timeframes:
-               - S5FI (50-day MA): fetch_data + analyze_market_breadth + generate_market_breadth_chart
-               - S5TH (200-day MA): fetch_data + analyze_market_breadth + generate_market_breadth_chart
-               - Use period='1y' for all, but you need to calculate the period in the response, which is the period between the last two data points
+               - S5FI (50-day MA): fetch_data + analyze_market_breadth('S5FI', '1mo') + generate_market_breadth_chart('S5FI', '1y')
+               - S5TH (200-day MA): fetch_data + analyze_market_breadth('S5TH', '1mo') + generate_market_breadth_chart('S5TH', '5y')
             
             2. Market Breadth Framework
             
@@ -79,7 +78,7 @@ if __name__ == "__main__":
         print("=" * 80)
         
         agent = MarketBreadthAgent()
-        result = await agent.run()
+        result = await agent.run("Analyze the market breadth of S&P 500")
         print(result.content)
     
     asyncio.run(main())
