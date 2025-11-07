@@ -135,6 +135,106 @@ class DataSource(ABC):
                 best_match = period
 
         return best_match
+    
+    def _fetch_with_cache_and_scrape(
+        self,
+        symbol: str,
+        period: str,
+        load_cache_fn,
+        save_cache_fn,
+        scrape_fn,
+        build_result_fn,
+        date_offset_tolerance: int = 0
+    ) -> dict[str, Any]:
+        """
+        Common fetch logic with caching and scraping for file-based sources.
+        
+        Args:
+            symbol: Symbol to fetch
+            period: Time period
+            load_cache_fn: Function to load cache, returns (data, is_validated)
+            save_cache_fn: Function to save cache, takes (data, is_validated)
+            scrape_fn: Function to scrape data, returns Series
+            build_result_fn: Function to build final result dict, takes (period_data, merged)
+            date_offset_tolerance: Days tolerance for date offset (default: 2)
+        """
+        period = period or '1y'
+        print(f"[CACHE][FETCH] symbol={symbol}, period={period}")
+        
+        # Load local cache with validation flag
+        local, is_validated = load_cache_fn()
+        
+        # Check if cache is up-to-date (skip scrape if latest cached date >= today)
+        today = datetime.now().date()
+        if local is not None and len(local) > 0 and is_validated:
+            latest_cached_date = local.index[-1].date()
+            if latest_cached_date >= today:
+                print(f"[CACHE] Up-to-date (cached: {latest_cached_date} >= today: {today}), skipping scrape")
+                merged = local
+                # Skip to return section
+                end_date = datetime.now()
+                start_date = end_date - self._period_to_timedelta(period)
+                period_data = merged[merged.index >= start_date]
+                print(f"[CACHE][RETURN] Returning {len(period_data)} records for period {period}")
+                return build_result_fn(period_data if len(period_data) > 0 else merged, merged)
+        
+        # Scrape to check latest available date
+        print(f"[SCRAPE] Fetching data")
+        scraped = scrape_fn()
+        latest_scraped_date = scraped.index[-1].date()
+        
+        # Determine if we need to update cache
+        need_update = True
+        
+        if local is not None and len(local) > 0:
+            latest_cached_date = local.index[-1].date()
+            date_diff = abs((latest_scraped_date - latest_cached_date).days)
+            
+            # If date difference is within tolerance, consider it as same data (offset issue)
+            if date_diff <= date_offset_tolerance:
+                print(f"[CACHE] Date offset within {date_offset_tolerance} days (cached: {latest_cached_date}, scraped: {latest_scraped_date}, diff: {date_diff} days), using cache")
+                need_update = False
+                merged = local
+            elif is_validated and latest_cached_date >= latest_scraped_date:
+                # validated + cache has all scraped data → no update needed
+                print(f"[CACHE] Validated and up-to-date (cached: {latest_cached_date}, scraped: {latest_scraped_date}), using cache")
+                need_update = False
+                merged = local
+            elif is_validated and latest_cached_date < latest_scraped_date:
+                # validated + new data available → update needed
+                print(f"[CACHE] Validated but outdated (cached: {latest_cached_date}, scraped: {latest_scraped_date}), will update")
+            else:
+                # not validated → update needed
+                print(f"[CACHE] Not validated, will update and validate")
+        else:
+            print(f"[CACHE] No local cache found, will create")
+        
+        # Update cache if needed
+        if need_update:
+            if local is not None:
+                # Merge: keep all local data + add new scraped data
+                merged = pd.concat([local, scraped]).sort_index()
+                # Remove duplicates, keeping the scraped value (more recent)
+                merged = merged[~merged.index.duplicated(keep='last')]
+                
+                missing_dates = scraped.index.difference(local.index)
+                if len(missing_dates) > 0:
+                    print(f"[MERGE] Added {len(missing_dates)} missing dates")
+                print(f"[MERGE] Total after merge: {len(merged)} records")
+            else:
+                merged = scraped
+            
+            # Save with validation flag (validated)
+            save_cache_fn(merged, is_validated=True)
+        
+        # Slice to requested period
+        end_date = datetime.now()
+        start_date = end_date - self._period_to_timedelta(period)
+        period_data = merged[merged.index >= start_date]
+        
+        print(f"[CACHE][RETURN] Returning {len(period_data)} records for period {period}")
+        
+        return build_result_fn(period_data if len(period_data) > 0 else merged, merged)
 
 
 class YFinanceSource(DataSource):
@@ -604,90 +704,20 @@ class InvestingSource(DataSource):
         
         url = self.SYMBOL_URLS[symbol]
         ma_period = self.SYMBOL_MA_PERIOD[symbol]
-        period = period or '1y'
         
-        print(f"[INVESTING][FETCH] symbol={symbol}, period={period}")
-        
-        # Load local cache with validation flag
-        local, is_validated = self._load_local_cache(symbol)
-        
-        # Check if cache is up-to-date (skip scrape if latest cached date >= today)
-        today = datetime.now().date()
-        if local is not None and len(local) > 0 and is_validated:
-            latest_cached_date = local.index[-1].date()
-            if latest_cached_date >= today:
-                print(f"[INVESTING][CACHE] Up-to-date (cached: {latest_cached_date} >= today: {today}), skipping scrape")
-                merged = local
-                need_update = False
-                # Skip to return section
-                end_date = datetime.now()
-                start_date = end_date - self._period_to_timedelta(period)
-                period_data = merged[merged.index >= start_date]
-                print(f"[INVESTING][RETURN] Returning {len(period_data)} records for period {period}")
-                return {
-                    'data': period_data if len(period_data) > 0 else merged,
-                    'symbol': symbol,
-                    'ma_period': ma_period,
-                    'current': float(merged.iloc[-1])
-                }
-        
-        # Scrape to check latest available date
-        print(f"[INVESTING][SCRAPE] Fetching from {url}")
-        scraped = self._scrape_data(url)
-        latest_scraped_date = scraped.index[-1].date()
-        print(f"[INVESTING][SCRAPE] Scraped {len(scraped)} records, range: {scraped.index[0].date()} to {latest_scraped_date}")
-        
-        # Determine if we need to update cache
-        need_update = True
-        
-        if local is not None and len(local) > 0:
-            latest_cached_date = local.index[-1].date()
-            
-            if is_validated and latest_cached_date >= latest_scraped_date:
-                # validated + cache has all scraped data → no update needed
-                print(f"[INVESTING][CACHE] Validated and up-to-date (cached: {latest_cached_date}, scraped: {latest_scraped_date}), using cache")
-                need_update = False
-                merged = local
-            elif is_validated and latest_cached_date < latest_scraped_date:
-                # validated + new data available → update needed
-                print(f"[INVESTING][CACHE] Validated but outdated (cached: {latest_cached_date}, scraped: {latest_scraped_date}), will update")
-            else:
-                # not validated → update needed (fill missing dates)
-                print(f"[INVESTING][CACHE] Not validated, will update and validate")
-        else:
-            print(f"[INVESTING][CACHE] No local cache found, will create")
-        
-        # Update cache if needed
-        if need_update:
-            if local is not None:
-                # Merge: keep all local data + add new scraped data
-                merged = pd.concat([local, scraped]).sort_index()
-                # Remove duplicates, keeping the scraped value (more recent)
-                merged = merged[~merged.index.duplicated(keep='last')]
-                
-                missing_dates = scraped.index.difference(local.index)
-                if len(missing_dates) > 0:
-                    print(f"[INVESTING][MERGE] Added {len(missing_dates)} missing dates")
-                print(f"[INVESTING][MERGE] Total after merge: {len(merged)} records")
-            else:
-                merged = scraped
-            
-            # Save with validation flag (validated)
-            self._save_to_local_cache(symbol, merged, is_validated=True)
-        
-        # Slice to requested period
-        end_date = datetime.now()
-        start_date = end_date - self._period_to_timedelta(period)
-        period_data = merged[merged.index >= start_date]
-        
-        print(f"[INVESTING][RETURN] Returning {len(period_data)} records for period {period}")
-        
-        return {
-            'data': period_data if len(period_data) > 0 else merged,
-            'symbol': symbol,
-            'ma_period': ma_period,
-            'current': float(merged.iloc[-1])
-        }
+        return self._fetch_with_cache_and_scrape(
+            symbol=symbol,
+            period=period,
+            load_cache_fn=lambda: self._load_local_cache(symbol),
+            save_cache_fn=lambda data, is_validated: self._save_to_local_cache(symbol, data, is_validated),
+            scrape_fn=lambda: self._scrape_data(url),
+            build_result_fn=lambda period_data, merged: {
+                'data': period_data,
+                'symbol': symbol,
+                'ma_period': ma_period,
+                'current': float(merged.iloc[-1])
+            }
+        )
     
     async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None) -> str:
         """Create market breadth chart."""
@@ -839,6 +869,191 @@ class FinnhubSource(DataSource):
         }
 
 
+class AAIISource(DataSource):
+    """Data source for AAII Investor Sentiment Survey (Bull-Bear Spread)."""
+    
+    def __init__(self):
+        """Initialize with file-based cache."""
+        super().__init__()
+        self._cache_file = Path('data/aaii_sentiment_history.json')
+    
+    def _period_to_timedelta(self, period: str) -> timedelta:
+        """Convert period string to timedelta."""
+        period_map = {
+            '5d': timedelta(days=7),
+            '1mo': timedelta(days=30),
+            '3mo': timedelta(days=90),
+            '6mo': timedelta(days=182),
+            '1y': timedelta(days=365),
+            '2y': timedelta(days=730),
+            '5y': timedelta(days=1825),
+            '10y': timedelta(days=3650),
+            'max': timedelta(days=36500),
+        }
+        period_lower = period.lower()
+        if period_lower not in period_map:
+            return timedelta(days=365)  # Default: 1y
+        return period_map[period_lower]
+    
+    def _load_local_cache(self) -> tuple[pd.Series | None, bool]:
+        """Load historical data from local file.
+        
+        Returns:
+            (data, is_validated): data series and validation flag
+        """
+        if not self._cache_file.exists():
+            print(f"[AAII][CACHE] Cache file not found: {self._cache_file}")
+            return None, False
+        try:
+            with open(self._cache_file, 'r') as f:
+                all_data = json.load(f)
+            
+            sentiment_data = all_data.get('AAII_BULL_BEAR_SPREAD', [])
+            if not sentiment_data:
+                print(f"[AAII][CACHE] No sentiment data in cache")
+                return None, False
+            
+            # Check validation flag (if exists)
+            is_validated = all_data.get('_validated', False)
+            
+            # Convert to Series
+            data_dict = {pd.to_datetime(item['date']): item['value'] for item in sentiment_data}
+            series = pd.Series(data_dict).sort_index()
+            
+            print(f"[AAII][CACHE] Loaded {len(series)} records, latest: {series.index[-1].date()}, validated: {is_validated}")
+            return series, is_validated
+        except Exception as e:
+            print(f"[AAII][CACHE] Error loading cache: {e}")
+            return None, False
+    
+    def _save_to_local_cache(self, data: pd.Series, is_validated: bool = False):
+        """Save historical data to local file with validation flag."""
+        self._cache_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Convert to list format
+        sentiment_data = [
+            {'date': d.strftime('%Y-%m-%d'), 'value': float(v)}
+            for d, v in data.items()
+        ]
+        
+        all_data = {
+            'AAII_BULL_BEAR_SPREAD': sentiment_data,
+            '_validated': is_validated
+        }
+        
+        with open(self._cache_file, 'w') as f:
+            json.dump(all_data, f, indent=2)
+        
+        print(f"[AAII][CACHE] Saved {len(sentiment_data)} records, validated: {is_validated}")
+    
+    def _scrape_data(self) -> pd.Series:
+        """Scrape latest AAII sentiment data from website."""
+        url = 'https://www.aaii.com/sentimentsurvey/sent_results'
+        response = requests.get(url, headers={
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+        }, timeout=15)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        table = soup.find('table')
+        
+        if not table:
+            raise ValueError("No data table found on AAII website")
+        
+        data = []
+        current_year = datetime.now().year
+        
+        for row in table.find_all('tr')[1:]:  # Skip header
+            cells = row.find_all('td')
+            if len(cells) < 4:
+                continue
+            
+            try:
+                # Parse date (format: "Nov 5")
+                date_str = cells[0].get_text(strip=True)
+                # Add current year
+                date_obj = pd.to_datetime(f"{date_str}, {current_year}", format='%b %d, %Y')
+                
+                # If date is in the future, it's from last year
+                if date_obj > datetime.now():
+                    date_obj = pd.to_datetime(f"{date_str}, {current_year - 1}", format='%b %d, %Y')
+                
+                # Parse percentages
+                bullish = float(cells[1].get_text(strip=True).replace('%', '')) / 100
+                bearish = float(cells[3].get_text(strip=True).replace('%', '')) / 100
+                
+                # Calculate Bull-Bear Spread
+                bull_bear_spread = bullish - bearish
+                
+                data.append((date_obj, bull_bear_spread))
+            except Exception as e:
+                print(f"[AAII][SCRAPE] Error parsing row: {e}")
+                continue
+        
+        if not data:
+            raise ValueError("No valid data scraped from AAII website")
+        
+        series = pd.Series(dict(data)).sort_index()
+        print(f"[AAII][SCRAPE] Scraped {len(series)} records, range: {series.index[0].date()} to {series.index[-1].date()}")
+        return series
+    
+    async def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
+        """Fetch AAII sentiment data with local file caching and web scraping.
+        
+        Args:
+            symbol: Must be 'AAII_BULL_BEAR_SPREAD'
+            period: Time period (5d, 1mo, 6mo, 1y, etc.)
+        """
+        if symbol != 'AAII_BULL_BEAR_SPREAD':
+            raise ValueError(f"AAIISource only supports 'AAII_BULL_BEAR_SPREAD', got: {symbol}")
+        
+        return self._fetch_with_cache_and_scrape(
+            symbol=symbol,
+            period=period,
+            load_cache_fn=lambda: self._load_local_cache(),
+            save_cache_fn=lambda data, is_validated: self._save_to_local_cache(data, is_validated),
+            scrape_fn=lambda: self._scrape_data(),
+            build_result_fn=lambda period_data, merged: {
+                'data': period_data,
+                'symbol': symbol,
+                'current': float(merged.iloc[-1])
+            },
+            date_offset_tolerance=2
+        )
+    
+    async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None) -> str:
+        """Create AAII sentiment chart."""
+        series_data = data['data']
+        
+        return create_line_chart(
+            data=series_data,
+            label=label or 'AAII Bull-Bear Spread',
+            ylabel='Bull-Bear Spread',
+            period=period,
+            threshold_upper=None,
+            threshold_lower=-0.2
+        )
+    
+    def get_analysis(self, data: dict[str, Any], period: str) -> dict[str, Any]:
+        """Extract analysis metrics from AAII sentiment data."""
+        series_data = data['data']
+        
+        # Get start and end values for the period
+        start_value = float(series_data.iloc[0])
+        end_value = float(series_data.iloc[-1])
+        change = end_value - start_value
+        
+        return {
+            'period': period,
+            'start': start_value,
+            'end': end_value,
+            'change': change,
+            'high': float(series_data.max()),
+            'low': float(series_data.min()),
+            'mean': float(series_data.mean())
+        }
+
+
 def get_data_source(source: str) -> DataSource:
     """Get data source by name."""
     sources = {
@@ -848,7 +1063,8 @@ def get_data_source(source: str) -> DataSource:
         'investing': InvestingSource,
         'inv': InvestingSource,
         'finnhub': FinnhubSource,
-        'fh': FinnhubSource
+        'fh': FinnhubSource,
+        'aaii': AAIISource
     }
     source_lower = source.lower()
     if source_lower not in sources:

@@ -3,9 +3,9 @@
 import unittest
 import asyncio
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
-from src.utils.data_sources import get_data_source, YFinanceSource, FREDSource, InvestingSource
+from src.utils.data_sources import get_data_source, YFinanceSource, FREDSource, InvestingSource, AAIISource
 
 
 class TestYFinanceSource(unittest.TestCase):
@@ -528,6 +528,106 @@ class TestFinnhubSource(unittest.TestCase):
         self.assertEqual(analysis['current_price'], 150.0)
         self.assertIn('forward_eps_ntm', analysis)
         self.assertIn('forward_pe_ntm', analysis)
+
+
+class TestAAIISource(unittest.TestCase):
+    """Test AAIISource functionality"""
+    
+    def setUp(self):
+        """Set up test fixtures"""
+        self.source = AAIISource()
+        
+        # Create mock sentiment data
+        end_date = datetime.now()
+        dates = pd.date_range(end=end_date, periods=100, freq='W')
+        
+        self.mock_sentiment_data = pd.Series(
+            [0.1 + (i % 10) * 0.05 for i in range(100)],
+            index=dates
+        )
+    
+    @patch.object(AAIISource, '_load_local_cache')
+    @patch.object(AAIISource, '_scrape_data')
+    def test_fetch_data_with_cache(self, mock_scrape, mock_load_cache):
+        """Test fetch_data uses cache when up-to-date"""
+        # Mock cache is up-to-date (today's date)
+        today = datetime.now()
+        up_to_date_data = pd.Series([0.1], index=[today])
+        mock_load_cache.return_value = (up_to_date_data, True)
+        
+        # Run test
+        result = asyncio.run(self.source.fetch_data('AAII_BULL_BEAR_SPREAD', '1y'))
+        
+        # Verify
+        self.assertIn('data', result)
+        self.assertIn('symbol', result)
+        self.assertIn('current', result)
+        self.assertEqual(result['symbol'], 'AAII_BULL_BEAR_SPREAD')
+        
+        # Should not scrape if cache is up-to-date
+        mock_scrape.assert_not_called()
+    
+    @patch.object(AAIISource, '_load_local_cache')
+    @patch.object(AAIISource, '_scrape_data')
+    @patch.object(AAIISource, '_save_to_local_cache')
+    def test_fetch_data_with_date_offset(self, mock_save, mock_scrape, mock_load_cache):
+        """Test fetch_data handles date offset within tolerance"""
+        # Mock cache with date 2 days ago
+        old_date = datetime.now() - timedelta(days=2)
+        old_data = pd.Series([0.1], index=[old_date])
+        mock_load_cache.return_value = (old_data, True)
+        
+        # Mock scrape returns data 1 day ago (within 2-day tolerance)
+        recent_date = datetime.now() - timedelta(days=1)
+        scraped_data = pd.Series([0.15], index=[recent_date])
+        mock_scrape.return_value = scraped_data
+        
+        # Run test
+        result = asyncio.run(self.source.fetch_data('AAII_BULL_BEAR_SPREAD', '1y'))
+        
+        # Should use cache due to date offset tolerance
+        self.assertIn('data', result)
+        mock_save.assert_not_called()  # Should not save if using cache
+    
+    @patch.object(AAIISource, '_load_local_cache')
+    @patch.object(AAIISource, '_scrape_data')
+    @patch.object(AAIISource, '_save_to_local_cache')
+    def test_fetch_data_updates_cache_when_outdated(self, mock_save, mock_scrape, mock_load_cache):
+        """Test fetch_data updates cache when data is outdated"""
+        # Mock cache with old data (5 days ago)
+        old_date = datetime.now() - timedelta(days=5)
+        old_data = pd.Series([0.1], index=[old_date])
+        mock_load_cache.return_value = (old_data, True)
+        
+        # Mock scrape returns recent data
+        recent_date = datetime.now()
+        scraped_data = pd.Series([0.15], index=[recent_date])
+        mock_scrape.return_value = scraped_data
+        
+        # Run test
+        result = asyncio.run(self.source.fetch_data('AAII_BULL_BEAR_SPREAD', '1y'))
+        
+        # Should update cache
+        self.assertIn('data', result)
+        mock_save.assert_called_once()
+    
+    def test_get_analysis(self):
+        """Test get_analysis returns correct metrics"""
+        data = {'data': self.mock_sentiment_data}
+        
+        analysis = self.source.get_analysis(data, '1y')
+        
+        self.assertIn('start', analysis)
+        self.assertIn('end', analysis)
+        self.assertIn('change', analysis)
+        self.assertIn('high', analysis)
+        self.assertIn('low', analysis)
+        self.assertIn('mean', analysis)
+    
+    def test_invalid_symbol(self):
+        """Test fetch_data raises error for invalid symbol"""
+        with self.assertRaises(ValueError):
+            asyncio.run(self.source.fetch_data('INVALID_SYMBOL', '1y'))
 
 
 if __name__ == "__main__":

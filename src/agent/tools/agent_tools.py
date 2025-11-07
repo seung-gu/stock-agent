@@ -225,6 +225,42 @@ async def generate_market_breadth_chart(symbol: str, period: str) -> str:
 
 
 @function_tool
+async def analyze_sentiment(period: str) -> str:
+    """Analyze AAII Investor Sentiment Survey (Bull-Bear Spread).
+    
+    Args:
+        period: Time period (5d, 1mo, 6mo, 1y, etc.)
+    """
+    src = get_data_source('aaii')
+    data = await src.fetch_data('AAII_BULL_BEAR_SPREAD', period)
+    actual_period = src.get_actual_period_approx(data)
+    analysis = src.get_analysis(data, actual_period)
+    period_name = get_period_name(actual_period)
+    
+    return f"""{period_name} AAII Investor Sentiment (Bull-Bear Spread):
+            - Start: {analysis['start']:+.2f}
+            - End: {analysis['end']:+.2f}
+            - Change: {analysis['change']:+.2f}
+            - High: {analysis['high']:+.2f}
+            - Low: {analysis['low']:+.2f}
+            - Mean: {analysis['mean']:+.2f}"""
+
+
+@function_tool
+async def generate_sentiment_chart(period: str) -> str:
+    """Generate AAII Investor Sentiment chart (Bull-Bear Spread).
+    
+    Args:
+        period: Time period (5d, 1mo, 6mo, 1y, etc.)
+    """
+    src = get_data_source('aaii')
+    data = await src.fetch_data('AAII_BULL_BEAR_SPREAD', period)
+    actual_period = src.get_actual_period_approx(data)
+    chart_info = await src.create_chart(data, 'AAII_BULL_BEAR_SPREAD', actual_period)
+    return chart_info
+
+
+@function_tool
 async def generate_PE_PEG_ratio_chart(ticker: str, period: str = '10Y') -> str:
     """
     Generate P/E (NTM) and PEG (NTM) ratio charts with Historical Price overlay using Koyfin automation.
