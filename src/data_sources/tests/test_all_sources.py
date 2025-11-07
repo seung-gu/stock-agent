@@ -413,7 +413,7 @@ class TestInvestingCacheValidation(unittest.TestCase):
         self.assertGreaterEqual(latest_date, today, "Has today's data")
         # Note: fetch_data will compare latest_date with scraped data's last date, not today
     
-    @patch('src.utils.data_sources.InvestingSource._scrape_data')
+    @patch('src.data_sources.web.investing_source.InvestingSource._scrape_data')
     def test_skip_scrape_when_cache_has_today(self, mock_scrape):
         """Test that scraping is skipped when cache has today's data"""
         import json

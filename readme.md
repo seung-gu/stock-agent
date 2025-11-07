@@ -101,6 +101,15 @@ TODO:
     - Configurable date offset tolerance (0 for Investing, 2 for AAII)
     - Smart cache validation with scrape skipping
     - 28 comprehensive unit tests (all passing)
+29. ~~Data Sources Modular Architecture~~ ✅
+    - Restructured into src/data_sources/ with clear separation
+    - Base classes: DataSource, APIDataSource, WebDataSource
+    - API sources (api/): YFinanceSource, FREDSource, FinnhubSource
+    - Web sources (web/): InvestingSource, AAIISource
+    - Common browser headers in WebDataSource.BROWSER_HEADERS
+    - Scraping fallback to cache on Imperva/bot blocking
+    - Tests moved to src/data_sources/tests/
+    - 1098-line file → 6 organized modules (188+166+108+165+176 lines)
 
 
 ---
@@ -147,14 +156,23 @@ src/
 │   │
 │   └── email_agent.py         # 📧 Email notification agent
 │
+├── data_sources/              # 📊 Data source system (modular architecture)
+│   ├── base.py               # Base classes: DataSource, APIDataSource, WebDataSource
+│   ├── api/                  # API-based sources (memory cache)
+│   │   ├── yfinance_source.py   # Stocks, ETFs, treasuries
+│   │   ├── fred_source.py       # Economic indicators
+│   │   └── finnhub_source.py    # Company fundamentals
+│   ├── web/                  # Web scraping sources (file cache)
+│   │   ├── investing_source.py  # Market breadth (S5FI, S5TH)
+│   │   └── aaii_source.py       # Investor sentiment (Bull-Bear Spread)
+│   └── tests/                # 28 comprehensive unit tests
+│       └── test_all_sources.py
+│
 ├── utils/                      # Utility modules
 │   ├── charts.py              # Chart generation system
 │   │   ├── create_yfinance_chart()  # Candlestick with SMA overlays
 │   │   ├── create_fred_chart()      # FRED line chart with baseline
 │   │   └── create_line_chart()      # Generic line chart (disparity, RSI, etc.)
-│   ├── data_sources.py        # Unified data source system
-│   │                          # • YFinanceSource, FREDSource, InvestingSource
-│   │                          # • InvestingSource: S5FI (50-day), S5TH (200-day) market breadth
 │   │                          # • Validation-based caching (_validated flag as parity bit)
 │   │                          # • Compare cached vs scraped last date (not today)
 │   │                          # • Auto-merge & accumulate to data/market_breadth_history.json

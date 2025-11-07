@@ -1,7 +1,7 @@
 import asyncio
 from agents import function_tool
 
-from src.utils.data_sources import get_data_source
+from src.data_sources import get_data_source
 from src.utils.technical_indicators import calculate_rsi, calculate_disparity
 from src.utils.charts import create_line_chart
 from src.utils.koyfin_chart_capture import KoyfinChartCapture

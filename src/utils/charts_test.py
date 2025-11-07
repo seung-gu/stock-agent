@@ -5,7 +5,7 @@ import asyncio
 import os
 import pandas as pd
 from unittest.mock import patch, MagicMock
-from src.utils.data_sources import get_data_source
+from src.data_sources import get_data_source
 from src.utils.charts import create_yfinance_chart, create_fred_chart
 
 
