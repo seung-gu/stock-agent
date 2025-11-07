@@ -180,8 +180,23 @@ class DataSource(ABC):
         
         # Scrape to check latest available date
         print(f"[SCRAPE] Fetching data")
-        scraped = scrape_fn()
-        latest_scraped_date = scraped.index[-1].date()
+        try:
+            scraped = scrape_fn()
+            latest_scraped_date = scraped.index[-1].date()
+        except Exception as e:
+            print(f"[SCRAPE] Failed to scrape: {e}")
+            # If scraping fails and we have cache, use cache
+            if local is not None and len(local) > 0:
+                print(f"[CACHE] Using cached data due to scrape failure")
+                merged = local
+                end_date = datetime.now()
+                start_date = end_date - self._period_to_timedelta(period)
+                period_data = merged[merged.index >= start_date]
+                print(f"[CACHE][RETURN] Returning {len(period_data)} records for period {period}")
+                return build_result_fn(period_data if len(period_data) > 0 else merged, merged)
+            else:
+                # No cache and scraping failed
+                raise ValueError(f"Failed to fetch data: {e}")
         
         # Determine if we need to update cache
         need_update = True
@@ -670,7 +685,12 @@ class InvestingSource(DataSource):
     def _scrape_data(self, url: str) -> pd.Series:
         """Scrape market breadth from Investing.com historical data table."""
         response = requests.get(f"{url}-historical-data", headers={
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1'
         }, timeout=15)
         response.raise_for_status()
         table = BeautifulSoup(response.text, 'html.parser').find('table')
@@ -875,7 +895,7 @@ class AAIISource(DataSource):
     def __init__(self):
         """Initialize with file-based cache."""
         super().__init__()
-        self._cache_file = Path('data/aaii_sentiment_history.json')
+        self._cache_file = Path('data/aaii_bull_bear_spread_history.json')
     
     def _period_to_timedelta(self, period: str) -> timedelta:
         """Convert period string to timedelta."""
@@ -908,8 +928,8 @@ class AAIISource(DataSource):
             with open(self._cache_file, 'r') as f:
                 all_data = json.load(f)
             
-            sentiment_data = all_data.get('AAII_BULL_BEAR_SPREAD', [])
-            if not sentiment_data:
+            bull_bear_spread_data = all_data.get('AAII_BULL_BEAR_SPREAD', [])
+            if not bull_bear_spread_data:
                 print(f"[AAII][CACHE] No sentiment data in cache")
                 return None, False
             
@@ -917,7 +937,7 @@ class AAIISource(DataSource):
             is_validated = all_data.get('_validated', False)
             
             # Convert to Series
-            data_dict = {pd.to_datetime(item['date']): item['value'] for item in sentiment_data}
+            data_dict = {pd.to_datetime(item['date']): item['value'] for item in bull_bear_spread_data}
             series = pd.Series(data_dict).sort_index()
             
             print(f"[AAII][CACHE] Loaded {len(series)} records, latest: {series.index[-1].date()}, validated: {is_validated}")
@@ -931,26 +951,31 @@ class AAIISource(DataSource):
         self._cache_file.parent.mkdir(parents=True, exist_ok=True)
         
         # Convert to list format
-        sentiment_data = [
+        bull_bear_spread_data = [
             {'date': d.strftime('%Y-%m-%d'), 'value': float(v)}
             for d, v in data.items()
         ]
         
         all_data = {
-            'AAII_BULL_BEAR_SPREAD': sentiment_data,
+            'AAII_BULL_BEAR_SPREAD': bull_bear_spread_data,
             '_validated': is_validated
         }
         
         with open(self._cache_file, 'w') as f:
             json.dump(all_data, f, indent=2)
         
-        print(f"[AAII][CACHE] Saved {len(sentiment_data)} records, validated: {is_validated}")
+        print(f"[AAII][CACHE] Saved {len(bull_bear_spread_data)} records, validated: {is_validated}")
     
     def _scrape_data(self) -> pd.Series:
         """Scrape latest AAII sentiment data from website."""
         url = 'https://www.aaii.com/sentimentsurvey/sent_results'
         response = requests.get(url, headers={
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1'
         }, timeout=15)
         response.raise_for_status()
         

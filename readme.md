@@ -88,7 +88,19 @@ TODO:
 26. ~~Agent instruction refactoring~~ ✅
     - TrendAgent: Common instructions in base (fetch_data, output format)
     - Subclasses: Only specific tool usage and analysis focus
-    - Orchestrators: Explicit content preservation rules (tables, charts, links) 
+    - Orchestrators: Explicit content preservation rules (tables, charts, links)
+27. ~~AAII Investor Sentiment (Bull-Bear Spread)~~ ✅
+    - AAIISource class with web scraping from aaii.com
+    - Bull-Bear Spread calculation (Bullish % - Bearish %)
+    - 2-day date offset tolerance for data consistency
+    - Historical data: 2000-01-06 to present (1,369 records)
+    - analyze_sentiment & generate_sentiment_chart tools
+28. ~~Cache & Scrape Logic Refactoring~~ ✅
+    - Unified _fetch_with_cache_and_scrape in DataSource base class
+    - Reusable across InvestingSource and AAIISource
+    - Configurable date offset tolerance (0 for Investing, 2 for AAII)
+    - Smart cache validation with scrape skipping
+    - 28 comprehensive unit tests (all passing)
 
 
 ---
@@ -994,9 +1006,9 @@ export TEST_MODE=false  # Turn off after testing
 - ✅ **NotionAPI**: 9 tests (page creation, child pages)
 - ✅ **ReportBuilder**: 2 tests (parent page creation, failure handling)
 - ✅ **ImageService**: 4 tests (Cloudflare R2 upload, local image finding)
-- ✅ **DataSources**: 12 tests (yfinance/FRED with Mock API, SMA calculations, SMA(200) cut-off tests)
+- ✅ **DataSources**: 28 tests (yfinance/FRED/Investing/AAII with Mock API, cache validation, date offset tolerance)
 - ✅ **Charts**: 7 tests (candlestick charts, SMA overlays, weekend gap removal)
-- ✅ **Total**: 51 comprehensive tests (0.6s execution time)
+- ✅ **Total**: 67 comprehensive tests (0.03s execution time)
 - ⚠️ **Notion Upload Test**: Only runs when `TEST_MODE=true` (prevents creating pages during normal testing)
 - 🚫 **No Real API Calls**: All tests use Mock data for fast, reliable execution
 
@@ -1004,8 +1016,8 @@ export TEST_MODE=false  # Turn off after testing
 
 **Recent Test Results:**
 ```
-# Data Sources Tests
-Ran 12 tests in 0.015s
+# Data Sources Tests (including AAII)
+Ran 28 tests in 0.030s
 OK
 
 # Charts Tests  
@@ -1013,8 +1025,8 @@ Ran 7 tests in 0.590s
 OK
 
 # All Tests Combined
-Ran 51 tests in 0.606s
+Ran 67 tests in 0.620s
 OK
-✅ All tests passed (includes SMA(200) cut-off tests)
+✅ All tests passed (includes AAII sentiment, cache validation, date offset tests)
 ```
 
