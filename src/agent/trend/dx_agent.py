@@ -2,7 +2,7 @@
 """DX=F (Dollar Index) Trend Analysis Agent"""
 
 from src.agent.base.trend_agent import TrendAgent
-from src.agent.tools.agent_tools import fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data
+from src.agent.tools.agent_tools import fetch_data, analyze_OHLCV, generate_OHLCV_chart, analyze_SMA
 
 class DXAgent(TrendAgent):
     """Specialized agent for DX=F (Dollar Index) analysis"""
@@ -12,7 +12,7 @@ class DXAgent(TrendAgent):
             ticker="DX=F",
             agent_name="dx_agent",
             label="US Dollar Index",
-            tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data],
+            tools=[fetch_data, analyze_OHLCV, generate_OHLCV_chart, analyze_SMA],
             context_instructions="""
             DX=F (Dollar Index) Analysis:
             - DX=F measures the value of the US dollar against a basket of foreign currencies
@@ -25,6 +25,6 @@ class DXAgent(TrendAgent):
             - Charts: "1mo","1y"
             
             ADDITIONAL TOOLS:
-            - analyze_SMA_data to analyze SMA data (Mandatory)
+            - analyze_SMA to analyze SMA data (Mandatory)
             """
         )

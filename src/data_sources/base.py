@@ -9,15 +9,14 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Any
 from pathlib import Path
+import json
 
 
 class DataSource(ABC):
     """Base class for all data sources."""
-    # Shared cache across all instances of the same subclass
-    _cache: dict[str, Any] = {}
     
     def __init__(self):
-        """Initialize data source (cache is class-level)."""
+        """Initialize data source."""
         pass
     
     @staticmethod
@@ -129,12 +128,11 @@ class APIDataSource(DataSource):
     
     def __init__(self):
         """Initialize with memory cache."""
-        super().__init__()
-        self._cache = {}  # Memory-based cache for API sources
+        super().__init__()  # Memory-based cache for API sources
 
 
 class WebDataSource(DataSource):
-    """Base class for web scraping data sources (Investing, AAII)."""
+    """Base class for web scraping data sources (Investing, AAII, YCharts)."""
     
     # Common browser headers for web scraping
     BROWSER_HEADERS = {
@@ -150,6 +148,52 @@ class WebDataSource(DataSource):
         """Initialize with file-based cache."""
         super().__init__()
         self._cache_file: Path | None = None
+    
+    def _load_local_cache(self, symbol: str, log_prefix: str) -> tuple[pd.Series | None, bool]:
+        """Load historical data from local JSON file (unified for all web sources)."""
+        if not self._cache_file.exists():
+            print(f"[{log_prefix}][CACHE] Cache file not found: {self._cache_file}")
+            return None, False
+        try:
+            with open(self._cache_file, 'r') as f:
+                all_data = json.load(f)
+            
+            symbol_data = all_data.get(symbol, [])
+            if not symbol_data:
+                print(f"[{log_prefix}][CACHE] No data for {symbol} in cache")
+                return None, False
+            
+            is_validated = all_data.get('_validated', False)
+            data_dict = {pd.to_datetime(item['date']): item['value'] for item in symbol_data}
+            series = pd.Series(data_dict).sort_index()
+            
+            print(f"[{log_prefix}][CACHE] Loaded {len(series)} records for {symbol}, latest: {series.index[-1].date()}, validated: {is_validated}")
+            return series, is_validated
+        except Exception as e:
+            print(f"[{log_prefix}][CACHE] Error loading cache: {e}")
+            return None, False
+    
+    def _save_local_cache(self, symbol: str, data: pd.Series, is_validated: bool, log_prefix: str):
+        """Save historical data to local JSON file (unified for all web sources)."""
+        self._cache_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        if self._cache_file.exists():
+            with open(self._cache_file, 'r') as f:
+                all_data = json.load(f)
+        else:
+            all_data = {}
+        
+        symbol_data = [
+            {'date': d.strftime('%Y-%m-%d'), 'value': float(v)}
+            for d, v in data.items()
+        ]
+        all_data[symbol] = symbol_data
+        all_data['_validated'] = is_validated
+        
+        with open(self._cache_file, 'w') as f:
+            json.dump(all_data, f, indent=2)
+        
+        print(f"[{log_prefix}][CACHE] Saved {len(symbol_data)} records for {symbol}, validated: {is_validated}")
     
     def _fetch_with_cache_and_scrape(
         self,
@@ -179,12 +223,16 @@ class WebDataSource(DataSource):
         # Load local cache with validation flag
         local, is_validated = load_cache_fn()
         
-        # Check if cache is up-to-date (skip scrape if latest cached date >= today)
+        # Check if cache is up-to-date (skip scrape if latest cached date >= last business day)
         today = datetime.now().date()
+        weekday = today.weekday()  # 0=Mon, ... 6=Sun
+        # Sat(5): 5-4=1 day back → Fri, Sun(6): 6-4=2 days back → Fri
+        last_bday = today - timedelta(days=weekday - 4 if weekday > 4 else 0)
+        
         if local is not None and len(local) > 0 and is_validated:
             latest_cached_date = local.index[-1].date()
-            if latest_cached_date >= today:
-                print(f"[CACHE] Up-to-date (cached: {latest_cached_date} >= today: {today}), skipping scrape")
+            if latest_cached_date >= last_bday:
+                print(f"[CACHE] Up-to-date (cached: {latest_cached_date} >= last bday: {last_bday}), skipping scrape")
                 merged = local
                 # Skip to return section
                 end_date = datetime.now()

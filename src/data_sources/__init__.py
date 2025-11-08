@@ -11,7 +11,7 @@ Supports automatic source detection and data fetching from:
 
 from src.data_sources.base import DataSource, APIDataSource, WebDataSource
 from src.data_sources.api import YFinanceSource, FREDSource, FinnhubSource
-from src.data_sources.web import InvestingSource, AAIISource
+from src.data_sources.web import InvestingSource, AAIISource, YChartsSource
 
 
 def get_data_source(source: str) -> DataSource:
@@ -24,7 +24,9 @@ def get_data_source(source: str) -> DataSource:
         'inv': InvestingSource,
         'finnhub': FinnhubSource,
         'fh': FinnhubSource,
-        'aaii': AAIISource
+        'aaii': AAIISource,
+        'ycharts': YChartsSource,
+        'yc': YChartsSource
     }
     source_lower = source.lower()
     if source_lower not in sources:
@@ -41,6 +43,7 @@ __all__ = [
     'FinnhubSource',
     'InvestingSource',
     'AAIISource',
+    'YChartsSource',
     'get_data_source'
 ]
 

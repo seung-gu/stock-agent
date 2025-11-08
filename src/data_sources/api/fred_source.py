@@ -15,6 +15,8 @@ load_dotenv()
 class FREDSource(APIDataSource):
     """Data source for economic indicators via FRED API."""
     
+    _cache: dict[str, Any] = {}
+    
     def __init__(self):
         super().__init__()
         self._fred = None
@@ -131,18 +133,22 @@ class FREDSource(APIDataSource):
             'config': config
         }
     
-    async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None) -> str:
-        """Create FRED indicator chart."""
+    async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None, chart_type: str = 'line', **kwargs) -> str:
+        """Create FRED indicator chart.
+        
+        Args:
+            chart_type: 'line' (default and only option for FRED)
+            **kwargs: Additional chart options (baseline, positive_label, negative_label, etc.)
+        """
         series_data = data['data']
         config = data['config']
         
+        # FRED always uses line chart with baseline
         return create_fred_chart(
             data=series_data,
             label=label or config['name'],
             period=period,
-            baseline=config.get('baseline'),
-            positive_label=config.get('positive_label', 'Above Baseline'),
-            negative_label=config.get('negative_label', 'Below Baseline')
+            **kwargs
         )
     
     def get_analysis(self, data: dict[str, Any], period: str) -> dict[str, Any]:

@@ -29,51 +29,6 @@ class InvestingSource(WebDataSource):
         super().__init__()
         self._cache_file = Path('data/market_breadth_history.json')
     
-    def _load_local_cache(self, symbol: str) -> tuple[pd.Series | None, bool]:
-        """Load historical data from local file."""
-        if not self._cache_file.exists():
-            print(f"[INVESTING][CACHE] Cache file not found: {self._cache_file}")
-            return None, False
-        try:
-            with open(self._cache_file, 'r') as f:
-                all_data = json.load(f)
-            
-            symbol_data = all_data.get(symbol, {})
-            if not symbol_data:
-                print(f"[INVESTING][CACHE] No data for symbol {symbol} in cache")
-                return None, False
-            
-            is_validated = symbol_data.get('_validated', False)
-            data_dict = {k: v for k, v in symbol_data.items() if not k.startswith('_')}
-            series = pd.Series({pd.to_datetime(k): v['value'] for k, v in data_dict.items()}).sort_index()
-            
-            print(f"[INVESTING][CACHE] Loaded {len(series)} records for {symbol}, latest: {series.index[-1].date()}, validated: {is_validated}")
-            return series, is_validated
-        except Exception as e:
-            print(f"[INVESTING][CACHE] Error loading cache: {e}")
-            return None, False
-    
-    def _save_to_local_cache(self, symbol: str, data: pd.Series, is_validated: bool = False):
-        """Save historical data to local file with validation flag."""
-        self._cache_file.parent.mkdir(parents=True, exist_ok=True)
-        
-        if self._cache_file.exists():
-            with open(self._cache_file, 'r') as f:
-                all_data = json.load(f)
-        else:
-            all_data = {}
-        
-        symbol_data = {
-            d.strftime('%Y-%m-%d'): {'value': float(v), 'timestamp': datetime.now().isoformat()}
-            for d, v in data.items()
-        }
-        symbol_data['_validated'] = is_validated
-        all_data[symbol] = symbol_data
-        
-        with open(self._cache_file, 'w') as f:
-            json.dump(all_data, f, indent=2)
-        
-        print(f"[INVESTING][CACHE] Saved {len(data)} records for {symbol}, validated={is_validated}")
     
     def _scrape_data(self, url: str) -> pd.Series:
         """Scrape market breadth from Investing.com historical data table."""
@@ -114,34 +69,34 @@ class InvestingSource(WebDataSource):
         return self._fetch_with_cache_and_scrape(
             symbol=symbol,
             period=period,
-            load_cache_fn=lambda: self._load_local_cache(symbol),
-            save_cache_fn=lambda data, is_validated: self._save_to_local_cache(symbol, data, is_validated),
+            load_cache_fn=lambda: self._load_local_cache(symbol, 'INVESTING'),
+            save_cache_fn=lambda data, is_validated: self._save_local_cache(symbol, data, is_validated, 'INVESTING'),
             scrape_fn=lambda: self._scrape_data(url),
             build_result_fn=lambda period_data, merged: {
                 'data': period_data,
                 'symbol': symbol,
                 'ma_period': ma_period,
                 'current': float(merged.iloc[-1])
-            }
+            },
+            date_offset_tolerance=0
         )
     
-    async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None) -> str:
-        """Create market breadth chart."""
+    async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None, chart_type: str = 'line', **kwargs) -> str:
+        """Create market breadth chart.
+        
+        Args:
+            chart_type: 'line' (default and only option for web sources)
+            **kwargs: All parameters for create_line_chart (ylabel, threshold_upper, threshold_lower, data_column, etc.)
+        """
         series_data = data['data']
-        ma_period = data['ma_period']
         
         df = series_data.to_frame(name='Breadth')
         
         return create_line_chart(
             data=df,
-            label=label or f"S&P 500 Stocks Above {ma_period}-Day MA",
+            label=label or symbol,
             period=period or '1y',
-            ylabel='Percentage (%)',
-            data_column='Breadth',
-            threshold_upper=70.0,
-            threshold_lower=30.0,
-            overbought_label='Strong Breadth',
-            oversold_label='Weak Breadth'
+            **kwargs
         )
     
     def get_analysis(self, data: dict[str, Any], period: str) -> dict[str, Any]:

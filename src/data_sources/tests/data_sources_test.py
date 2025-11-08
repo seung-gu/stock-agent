@@ -344,17 +344,17 @@ class TestInvestingCacheValidation(unittest.TestCase):
         """Scenario 1: No validation flag - should return False"""
         import json
         test_data = {
-            "TEST": {
-                "2025-10-30": {"value": 50.0, "timestamp": "2025-11-01T10:00:00"},
-                "2025-10-31": {"value": 51.0, "timestamp": "2025-11-01T10:00:00"}
-                # No _validated flag
-            }
+            "TEST": [
+                {"date": "2025-10-30", "value": 50.0},
+                {"date": "2025-10-31", "value": 51.0}
+            ]
+            # No _validated flag
         }
         self.test_cache_file.parent.mkdir(parents=True, exist_ok=True)
         with open(self.test_cache_file, 'w') as f:
             json.dump(test_data, f, indent=2)
         
-        local, is_validated = self.source._load_local_cache("TEST")
+        local, is_validated = self.source._load_local_cache("TEST", "INVESTING")
         
         self.assertIsNotNone(local)
         self.assertEqual(len(local), 2)
@@ -366,18 +366,18 @@ class TestInvestingCacheValidation(unittest.TestCase):
         from datetime import date
         
         test_data = {
-            "TEST": {
-                "_validated": True,
-                "2025-10-30": {"value": 50.0, "timestamp": "2025-11-01T10:00:00"},
-                "2025-10-31": {"value": 51.0, "timestamp": "2025-11-01T10:00:00"}
-                # Latest date is 2025-10-31 (will be compared with scraped data in fetch_data)
-            }
+            "TEST": [
+                {"date": "2025-10-30", "value": 50.0},
+                {"date": "2025-10-31", "value": 51.0}
+            ],
+            "_validated": True
+            # Latest date is 2025-10-31 (will be compared with scraped data in fetch_data)
         }
         self.test_cache_file.parent.mkdir(parents=True, exist_ok=True)
         with open(self.test_cache_file, 'w') as f:
             json.dump(test_data, f, indent=2)
         
-        local, is_validated = self.source._load_local_cache("TEST")
+        local, is_validated = self.source._load_local_cache("TEST", "INVESTING")
         latest_date = local.index[-1].date()
         
         self.assertIsNotNone(local)
@@ -392,18 +392,18 @@ class TestInvestingCacheValidation(unittest.TestCase):
         
         today_str = date.today().strftime('%Y-%m-%d')
         test_data = {
-            "TEST": {
-                "_validated": True,
-                "2025-10-30": {"value": 50.0, "timestamp": "2025-11-01T10:00:00"},
-                "2025-10-31": {"value": 51.0, "timestamp": "2025-11-01T10:00:00"},
-                today_str: {"value": 52.0, "timestamp": "2025-11-02T10:00:00"}
-            }
+            "TEST": [
+                {"date": "2025-10-30", "value": 50.0},
+                {"date": "2025-10-31", "value": 51.0},
+                {"date": today_str, "value": 52.0}
+            ],
+            "_validated": True
         }
         self.test_cache_file.parent.mkdir(parents=True, exist_ok=True)
         with open(self.test_cache_file, 'w') as f:
             json.dump(test_data, f, indent=2)
         
-        local, is_validated = self.source._load_local_cache("TEST")
+        local, is_validated = self.source._load_local_cache("TEST", "INVESTING")
         latest_date = local.index[-1].date()
         today = date.today()
         
@@ -413,7 +413,7 @@ class TestInvestingCacheValidation(unittest.TestCase):
         self.assertGreaterEqual(latest_date, today, "Has today's data")
         # Note: fetch_data will compare latest_date with scraped data's last date, not today
     
-    @patch('src.utils.data_sources.InvestingSource._scrape_data')
+    @patch('src.data_sources.web.investing_source.InvestingSource._scrape_data')
     def test_skip_scrape_when_cache_has_today(self, mock_scrape):
         """Test that scraping is skipped when cache has today's data"""
         import json
@@ -425,11 +425,11 @@ class TestInvestingCacheValidation(unittest.TestCase):
         yesterday_str = (today - timedelta(days=1)).strftime('%Y-%m-%d')
         
         test_data = {
-            "S5TH": {
-                yesterday_str: {"value": 50.0, "timestamp": datetime.now().isoformat()},
-                today_str: {"value": 55.0, "timestamp": datetime.now().isoformat()},
-                "_validated": True
-            }
+            "S5TH": [
+                {"date": yesterday_str, "value": 50.0},
+                {"date": today_str, "value": 55.0}
+            ],
+            "_validated": True
         }
         
         self.test_cache_file.parent.mkdir(parents=True, exist_ok=True)
@@ -569,7 +569,7 @@ class TestAAIISource(unittest.TestCase):
     
     @patch.object(AAIISource, '_load_local_cache')
     @patch.object(AAIISource, '_scrape_data')
-    @patch.object(AAIISource, '_save_to_local_cache')
+    @patch.object(AAIISource, '_save_local_cache')
     def test_fetch_data_with_date_offset(self, mock_save, mock_scrape, mock_load_cache):
         """Test fetch_data handles date offset within tolerance"""
         # Mock cache with date 2 days ago
@@ -591,7 +591,7 @@ class TestAAIISource(unittest.TestCase):
     
     @patch.object(AAIISource, '_load_local_cache')
     @patch.object(AAIISource, '_scrape_data')
-    @patch.object(AAIISource, '_save_to_local_cache')
+    @patch.object(AAIISource, '_save_local_cache')
     def test_fetch_data_updates_cache_when_outdated(self, mock_save, mock_scrape, mock_load_cache):
         """Test fetch_data updates cache when data is outdated"""
         # Mock cache with old data (5 days ago)

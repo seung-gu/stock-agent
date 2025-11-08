@@ -16,7 +16,7 @@ class TestYFinanceCharts(unittest.TestCase):
         """Set up test fixtures"""
         # Create mock data for different periods
         self.mock_data_5d = {
-            'history': pd.DataFrame({
+            'data': pd.DataFrame({
                 'Open': [100, 101, 102, 103, 104],
                 'High': [105, 106, 107, 108, 109],
                 'Low': [99, 100, 101, 102, 103],
@@ -27,7 +27,7 @@ class TestYFinanceCharts(unittest.TestCase):
         }
         
         self.mock_data_1mo = {
-            'history': pd.DataFrame({
+            'data': pd.DataFrame({
                 'Open': [100 + i for i in range(20)],
                 'High': [105 + i for i in range(20)],
                 'Low': [99 + i for i in range(20)],
@@ -38,7 +38,7 @@ class TestYFinanceCharts(unittest.TestCase):
         }
         
         self.mock_data_1y = {
-            'history': pd.DataFrame({
+            'data': pd.DataFrame({
                 'Open': [100 + i for i in range(250)],
                 'High': [105 + i for i in range(250)],
                 'Low': [99 + i for i in range(250)],
@@ -49,7 +49,7 @@ class TestYFinanceCharts(unittest.TestCase):
             }, index=pd.bdate_range('2024-01-01', periods=250))  # Business days only
         }
     
-    @patch('src.utils.data_sources.get_data_source')
+    @patch('src.data_sources.get_data_source')
     def test_chart_5d_no_sma(self, mock_get_source):
         """Test 5-day chart without SMAs"""
         # Mock the data source
@@ -59,7 +59,7 @@ class TestYFinanceCharts(unittest.TestCase):
         
         result = create_yfinance_chart(
             label="AAPL",
-            data=self.mock_data_5d['history'],
+            data=self.mock_data_5d['data'],
             period="5d",
             ylabel="Price (USD)",
             value_format="${:.2f}"
@@ -69,7 +69,7 @@ class TestYFinanceCharts(unittest.TestCase):
         chart_path = result.split("Chart saved: ")[1].split("\n")[0]
         self.assertTrue(os.path.exists(chart_path))
     
-    @patch('src.utils.data_sources.get_data_source')
+    @patch('src.data_sources.get_data_source')
     def test_chart_1mo_with_sma(self, mock_get_source):
         """Test 1-month chart with SMA 5, 20"""
         # Mock the data source
@@ -79,7 +79,7 @@ class TestYFinanceCharts(unittest.TestCase):
         
         result = create_yfinance_chart(
             label="AAPL",
-            data=self.mock_data_1mo['history'],
+            data=self.mock_data_1mo['data'],
             period="1mo",
             ylabel="Price (USD)",
             value_format="${:.2f}"
@@ -87,11 +87,11 @@ class TestYFinanceCharts(unittest.TestCase):
         
         self.assertIn("Chart saved:", result)
         # Verify SMAs are in the data
-        hist = self.mock_data_1mo['history']
+        hist = self.mock_data_1mo['data']
         self.assertIn('SMA_5', hist.columns)
         self.assertIn('SMA_20', hist.columns)
     
-    @patch('src.utils.data_sources.get_data_source')
+    @patch('src.data_sources.get_data_source')
     def test_chart_1y_with_sma_200(self, mock_get_source):
         """Test 1-year chart with SMA 5, 20, 200"""
         # Mock the data source
@@ -101,7 +101,7 @@ class TestYFinanceCharts(unittest.TestCase):
         
         result = create_yfinance_chart(
             label="AAPL",
-            data=self.mock_data_1y['history'],
+            data=self.mock_data_1y['data'],
             period="1y",
             ylabel="Price (USD)",
             value_format="${:.2f}"
@@ -109,17 +109,17 @@ class TestYFinanceCharts(unittest.TestCase):
         
         self.assertIn("Chart saved:", result)
         # Verify all SMAs are in the data
-        hist = self.mock_data_1y['history']
+        hist = self.mock_data_1y['data']
         self.assertIn('SMA_5', hist.columns)
         self.assertIn('SMA_20', hist.columns)
         self.assertIn('SMA_200', hist.columns)
     
-    @patch('src.utils.data_sources.get_data_source')
+    @patch('src.data_sources.get_data_source')
     def test_chart_treasury(self, mock_get_source):
         """Test treasury chart (^TNX)"""
         # Mock treasury data
         mock_treasury_data = {
-            'history': pd.DataFrame({
+            'data': pd.DataFrame({
                 'Open': [4.0 + i*0.01 for i in range(120)],
                 'High': [4.1 + i*0.01 for i in range(120)],
                 'Low': [3.9 + i*0.01 for i in range(120)],
@@ -136,7 +136,7 @@ class TestYFinanceCharts(unittest.TestCase):
         
         result = create_yfinance_chart(
             label="^TNX",
-            data=mock_treasury_data['history'],
+            data=mock_treasury_data['data'],
             period="6mo",
             ylabel="Yield (%)",
             value_format="{:.3f}%"
@@ -147,7 +147,7 @@ class TestYFinanceCharts(unittest.TestCase):
     def test_candlestick_no_gaps(self):
         """Test candlestick chart has no weekend gaps"""
         # Use mock data with only trading days
-        hist = self.mock_data_1mo['history']
+        hist = self.mock_data_1mo['data']
         
         # Verify all OHLC columns exist
         self.assertIn('Open', hist.columns)
@@ -175,7 +175,7 @@ class TestFREDCharts(unittest.TestCase):
             )
         }
     
-    @patch('src.utils.data_sources.get_data_source')
+    @patch('src.data_sources.get_data_source')
     def test_chart_nfci(self, mock_get_source):
         """Test NFCI chart with baseline"""
         # Mock the data source
@@ -202,7 +202,7 @@ class TestChartFeatures(unittest.TestCase):
         """Set up test fixtures"""
         # Create mock data for different periods
         self.mock_data_5d = {
-            'history': pd.DataFrame({
+            'data': pd.DataFrame({
                 'Open': [100, 101, 102, 103, 104],
                 'High': [105, 106, 107, 108, 109],
                 'Low': [99, 100, 101, 102, 103],
@@ -213,7 +213,7 @@ class TestChartFeatures(unittest.TestCase):
         }
         
         self.mock_data_1mo = {
-            'history': pd.DataFrame({
+            'data': pd.DataFrame({
                 'Open': [100 + i for i in range(20)],
                 'High': [105 + i for i in range(20)],
                 'Low': [99 + i for i in range(20)],
@@ -224,7 +224,7 @@ class TestChartFeatures(unittest.TestCase):
         }
         
         self.mock_data_1y = {
-            'history': pd.DataFrame({
+            'data': pd.DataFrame({
                 'Open': [100 + i for i in range(250)],
                 'High': [105 + i for i in range(250)],
                 'Low': [99 + i for i in range(250)],
@@ -238,17 +238,17 @@ class TestChartFeatures(unittest.TestCase):
     def test_sma_by_period(self):
         """Test SMA presence varies by period"""
         # 5d: SMAs computed but won't be displayed on chart
-        hist_5d = self.mock_data_5d['history']
+        hist_5d = self.mock_data_5d['data']
         self.assertIn('SMA_5', hist_5d.columns)
         self.assertIn('SMA_20', hist_5d.columns)
         
         # 1mo: SMA 5, 20
-        hist_1mo = self.mock_data_1mo['history']
+        hist_1mo = self.mock_data_1mo['data']
         self.assertIn('SMA_5', hist_1mo.columns)
         self.assertIn('SMA_20', hist_1mo.columns)
         
         # 1y: SMA 5, 20, 200
-        hist_1y = self.mock_data_1y['history']
+        hist_1y = self.mock_data_1y['data']
         self.assertIn('SMA_5', hist_1y.columns)
         self.assertIn('SMA_20', hist_1y.columns)
         self.assertIn('SMA_200', hist_1y.columns)

@@ -7,12 +7,14 @@ from pandas.tseries.offsets import BDay
 from typing import Any
 
 from src.data_sources.base import APIDataSource
-from src.utils.charts import create_yfinance_chart
+from src.utils.charts import create_yfinance_chart, create_line_chart
 from src.utils.technical_indicators import calculate_sma
 
 
 class YFinanceSource(APIDataSource):
     """Data source for stocks, ETFs, and treasuries via yfinance."""
+    
+    _cache: dict[str, Any] = {}
     
     def __init__(self):
         """Initialize with smart cache for API optimization."""
@@ -130,20 +132,43 @@ class YFinanceSource(APIDataSource):
             'symbol': symbol
         }
     
-    async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None) -> str:
-        """Create stock/treasury chart."""
+    async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None, chart_type: str = 'candle', **kwargs) -> str:
+        """Create stock/treasury chart.
+        
+        Args:
+            chart_type: 'candle' (default, OHLCV candlestick) or 'line' (line chart)
+            **kwargs: Additional chart options (ylabel, value_format, threshold_upper, etc.)
+        """
         hist = data['data']
         info = data['info']
         
-        chart_config = self._get_chart_config(symbol, info)
-        
-        return create_yfinance_chart(
-            data=hist,
-            period=period,
-            ylabel=chart_config['ylabel'],
-            value_format=chart_config['value_format'],
-            label=label or symbol
-        )
+        if chart_type == 'candle':
+            return create_yfinance_chart(
+                data=hist,
+                period=period,
+                label=label or symbol,
+                **kwargs
+            )
+        elif chart_type == 'line':
+            # Support both raw OHLC data (use Close) and pre-calculated series (use as-is)
+            hist_data = data['data']
+            if 'Close' in hist_data.columns:
+                # Raw OHLC data - use Close column
+                line_data = hist_data['Close'].to_frame(name='Close')
+                default_label = label or symbol
+            else:
+                # Pre-calculated series (Disparity, RSI, etc.) - use as-is
+                line_data = hist_data
+                default_label = label or symbol
+            
+            return create_line_chart(
+                data=line_data,
+                label=default_label,
+                period=period,
+                **kwargs
+            )
+        else:
+            raise ValueError(f"Unsupported chart_type: {chart_type}. Use 'candle' or 'line'.")
     
     def _get_chart_config(self, symbol: str, info: dict) -> dict:
         """Get chart configuration for yfinance data."""

@@ -14,6 +14,8 @@ load_dotenv()
 class FinnhubSource(APIDataSource):
     """Data source for company fundamentals via Finnhub API."""
     
+    _cache: dict[str, Any] = {}
+    
     def __init__(self):
         super().__init__()
         self._client = None
@@ -85,7 +87,7 @@ class FinnhubSource(APIDataSource):
                 'error': str(e)
             }
     
-    async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None) -> str:
+    async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None, chart_type: str = 'line', **kwargs) -> str:
         """Not implemented for fundamentals data."""
         return f"Chart generation not supported for Finnhub fundamentals data"
     

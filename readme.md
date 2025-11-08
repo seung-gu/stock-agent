@@ -88,7 +88,7 @@ TODO:
 26. ~~Agent instruction refactoring~~ ✅
     - TrendAgent: Common instructions in base (fetch_data, output format)
     - Subclasses: Only specific tool usage and analysis focus
-    - Orchestrators: Explicit content preservation rules (tables, charts, links)
+    - Orchestrators: Explicit content preservation rules (tables, charts, links) 
 27. ~~AAII Investor Sentiment (Bull-Bear Spread)~~ ✅
     - AAIISource class with web scraping from aaii.com
     - Bull-Bear Spread calculation (Bullish % - Bearish %)
@@ -127,22 +127,25 @@ src/
 │   │   ├── orchestrator_agent.py  # Base class for orchestrators (parallel execution)
 │   │   └── trend_agent.py    # Base class for trend analysis (simplified, tool-agnostic)
 │   │
-│   ├── tools/                 # 🛠️ Modular function tools (v6.0 - Dynamic Thresholds)
-│   │   └── agent_tools.py    # 9 independent @function_tool for agents
-│   │                         # • fetch_data, analyze_OHLCV_data, generate_OHLCV_chart
-│   │                         # • analyze_SMA_data, analyze_disparity_data, analyze_RSI_data
-│   │                         # • generate_disparity_chart, generate_RSI_chart
-│   │                         # • fetch_market_breadth, generate_market_breadth_chart
+│   ├── tools/                 # 🛠️ Modular function tools (v7.0 - Unified Chart System)
+│   │   └── agent_tools.py    # 13 independent @function_tool for agents
+│   │                         # • fetch_data
+│   │                         # • analyze_OHLCV, analyze_SMA, analyze_disparity, analyze_RSI
+│   │                         # • analyze_market_breadth, analyze_sentiment, analyze_put_call, analyze_NFCI
+│   │                         # • generate_OHLCV_chart, generate_disparity_chart, generate_RSI_chart
+│   │                         # • generate_market_breadth_chart, generate_sentiment_chart, generate_put_call_chart, generate_NFCI_chart
 │   │                         # • Dynamic overbought/oversold thresholds (80th/10th percentile)
 │   │                         # • Cache-based, complete layer separation
 │   │
 │   ├── trend/                 # 📈 Trend analysis agents
-│   │   ├── __init__.py       # Exports: TNXAgent, NFCIAgent, EquityTrendAgent, MarketBreadthAgent
+│   │   ├── __init__.py       # Exports: TNXAgent, NFCIAgent, EquityTrendAgent, MarketBreadthAgent, SentimentAgent, PutCallAgent
 │   │   ├── tnx_agent.py      # Treasury yield (^TNX) analysis
 │   │   ├── nfci_agent.py     # NFCI (National Financial Conditions Index) analysis
 │   │   ├── dx_agent.py       # Dollar Index (DX=F) analysis
 │   │   ├── equity_trend_agent.py  # Stock price trend analysis
-│   │   └── market_breadth_agent.py  # S&P 500 market breadth (50-day & 200-day MA)
+│   │   ├── market_breadth_agent.py  # S&P 500 market breadth (50-day & 200-day MA)
+│   │   ├── sentiment_agent.py     # AAII Investor Sentiment (Bull-Bear Spread)
+│   │   └── put_call_agent.py      # CBOE Equity Put/Call Ratio
 │   │
 │   ├── orchestrator/          # 🎭 Orchestrator agents (combine multiple agents)
 │   │   ├── __init__.py       # Exports: LiquidityAgent, BroadIndexAgent, MarketReportAgent
@@ -158,30 +161,30 @@ src/
 │
 ├── data_sources/              # 📊 Data source system (modular architecture)
 │   ├── base.py               # Base classes: DataSource, APIDataSource, WebDataSource
+│   │                         # • Generic _load_local_cache & _save_local_cache for web sources
+│   │                         # • Weekend-aware cache freshness logic
 │   ├── api/                  # API-based sources (memory cache)
-│   │   ├── yfinance_source.py   # Stocks, ETFs, treasuries
-│   │   ├── fred_source.py       # Economic indicators
+│   │   ├── yfinance_source.py   # Stocks, ETFs, treasuries (chart_type: 'candle'/'line')
+│   │   ├── fred_source.py       # Economic indicators (chart_type: 'line')
 │   │   └── finnhub_source.py    # Company fundamentals
 │   ├── web/                  # Web scraping sources (file cache)
 │   │   ├── investing_source.py  # Market breadth (S5FI, S5TH)
-│   │   └── aaii_source.py       # Investor sentiment (Bull-Bear Spread)
+│   │   ├── aaii_source.py       # Investor sentiment (Bull-Bear Spread)
+│   │   └── ycharts_source.py    # Put/Call Ratio (CBOE_PUT_CALL_EQUITY)
 │   └── tests/                # 28 comprehensive unit tests
-│       └── test_all_sources.py
+│       └── data_sources_test.py
 │
 ├── utils/                      # Utility modules
 │   ├── charts.py              # Chart generation system
-│   │   ├── create_yfinance_chart()  # Candlestick with SMA overlays
-│   │   ├── create_fred_chart()      # FRED line chart with baseline
-│   │   └── create_line_chart()      # Generic line chart (disparity, RSI, etc.)
-│   │                          # • Validation-based caching (_validated flag as parity bit)
-│   │                          # • Compare cached vs scraped last date (not today)
-│   │                          # • Auto-merge & accumulate to data/market_breadth_history.json
-│   │                          # • Raw OHLCV data only (no calculations)
+│   │   ├── create_yfinance_chart()  # Candlestick with SMA overlays (called by DataSource.create_chart)
+│   │   ├── create_fred_chart()      # FRED line chart with baseline (called by DataSource.create_chart)
+│   │   └── create_line_chart()      # Generic line chart with thresholds (called by DataSource.create_chart)
+│   │                          # • All charts now called via DataSource.create_chart(chart_type, **kwargs)
+│   │                          # • agent_tools.py never calls chart functions directly
 │   ├── technical_indicators.py  # Technical analysis pure functions
-│   │                          # • calculate_sma, calculate_disparity, calculate_rsi, calculate_macd
+│   │                          # • calculate_sma, calculate_disparity, calculate_rsi
 │   │                          # • Used by agent_tools.py
 │   │                          # • No agent coupling (pure calculation)
-│   ├── data_sources_test.py   # Unit tests (10 tests, Mock API)
 │   └── charts_test.py         # Unit tests (7 tests, Mock API)
 │
 ├── services/                   # Business logic services
@@ -496,6 +499,115 @@ get_data_source("investing")  # → InvestingSource
 ---
 
 ## Recent Improvements
+
+### Put/Call Ratio & Unified Chart/Cache Systems (v7.0)
+
+**Date: November 8, 2025**
+
+**Major Updates:**
+
+**1. CBOE Equity Put/Call Ratio Integration:**
+- **New DataSource**: `YChartsSource` in `src/data_sources/web/ycharts_source.py`
+  - Web scraping from ycharts.com
+  - CBOE Equity Put/Call Ratio (contrarian sentiment indicator)
+  - 2-3 months of historical data (50 records)
+  - Weekend-aware caching with business day logic
+- **New Agent**: `PutCallAgent` in `src/agent/trend/put_call_agent.py`
+  - Integrated into BroadIndexAgent
+  - Thresholds: >1.5 (Bearish Sentiment), <0.5 (Bullish Sentiment)
+- **New Tools**: `analyze_put_call`, `generate_put_call_chart`
+- **Data File**: `data/put_call_ratio_history.json` (50 records)
+
+**2. Unified Chart Generation System:**
+- **chart_type Parameter**: All DataSources now support `chart_type`
+  - `'candle'`: YFinance OHLCV candlestick charts (default for stocks)
+  - `'line'`: Line charts for all other data (default for FRED, web sources)
+- **Flexible Options via kwargs**: `threshold_upper`, `threshold_lower`, `overbought_label`, `oversold_label`, `value_format`, `ylabel`
+- **Generic create_chart()**: Truly universal across all data sources
+  - YFinanceSource: Supports both 'candle' and 'line' types
+  - FREDSource: 'line' with baseline support
+  - WebDataSources: 'line' with threshold support
+- **agent_tools.py**: Sets all chart parameters explicitly
+  - Disparity & RSI now use `YFinanceSource.create_chart(type='line')`
+  - No more direct `create_line_chart()` calls from agent_tools
+
+**3. Function Naming Unification:**
+- **analyze Functions**: Removed 'data' suffix for consistency
+  - `analyze_OHLCV_data` → `analyze_OHLCV`
+  - `analyze_SMA_data` → `analyze_SMA`
+  - `analyze_disparity_data` → `analyze_disparity`
+  - `analyze_RSI_data` → `analyze_RSI`
+  - `analyze_put_call_ratio` → `analyze_put_call`
+- **generate Functions**: Kept 'chart' suffix for clarity
+  - All remain as `generate_XXX_chart`
+- **NFCI Dedicated Functions**: `analyze_NFCI`, `generate_NFCI_chart`
+  - Separated from generic OHLCV functions
+  - `generate_OHLCV_chart` now YFinance-specific
+
+**4. Web Source JSON Format Unification:**
+- **market_breadth_history.json**: Changed from object to array format
+  ```json
+  // Before
+  "S5TH": {
+    "2015-10-01": {"value": 26.0, "timestamp": "..."},
+    "_validated": true
+  }
+  
+  // After
+  "S5TH": [
+    {"date": "2015-10-01", "value": 26.0}
+  ],
+  "_validated": true
+  ```
+- **Unified Format**: All web sources now use `[{"date": "YYYY-MM-DD", "value": float}]`
+- **Top-level _validated**: Moved validation flag to root level
+
+**5. Web Source Cache Consolidation:**
+- **Generic Cache Methods**: Moved to `WebDataSource` base class
+  - `_load_local_cache(symbol, log_prefix)`: Generic JSON loader
+  - `_save_local_cache(symbol, data, is_validated, log_prefix)`: Generic JSON saver
+- **Code Deduplication**: Removed 131 lines across 3 sources
+  - InvestingSource: -44 lines
+  - AAIISource: -44 lines
+  - YChartsSource: Uses base methods from start
+- **Benefits**: Single source of truth, easier maintenance
+
+**Files Added:**
+- `src/data_sources/web/ycharts_source.py`: YCharts scraping (136 lines)
+- `src/agent/trend/put_call_agent.py`: Put/Call Ratio agent (75 lines)
+- `data/put_call_ratio_history.json`: Historical data (50 records)
+
+**Files Modified:**
+- `src/data_sources/base.py`: Generic cache methods, weekend logic
+- `src/data_sources/api/yfinance_source.py`: chart_type + **kwargs
+- `src/data_sources/api/fred_source.py`: chart_type + **kwargs
+- `src/data_sources/api/finnhub_source.py`: chart_type + **kwargs
+- `src/data_sources/web/investing_source.py`: Use base cache methods
+- `src/data_sources/web/aaii_source.py`: Use base cache methods
+- `src/agent/tools/agent_tools.py`: Function renaming, NFCI functions, Put/Call functions
+- `src/agent/base/trend_agent.py`: Updated function names
+- `src/agent/trend/equity_agent.py`: Updated function names (5 changes)
+- `src/agent/trend/nfci_agent.py`: Use dedicated NFCI functions
+- `src/agent/trend/tnx_agent.py`, `dx_agent.py`: Updated function names
+- `src/agent/orchestrator/broad_index_agent.py`: Added PutCallAgent
+- `data/market_breadth_history.json`: Format change (30,619 lines)
+- `data/aaii_bull_bear_spread_history.json`: Data update
+
+**Files Moved:**
+- `src/utils/data_sources_test.py` → `src/data_sources/tests/data_sources_test.py`
+
+**Files Deleted:**
+- `src/data_sources/tests/test_all_sources.py` (renamed to data_sources_test.py)
+
+**Impact:**
+- ✅ Put/Call Ratio as contrarian sentiment indicator
+- ✅ Truly generic chart generation across all sources
+- ✅ Consistent function naming (analyze_XXX, generate_XXX_chart)
+- ✅ Unified JSON format for all web sources
+- ✅ 131 lines of duplicate code removed
+- ✅ All 67 tests passing (28 data sources, 7 charts, 32 others)
+
+---
 
 ### Chart Period Accuracy & Data Consistency (v6.4)
 

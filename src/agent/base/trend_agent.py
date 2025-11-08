@@ -64,9 +64,9 @@ class TrendAgent(AsyncAgent):
         6. Include ALL chart links from tool responses in the order of the periods
         
         TOOL USAGE (for OHLCV data):
-        - Use analyze_OHLCV_data for table rows (no chart link returned)
+        - Use analyze_OHLCV for table rows (no chart link returned)
         - Use generate_OHLCV_chart to generate charts (returns "Chart saved: ...")
-        - Tables and charts may require different period sets; call analyze_OHLCV_data and generate_OHLCV_chart independently
+        - Tables and charts may require different period sets; call analyze_OHLCV and generate_OHLCV_chart independently
       
         OUTPUT FORMAT (REQUIRED):
         Start with a brief introduction.

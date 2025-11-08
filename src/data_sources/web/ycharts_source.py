@@ -1,4 +1,4 @@
-"""AAII data source for investor sentiment survey."""
+"""YCharts data source for CBOE Put/Call Ratio."""
 
 import json
 import pandas as pd
@@ -12,12 +12,16 @@ from src.data_sources.base import WebDataSource
 from src.utils.charts import create_line_chart
 
 
-class AAIISource(WebDataSource):
-    """Data source for AAII Investor Sentiment Survey (Bull-Bear Spread)."""
+class YChartsSource(WebDataSource):
+    """Data source for CBOE Put/Call Ratio via YCharts scraping."""
+    
+    SYMBOL_URLS = {
+        'CBOE_PUT_CALL_EQUITY': 'https://ycharts.com/indicators/cboe_equity_put_call_ratio',
+    }
     
     def __init__(self):
         super().__init__()
-        self._cache_file = Path('data/aaii_bull_bear_spread_history.json')
+        self._cache_file = Path('data/put_call_ratio_history.json')
     
     def _period_to_timedelta(self, period: str) -> timedelta:
         """Convert period string to timedelta."""
@@ -34,70 +38,69 @@ class AAIISource(WebDataSource):
         }
         period_lower = period.lower()
         if period_lower not in period_map:
-            return timedelta(days=365)
+            return timedelta(days=90)  # Default: 3mo
         return period_map[period_lower]
     
     
-    def _scrape_data(self) -> pd.Series:
-        """Scrape latest AAII sentiment data from website."""
-        url = 'https://www.aaii.com/sentimentsurvey/sent_results'
+    def _scrape_data(self, url: str) -> pd.Series:
+        """Scrape Put-Call Ratio from YCharts."""
         response = requests.get(url, headers=self.BROWSER_HEADERS, timeout=15)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.text, 'html.parser')
-        table = soup.find('table')
+        tables = soup.find_all('table')
         
-        if not table:
-            raise ValueError("No data table found on AAII website")
+        if not tables:
+            raise ValueError("No data table found on YCharts")
         
         data = []
-        current_year = datetime.now().year
-        
-        for row in table.find_all('tr')[1:]:
-            cells = row.find_all('td')
-            if len(cells) < 4:
-                continue
-            
-            try:
-                date_str = cells[0].get_text(strip=True)
-                date_obj = pd.to_datetime(f"{date_str}, {current_year}", format='%b %d, %Y')
-                
-                if date_obj > datetime.now():
-                    date_obj = pd.to_datetime(f"{date_str}, {current_year - 1}", format='%b %d, %Y')
-                
-                bullish = float(cells[1].get_text(strip=True).replace('%', '')) / 100
-                bearish = float(cells[3].get_text(strip=True).replace('%', '')) / 100
-                bull_bear_spread = bullish - bearish
-                
-                data.append((date_obj, bull_bear_spread))
-            except Exception as e:
-                print(f"[AAII][SCRAPE] Error parsing row: {e}")
-                continue
+        for table in tables:
+            rows = table.find_all('tr')
+            for row in rows:
+                cells = row.find_all('td')
+                if len(cells) == 2:
+                    date_text = cells[0].get_text(strip=True)
+                    value_text = cells[1].get_text(strip=True)
+                    
+                    try:
+                        # Try to parse as date and value
+                        date_obj = pd.to_datetime(date_text)
+                        value = float(value_text)
+                        data.append((date_obj, value))
+                    except (ValueError, TypeError):
+                        # Not a valid date-value pair, skip
+                        continue
         
         if not data:
-            raise ValueError("No valid data scraped from AAII website")
+            raise ValueError("No valid data scraped from YCharts")
         
         series = pd.Series(dict(data)).sort_index()
-        print(f"[AAII][SCRAPE] Scraped {len(series)} records, range: {series.index[0].date()} to {series.index[-1].date()}")
+        print(f"[YCHARTS][SCRAPE] Scraped {len(series)} records, range: {series.index[0].date()} to {series.index[-1].date()}")
         return series
     
-    async def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:   
+    async def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
+        """Fetch Put-Call Ratio data with local file caching and web scraping."""
+        if symbol not in self.SYMBOL_URLS:
+            raise ValueError(f"YChartsSource only supports: {list(self.SYMBOL_URLS.keys())}, got: {symbol}")
+        
+        url = self.SYMBOL_URLS[symbol]
+        
         return self._fetch_with_cache_and_scrape(
             symbol=symbol,
             period=period,
-            load_cache_fn=lambda: self._load_local_cache(symbol, 'AAII'),
-            save_cache_fn=lambda data, is_validated: self._save_local_cache(symbol, data, is_validated, 'AAII'),
-            scrape_fn=lambda: self._scrape_data(),
+            load_cache_fn=lambda: self._load_local_cache(symbol, 'YCHARTS'),
+            save_cache_fn=lambda data, is_validated: self._save_local_cache(symbol, data, is_validated, 'YCHARTS'),
+            scrape_fn=lambda: self._scrape_data(url),
             build_result_fn=lambda period_data, merged: {
                 'data': period_data,
                 'symbol': symbol,
                 'current': float(merged.iloc[-1])
             },
-            date_offset_tolerance=2
+            date_offset_tolerance=0
         )
     
     async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None, chart_type: str = 'line', **kwargs) -> str:
-        """Create AAII sentiment chart.
+        """Create Put-Call Ratio chart.
         
         Args:
             chart_type: 'line' (default and only option for web sources)
@@ -113,7 +116,7 @@ class AAIISource(WebDataSource):
         )
     
     def get_analysis(self, data: dict[str, Any], period: str) -> dict[str, Any]:
-        """Extract analysis metrics from AAII sentiment data."""
+        """Extract analysis metrics from Put-Call Ratio data."""
         series_data = data['data']
         
         start_value = float(series_data.iloc[0])

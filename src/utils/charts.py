@@ -327,7 +327,7 @@ def create_line_chart(
     plt.tight_layout()
     
     # Save chart
-    label_clean = label.replace('^', '').replace('-', '_').replace(' ', '_').replace('(', '').replace(')', '')
+    label_clean = label.replace('^', '').replace('-', '_').replace(' ', '_').replace('(', '').replace(')', '').replace('/', '_')
     filename = f"{label_clean}_{period}_chart.png"
     filepath = os.path.join(CHART_OUTPUT_DIR, filename)
     plt.savefig(filepath, dpi=100, bbox_inches='tight')

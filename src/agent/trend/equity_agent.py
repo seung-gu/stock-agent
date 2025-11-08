@@ -1,8 +1,8 @@
 import asyncio
 
 from src.agent.base.trend_agent import TrendAgent
-from src.agent.tools.agent_tools import fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data, \
-analyze_disparity_data, generate_disparity_chart, generate_RSI_chart, analyze_RSI_data, generate_PE_PEG_ratio_chart
+from src.agent.tools.agent_tools import fetch_data, analyze_OHLCV, generate_OHLCV_chart, analyze_SMA, \
+analyze_disparity, generate_disparity_chart, generate_RSI_chart, analyze_RSI, generate_PE_PEG_ratio_chart
 
 
 class EquityTrendAgent(TrendAgent):
@@ -29,8 +29,8 @@ class EquityTrendAgent(TrendAgent):
             agent_name=agent_name,
             label=label,
             description=description,
-            tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data, analyze_disparity_data, 
-                   generate_disparity_chart, generate_RSI_chart, analyze_RSI_data, generate_PE_PEG_ratio_chart],
+            tools=[fetch_data, analyze_OHLCV, generate_OHLCV_chart, analyze_SMA, analyze_disparity, 
+                   generate_disparity_chart, generate_RSI_chart, analyze_RSI, generate_PE_PEG_ratio_chart],
             context_instructions="""
             EQUITY ANALYSIS FOCUS:
             You are an equity analyst specializing in stock or index price analysis.
@@ -66,11 +66,11 @@ class EquityTrendAgent(TrendAgent):
             - Charts: "1mo", "1y"
             
             ADDITIONAL TOOLS:
-            - analyze_SMA_data to analyze SMA data (Mandatory)
+            - analyze_SMA to analyze SMA data (Mandatory)
             - generate_disparity_chart (5y period) to generate disparity chart
-            - analyze_disparity_data (5y period) to analyze disparity data
+            - analyze_disparity (5y period) to analyze disparity data
             - generate_RSI_chart (14 window for 1y period) to generate RSI chart
-            - analyze_RSI_data (14 window for 1y period) to analyze RSI data
+            - analyze_RSI (14 window for 1y period) to analyze RSI data
             - generate_PE_PEG_ratio_chart to generate P/E and PEG ratio charts for 5 years period (call only for stocks, not for indices or ETFs)
             """
         )
