@@ -392,6 +392,58 @@ async def generate_put_call_chart(period: str) -> str:
 
 
 @function_tool
+async def analyze_margin_debt(symbol: str, period: str) -> str:
+    """Analyze FINRA Margin Statistics (YoY change).
+    
+    Args:
+        symbol: 'MARGIN_DEBT_YOY'
+        period: Time period (6mo, 1y, 5y, max, etc.)
+    """
+    src = get_data_source('finra')
+    data = await src.fetch_data(symbol, period)
+    actual_period = src.get_actual_period_approx(data)
+    analysis = src.get_analysis(data, actual_period)
+    period_name = get_period_name(actual_period)
+    
+    label = data.get('label', symbol)
+    
+    return f"""{period_name} {label}:
+            - Start: {analysis['start']:.2f}
+            - End: {analysis['end']:.2f}
+            - Change: {analysis['change']:+.2f}
+            - High: {analysis['high']:.2f}
+            - Low: {analysis['low']:.2f}
+            - Mean: {analysis['mean']:.2f}"""
+
+
+@function_tool
+async def generate_margin_debt_chart(symbol: str, period: str) -> str:
+    """Generate FINRA Margin Statistics chart (YoY change).
+    
+    Args:
+        symbol: 'MARGIN_DEBT_YOY'
+        period: Time period (6mo, 1y, 5y, max, etc.)
+    """
+    src = get_data_source('finra')
+    data = await src.fetch_data(symbol, period)
+    actual_period = src.get_actual_period_approx(data)
+    
+    label = data.get('label', symbol)
+    
+    chart_info = await src.create_chart(
+        data, symbol, actual_period,
+        label=label,
+        ylabel='Margin Debt (YoY Change %)',
+        value_format='{:.2f}',
+        threshold_upper=50.0,
+        threshold_lower=-20.0,
+        overbought_label='Extreme Leverage',
+        oversold_label='Deleveraging'
+    )
+    return chart_info
+
+
+@function_tool
 async def generate_PE_PEG_ratio_chart(ticker: str, period: str = '10Y') -> str:
     """
     Generate P/E (NTM) and PEG (NTM) ratio charts with Historical Price overlay using Koyfin automation.

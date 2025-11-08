@@ -3,6 +3,7 @@
 from src.data_sources.web.investing_source import InvestingSource
 from src.data_sources.web.aaii_source import AAIISource
 from src.data_sources.web.ycharts_source import YChartsSource
+from src.data_sources.web.finra_source import FINRASource
 
-__all__ = ['InvestingSource', 'AAIISource', 'YChartsSource']
+__all__ = ['InvestingSource', 'AAIISource', 'YChartsSource', 'FINRASource']
 

@@ -127,25 +127,26 @@ src/
 │   │   ├── orchestrator_agent.py  # Base class for orchestrators (parallel execution)
 │   │   └── trend_agent.py    # Base class for trend analysis (simplified, tool-agnostic)
 │   │
-│   ├── tools/                 # 🛠️ Modular function tools (v7.0 - Unified Chart System)
-│   │   └── agent_tools.py    # 13 independent @function_tool for agents
+│   ├── tools/                 # 🛠️ Modular function tools (v7.1 - FINRA Margin Debt)
+│   │   └── agent_tools.py    # 15 independent @function_tool for agents
 │   │                         # • fetch_data
 │   │                         # • analyze_OHLCV, analyze_SMA, analyze_disparity, analyze_RSI
-│   │                         # • analyze_market_breadth, analyze_sentiment, analyze_put_call, analyze_NFCI
+│   │                         # • analyze_market_breadth, analyze_sentiment, analyze_put_call, analyze_NFCI, analyze_margin_debt
 │   │                         # • generate_OHLCV_chart, generate_disparity_chart, generate_RSI_chart
-│   │                         # • generate_market_breadth_chart, generate_sentiment_chart, generate_put_call_chart, generate_NFCI_chart
+│   │                         # • generate_market_breadth_chart, generate_sentiment_chart, generate_put_call_chart, generate_NFCI_chart, generate_margin_debt_chart
 │   │                         # • Dynamic overbought/oversold thresholds (80th/10th percentile)
 │   │                         # • Cache-based, complete layer separation
 │   │
 │   ├── trend/                 # 📈 Trend analysis agents
-│   │   ├── __init__.py       # Exports: TNXAgent, NFCIAgent, EquityTrendAgent, MarketBreadthAgent, SentimentAgent, PutCallAgent
+│   │   ├── __init__.py       # Exports: TNXAgent, NFCIAgent, EquityTrendAgent, MarketBreadthAgent, SentimentAgent, PutCallAgent, MarginDebtAgent
 │   │   ├── tnx_agent.py      # Treasury yield (^TNX) analysis
 │   │   ├── nfci_agent.py     # NFCI (National Financial Conditions Index) analysis
 │   │   ├── dx_agent.py       # Dollar Index (DX=F) analysis
 │   │   ├── equity_trend_agent.py  # Stock price trend analysis
 │   │   ├── market_breadth_agent.py  # S&P 500 market breadth (50-day & 200-day MA)
 │   │   ├── sentiment_agent.py     # AAII Investor Sentiment (Bull-Bear Spread)
-│   │   └── put_call_agent.py      # CBOE Equity Put/Call Ratio
+│   │   ├── put_call_agent.py      # CBOE Equity Put/Call Ratio
+│   │   └── margin_debt_agent.py   # FINRA Margin Debt (YoY %)
 │   │
 │   ├── orchestrator/          # 🎭 Orchestrator agents (combine multiple agents)
 │   │   ├── __init__.py       # Exports: LiquidityAgent, BroadIndexAgent, MarketReportAgent
@@ -170,8 +171,9 @@ src/
 │   ├── web/                  # Web scraping sources (file cache)
 │   │   ├── investing_source.py  # Market breadth (S5FI, S5TH)
 │   │   ├── aaii_source.py       # Investor sentiment (Bull-Bear Spread)
-│   │   └── ycharts_source.py    # Put/Call Ratio (CBOE_PUT_CALL_EQUITY)
-│   └── tests/                # 28 comprehensive unit tests
+│   │   ├── ycharts_source.py    # Put/Call Ratio (CBOE_PUT_CALL_EQUITY)
+│   │   └── finra_source.py      # Margin Debt (MARGIN_DEBT_YOY)
+│   └── tests/                # 34 comprehensive unit tests
 │       └── data_sources_test.py
 │
 ├── utils/                      # Utility modules
@@ -430,6 +432,9 @@ REPORT_LANGUAGE = "Korean"  # or "English"
 get_data_source("yfinance")   # → YFinanceSource
 get_data_source("fred")       # → FREDSource
 get_data_source("investing")  # → InvestingSource
+get_data_source("aaii")       # → AAIISource
+get_data_source("ycharts")    # → YChartsSource
+get_data_source("finra")      # → FINRASource
 ```
 
 **Modular Agent Tools (`agent/tools/agent_tools.py`):**
@@ -499,6 +504,71 @@ get_data_source("investing")  # → InvestingSource
 ---
 
 ## Recent Improvements
+
+### FINRA Margin Debt Integration (v7.1)
+
+**Date: November 8, 2025**
+
+**Major Updates:**
+
+**1. FINRA Margin Statistics Data Source:**
+- **New DataSource**: `FINRASource` in `src/data_sources/web/finra_source.py`
+  - Web scraping from finra.org margin statistics page
+  - Symbol: `MARGIN_DEBT_YOY` (Year-over-Year change percentage)
+  - Automatic YoY calculation (12-month pct_change)
+  - File-based caching with `_validated` flag
+  - Extensible SYMBOL_CONFIG structure for future additions
+- **Historical Data**: `data/margin_debt_history.json`
+  - 333 monthly data points (1998-01 ~ 2025-09)
+  - Latest: +38.52% YoY (approaching extreme leverage zone)
+  - Format unified with other web sources
+
+**2. Margin Debt Analysis Agent:**
+- **New Agent**: `MarginDebtAgent` in `src/agent/trend/margin_debt_agent.py`
+  - Contrarian sentiment indicator (leverage as market overheating signal)
+  - Critical thresholds:
+    * 🔴 Sell: YoY > +50% | Peak → below 50%
+    * 🟡 Buy: YoY < -20% | YoY < -30% | Trough → above -20%
+  - Historical leading indicator (1-3 months before market moves)
+- **New Tools**: `analyze_margin_debt`, `generate_margin_debt_chart`
+  - Analysis periods: 6mo tables, 10y charts
+  - Threshold visualization: +50% (Extreme Leverage), -20% (Deleveraging)
+
+**3. Chart Filename Bug Fix:**
+- **Problem**: `%` symbol in filenames broke URL loading in Notion
+  - `Margin_Debt_YoY_%_10y_chart.png` → Failed to load
+- **Solution**: Replace `%` with `pct` in all chart generation functions
+  - `Margin_Debt_YoY_pct_10y_chart.png` → Loads successfully
+- **Applied to**: `create_yfinance_chart`, `create_fred_chart`, `create_line_chart`
+
+**4. Test Coverage:**
+- **New Tests**: `TestFINRASource` class (6 comprehensive tests)
+  - Data fetching with mock scraping
+  - Cache validation and update logic
+  - Invalid symbol error handling
+  - Analysis metrics extraction
+  - All 6 tests passing
+
+**Files Added:**
+- `src/data_sources/web/finra_source.py`: FINRA scraping (172 lines)
+- `src/agent/trend/margin_debt_agent.py`: Margin Debt agent (74 lines)
+- `data/margin_debt_history.json`: Historical data (333 records)
+
+**Files Modified:**
+- `src/data_sources/__init__.py`: Added FINRASource registration
+- `src/data_sources/web/__init__.py`: Export FINRASource
+- `src/agent/tools/agent_tools.py`: Added margin debt tools (2 functions)
+- `src/data_sources/tests/data_sources_test.py`: Added 6 FINRA tests
+- `src/utils/charts.py`: Fixed `%` → `pct` in filename cleanup (3 places)
+
+**Impact:**
+- ✅ Margin Debt as leverage/sentiment indicator
+- ✅ 333 months of historical data (1998-2025)
+- ✅ Chart filename URL compatibility fixed
+- ✅ Extensible structure for FREE_CREDIT_CASH, FREE_CREDIT_MARGIN
+- ✅ All 65 tests passing (34 data sources + 7 charts + 24 others)
+
+---
 
 ### Put/Call Ratio & Unified Chart/Cache Systems (v7.0)
 

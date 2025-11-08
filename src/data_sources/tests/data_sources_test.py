@@ -5,7 +5,7 @@ import asyncio
 import pandas as pd
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
-from src.data_sources import get_data_source, YFinanceSource, FREDSource, InvestingSource, AAIISource
+from src.data_sources import get_data_source, YFinanceSource, FREDSource, InvestingSource, AAIISource, FINRASource
 
 
 class TestYFinanceSource(unittest.TestCase):
@@ -628,6 +628,130 @@ class TestAAIISource(unittest.TestCase):
         """Test fetch_data raises error for invalid symbol"""
         with self.assertRaises(ValueError):
             asyncio.run(self.source.fetch_data('INVALID_SYMBOL', '1y'))
+
+
+class TestFINRASource(unittest.TestCase):
+    """Test FINRASource functionality"""
+    
+    def setUp(self):
+        """Set up test with isolated cache file"""
+        from pathlib import Path
+        self.source = FINRASource()
+        self.test_cache_file = Path('data/test_finra_source_cache.json')
+        self.source._cache_file = self.test_cache_file
+        
+        # Clean up test file
+        if self.test_cache_file.exists():
+            self.test_cache_file.unlink()
+    
+    def tearDown(self):
+        """Clean up test cache file"""
+        if self.test_cache_file.exists():
+            self.test_cache_file.unlink()
+    
+    @patch('src.data_sources.web.finra_source.FINRASource._scrape_data')
+    def test_fetch_data_margin_debt_yoy(self, mock_scrape):
+        """Test fetching MARGIN_DEBT_YOY data"""
+        # Mock scraped data
+        mock_data = pd.Series({
+            pd.Timestamp('2024-11-30'): 34.80,
+            pd.Timestamp('2024-12-31'): 28.31,
+            pd.Timestamp('2025-01-31'): 33.52,
+            pd.Timestamp('2025-09-30'): 38.52
+        })
+        mock_scrape.return_value = mock_data
+        
+        result = asyncio.run(self.source.fetch_data('MARGIN_DEBT_YOY', '1y'))
+        
+        self.assertIn('data', result)
+        self.assertIn('current', result)
+        self.assertIn('label', result)
+        self.assertEqual(result['symbol'], 'MARGIN_DEBT_YOY')
+        self.assertEqual(result['label'], 'Margin Debt (YoY %)')
+        self.assertAlmostEqual(result['current'], 38.52, places=2)
+        mock_scrape.assert_called_once()
+    
+    def test_fetch_data_invalid_symbol(self):
+        """Test invalid symbol raises error"""
+        with self.assertRaises(ValueError):
+            asyncio.run(self.source.fetch_data('INVALID', '1y'))
+    
+    def test_get_data_source_finra(self):
+        """Test get_data_source returns FINRASource"""
+        source = get_data_source('finra')
+        self.assertIsInstance(source, FINRASource)
+    
+    @patch('src.data_sources.web.finra_source.FINRASource._load_local_cache')
+    @patch('src.data_sources.web.finra_source.FINRASource._scrape_data')
+    def test_skip_scrape_when_cache_validated(self, mock_scrape, mock_load_cache):
+        """Test that scraping is skipped when cache is validated and up-to-date"""
+        from datetime import datetime
+        
+        # Mock cache with today's data (validated)
+        today = datetime.now()
+        cached_data = pd.Series({
+            pd.Timestamp('2024-11-30'): 34.80,
+            today: 38.52
+        })
+        mock_load_cache.return_value = (cached_data, True)
+        
+        # Mock scrape to return same data
+        mock_scrape.return_value = cached_data
+        
+        # Fetch data - should use cache without updating
+        result = asyncio.run(self.source.fetch_data('MARGIN_DEBT_YOY', '1mo'))
+        
+        # Verify data was returned
+        self.assertIn('data', result)
+        self.assertEqual(result['symbol'], 'MARGIN_DEBT_YOY')
+        self.assertAlmostEqual(result['current'], 38.52, places=2)
+    
+    @patch('src.data_sources.web.finra_source.FINRASource._load_local_cache')
+    @patch('src.data_sources.web.finra_source.FINRASource._scrape_data')
+    @patch('src.data_sources.web.finra_source.FINRASource._save_local_cache')
+    def test_fetch_data_updates_cache_when_outdated(self, mock_save, mock_scrape, mock_load_cache):
+        """Test fetch_data updates cache when data is outdated"""
+        # Mock cache with old data
+        old_date = datetime.now() - timedelta(days=35)
+        old_data = pd.Series({old_date: 25.0})
+        mock_load_cache.return_value = (old_data, True)
+        
+        # Mock scrape returns recent data
+        recent_date = datetime.now() - timedelta(days=2)
+        recent_data = pd.Series({
+            recent_date: 35.5,
+            recent_date + timedelta(days=1): 38.52
+        })
+        mock_scrape.return_value = recent_data
+        
+        # Run test
+        result = asyncio.run(self.source.fetch_data('MARGIN_DEBT_YOY', '1y'))
+        
+        # Should update cache
+        self.assertIn('data', result)
+        mock_save.assert_called_once()
+    
+    def test_get_analysis(self):
+        """Test get_analysis returns correct metrics"""
+        mock_data = pd.Series({
+            pd.Timestamp('2024-11-30'): 34.80,
+            pd.Timestamp('2024-12-31'): 28.31,
+            pd.Timestamp('2025-01-31'): 33.52,
+            pd.Timestamp('2025-09-30'): 38.52
+        })
+        
+        data = {'data': mock_data}
+        analysis = self.source.get_analysis(data, '1y')
+        
+        self.assertIn('start', analysis)
+        self.assertIn('end', analysis)
+        self.assertIn('change', analysis)
+        self.assertIn('high', analysis)
+        self.assertIn('low', analysis)
+        self.assertIn('mean', analysis)
+        self.assertEqual(analysis['period'], '1y')
+        self.assertAlmostEqual(analysis['end'], 38.52, places=2)
+        self.assertAlmostEqual(analysis['high'], 38.52, places=2)
 
 
 if __name__ == "__main__":

@@ -7,11 +7,13 @@ Supports automatic source detection and data fetching from:
 - Finnhub (company fundamentals)
 - Investing.com (market breadth indicators)
 - AAII (investor sentiment)
+- YCharts (put/call ratio)
+- FINRA (margin statistics)
 """
 
 from src.data_sources.base import DataSource, APIDataSource, WebDataSource
 from src.data_sources.api import YFinanceSource, FREDSource, FinnhubSource
-from src.data_sources.web import InvestingSource, AAIISource, YChartsSource
+from src.data_sources.web import InvestingSource, AAIISource, YChartsSource, FINRASource
 
 
 def get_data_source(source: str) -> DataSource:
@@ -26,7 +28,8 @@ def get_data_source(source: str) -> DataSource:
         'fh': FinnhubSource,
         'aaii': AAIISource,
         'ycharts': YChartsSource,
-        'yc': YChartsSource
+        'yc': YChartsSource,
+        'finra': FINRASource
     }
     source_lower = source.lower()
     if source_lower not in sources:
@@ -44,6 +47,7 @@ __all__ = [
     'InvestingSource',
     'AAIISource',
     'YChartsSource',
+    'FINRASource',
     'get_data_source'
 ]
 
