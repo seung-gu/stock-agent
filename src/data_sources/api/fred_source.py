@@ -166,6 +166,6 @@ class FREDSource(APIDataSource):
             'change_pct': change_pct,
             'high': float(series_data.max()),
             'low': float(series_data.min()),
-            'volatility': float(series_data.pct_change().std() * (len(series_data) ** 0.5) * 100)
+            'volatility': float(series_data.pct_change(fill_method=None).std() * (len(series_data) ** 0.5) * 100)
         }
 

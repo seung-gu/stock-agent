@@ -127,26 +127,31 @@ src/
 │   │   ├── orchestrator_agent.py  # Base class for orchestrators (parallel execution)
 │   │   └── trend_agent.py    # Base class for trend analysis (simplified, tool-agnostic)
 │   │
-│   ├── tools/                 # 🛠️ Modular function tools (v7.1 - FINRA Margin Debt)
-│   │   └── agent_tools.py    # 15 independent @function_tool for agents
+│   ├── tools/                 # 🛠️ Modular function tools (v7.2 - HY Spread & VIX)
+│   │   └── agent_tools.py    # 17 independent @function_tool for agents
 │   │                         # • fetch_data
 │   │                         # • analyze_OHLCV, analyze_SMA, analyze_disparity, analyze_RSI
-│   │                         # • analyze_market_breadth, analyze_sentiment, analyze_put_call, analyze_NFCI, analyze_margin_debt
+│   │                         # • analyze_market_breadth, analyze_bull_bear_spread, analyze_put_call
+│   │                         # • analyze_NFCI, analyze_margin_debt, analyze_high_yield_spread, analyze_vix
 │   │                         # • generate_OHLCV_chart, generate_disparity_chart, generate_RSI_chart
-│   │                         # • generate_market_breadth_chart, generate_sentiment_chart, generate_put_call_chart, generate_NFCI_chart, generate_margin_debt_chart
+│   │                         # • generate_market_breadth_chart, generate_bull_bear_spread_chart, generate_put_call_chart
+│   │                         # • generate_NFCI_chart, generate_margin_debt_chart, generate_high_yield_spread_chart, generate_vix_chart
 │   │                         # • Dynamic overbought/oversold thresholds (80th/10th percentile)
 │   │                         # • Cache-based, complete layer separation
 │   │
 │   ├── trend/                 # 📈 Trend analysis agents
-│   │   ├── __init__.py       # Exports: TNXAgent, NFCIAgent, EquityTrendAgent, MarketBreadthAgent, SentimentAgent, PutCallAgent, MarginDebtAgent
+│   │   ├── __init__.py       # Exports: TNXAgent, NFCIAgent, DXAgent, EquityTrendAgent, MarketBreadthAgent,
+│   │   │                     # BullBearSpreadAgent, PutCallAgent, MarginDebtAgent, HighYieldSpreadAgent, VIXAgent
 │   │   ├── tnx_agent.py      # Treasury yield (^TNX) analysis
 │   │   ├── nfci_agent.py     # NFCI (National Financial Conditions Index) analysis
 │   │   ├── dx_agent.py       # Dollar Index (DX=F) analysis
 │   │   ├── equity_trend_agent.py  # Stock price trend analysis
 │   │   ├── market_breadth_agent.py  # S&P 500 market breadth (50-day & 200-day MA)
-│   │   ├── sentiment_agent.py     # AAII Investor Sentiment (Bull-Bear Spread)
+│   │   ├── bull_bear_spread_agent.py  # AAII Bull-Bear Spread (investor sentiment)
 │   │   ├── put_call_agent.py      # CBOE Equity Put/Call Ratio
-│   │   └── margin_debt_agent.py   # FINRA Margin Debt (YoY %)
+│   │   ├── margin_debt_agent.py   # FINRA Margin Debt (YoY %)
+│   │   ├── high_yield_spread_agent.py  # ICE BofA High Yield Spread (credit risk)
+│   │   └── vix_agent.py           # VIX (Volatility Index, fear gauge)
 │   │
 │   ├── orchestrator/          # 🎭 Orchestrator agents (combine multiple agents)
 │   │   ├── __init__.py       # Exports: LiquidityAgent, BroadIndexAgent, MarketReportAgent
@@ -504,6 +509,71 @@ get_data_source("finra")      # → FINRASource
 ---
 
 ## Recent Improvements
+
+### High Yield Spread & VIX Agents + Sentiment Refactoring (v7.2)
+
+**Date: November 9, 2025**
+
+**Major Updates:**
+
+**1. High Yield Spread Agent:**
+- **New Agent**: `HighYieldSpreadAgent` in `src/agent/trend/high_yield_spread_agent.py`
+  - FRED data source: `BAMLH0A0HYM2` (ICE BofA US High Yield Index)
+  - Credit risk and contrarian sentiment indicator
+  - Critical thresholds: >5% (alert), >7% (crisis), Peak→Declining (buy)
+  - 10-year historical analysis for long-term perspective
+- **New Tools**: `analyze_high_yield_spread`, `generate_high_yield_spread_chart`
+  - Analysis periods: 6mo, 1y tables | 10y chart
+  - Leads equity market by 1-2 months during stress periods
+
+**2. VIX Agent:**
+- **New Agent**: `VIXAgent` in `src/agent/trend/vix_agent.py`
+  - YFinance data source: `^VIX` (CBOE Volatility Index)
+  - Market fear gauge and contrarian indicator
+  - Critical thresholds: >30 (extreme fear/buy), <12 (complacency/sell)
+  - 2,512 data points covering 10 years of volatility history
+- **New Tools**: `analyze_vix`, `generate_vix_chart`
+  - Analysis periods: 5d, 1mo tables | 1y chart
+  - Inversely correlates with S&P 500, spikes mark market bottoms
+
+**3. Sentiment Agent Refactoring:**
+- **Renamed**: `SentimentAgent` → `BullBearSpreadAgent`
+  - More descriptive naming (Bull-Bear Spread vs generic Sentiment)
+  - Function renaming: `analyze_sentiment` → `analyze_bull_bear_spread`
+  - Function renaming: `generate_sentiment_chart` → `generate_bull_bear_spread_chart`
+- **File Changes**: 
+  - Deleted: `sentiment_agent.py`
+  - Created: `bull_bear_spread_agent.py`
+  - Updated: `broad_index_agent.py` import
+
+**4. Bug Fixes:**
+- **pandas FutureWarning**: Added `fill_method=None` to `pct_change()` calls
+  - Fixed in: `fred_source.py`, `yfinance_source.py`
+  - Eliminates deprecation warnings in volatility calculations
+
+**Files Added:**
+- `src/agent/trend/high_yield_spread_agent.py` (72 lines)
+- `src/agent/trend/vix_agent.py` (58 lines)
+- `src/agent/trend/bull_bear_spread_agent.py` (70 lines)
+
+**Files Modified:**
+- `src/agent/tools/agent_tools.py`: Added 6 functions (HY spread + VIX tools, renamed sentiment)
+- `src/agent/trend/__init__.py`: Updated exports (3 new agents)
+- `src/agent/orchestrator/broad_index_agent.py`: Updated imports and agent usage
+- `src/data_sources/api/fred_source.py`: Fixed FutureWarning
+- `src/data_sources/api/yfinance_source.py`: Fixed FutureWarning
+
+**Files Deleted:**
+- `src/agent/trend/sentiment_agent.py` (renamed to bull_bear_spread_agent.py)
+
+**Impact:**
+- ✅ 3 new sentiment/volatility indicators (HY Spread, VIX, renamed Bull-Bear)
+- ✅ Enhanced credit risk monitoring (5%/7% thresholds)
+- ✅ Fear gauge for market timing (VIX >30 contrarian buy)
+- ✅ More descriptive agent naming convention
+- ✅ Cleaner codebase (no deprecation warnings)
+
+---
 
 ### FINRA Margin Debt Integration (v7.1)
 

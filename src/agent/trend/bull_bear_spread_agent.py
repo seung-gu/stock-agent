@@ -1,34 +1,29 @@
 import asyncio
 
 from src.agent.base.trend_agent import TrendAgent
-from src.agent.tools.agent_tools import fetch_data, analyze_sentiment, generate_sentiment_chart
+from src.agent.tools.agent_tools import fetch_data, analyze_bull_bear_spread, generate_bull_bear_spread_chart
 from src.config import REPORT_LANGUAGE
 
 
-class SentimentAgent(TrendAgent):
+class BullBearSpreadAgent(TrendAgent):
     """
-    AAII Investor Sentiment analysis agent.
+    AAII Bull-Bear Spread analysis agent.
     
-    Analyzes the AAII Investor Sentiment (Bull-Bear Spread).
+    Analyzes the AAII Bull-Bear Spread as a contrarian sentiment indicator.
     """
     
     def __init__(self):
-        """Initialize sentiment agent."""
+        """Initialize Bull-Bear Spread agent."""
         super().__init__(
             ticker="AAII_BULL_BEAR_SPREAD",
-            agent_name="sentiment_agent",
-            label="AAII Investor Sentiment",
-            description="AAII Investor Sentiment (Bull-Bear Spread)",
-            tools=[fetch_data, analyze_sentiment, generate_sentiment_chart],
+            agent_name="bull_bear_spread_agent",
+            label="AAII Bull-Bear Spread",
+            description="AAII Investor Sentiment Survey (Bull-Bear Spread)",
+            tools=[fetch_data, analyze_bull_bear_spread, generate_bull_bear_spread_chart],
             context_instructions=f"""
-            You are a sentiment analyst specializing in AAII Investor Sentiment (Bull-Bear Spread).
+            You are analyzing AAII Bull-Bear Spread as a contrarian sentiment indicator.
             ALL responses MUST be in {REPORT_LANGUAGE}.
             
-            ANALYSIS WORKFLOW:
-            1. Fetch and analyze AAII Investor Sentiment (Bull-Bear Spread):
-               - fetch_data + analyze_sentiment('1mo') + generate_sentiment_chart('5y')
-            
-
             CRITICAL BUY SIGNALS (Contrarian Indicator):
             ┌──────────────────────────────────────────────────────────────────────┐
             │ Bull-Bear Spread ≤ -0.20 (-20%): 🟡 PRIMARY BUY SIGNAL               │
@@ -38,16 +33,23 @@ class SentimentAgent(TrendAgent):
             │ → Panic selling zone = Strong accumulation opportunity               │
             └──────────────────────────────────────────────────────────────────────┘
             
-            Interpretation:
-            - Rising Bull-Bear Spread = Leading signal of bullish sentiment
-            - Decreasing Bull-Bear Spread = Leading signal of bearish sentiment
-            - Extreme negative values (-20% or below) = Contrarian buy signals
-            - When sentiment is extremely bearish, market often bottoms
+            INTERPRETATION:
+            - Rising spread = Bullish sentiment increasing
+            - Falling spread = Bearish sentiment increasing
+            - Extreme negative values (≤-20%) = Contrarian buy signals
+            - Market often bottoms when sentiment is extremely bearish
                
             TOOL USAGE:
             - fetch_data: fetch data from AAII (aaii)
-            - analyze_sentiment: analyze sentiment
-            - generate_sentiment_chart: generate sentiment chart
+            - analyze_bull_bear_spread: analyze spread metrics
+            - generate_bull_bear_spread_chart: generate chart
+            
+            CRITICAL:
+            - MUST include the Bull-Bear Spread chart
+            
+            PERIOD REQUIREMENTS:
+            - Tables: "1mo"
+            - Charts: "5y"
             """
         )
         
@@ -56,11 +58,11 @@ class SentimentAgent(TrendAgent):
 if __name__ == "__main__":
     async def main():
         print("=" * 80)
-        print("AAII Investor Sentiment Analysis")
+        print("AAII Bull-Bear Spread Analysis")
         print("=" * 80)
         
-        agent = SentimentAgent()
-        result = await agent.run("Analyze the sentiment of AAII Investor Sentiment (Bull-Bear Spread)")
+        agent = BullBearSpreadAgent()
+        result = await agent.run("Analyze the AAII Bull-Bear Spread")
         print(result.content)
     
     asyncio.run(main())

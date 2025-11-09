@@ -302,8 +302,8 @@ async def generate_market_breadth_chart(symbol: str, period: str) -> str:
 
 
 @function_tool
-async def analyze_sentiment(period: str) -> str:
-    """Analyze AAII Investor Sentiment Survey (Bull-Bear Spread).
+async def analyze_bull_bear_spread(period: str) -> str:
+    """Analyze AAII Bull-Bear Spread (investor sentiment indicator).
     
     Args:
         period: Time period (5d, 1mo, 6mo, 1y, etc.)
@@ -314,7 +314,7 @@ async def analyze_sentiment(period: str) -> str:
     analysis = src.get_analysis(data, actual_period)
     period_name = get_period_name(actual_period)
     
-    return f"""{period_name} AAII Investor Sentiment (Bull-Bear Spread):
+    return f"""{period_name} AAII Bull-Bear Spread:
             - Start: {analysis['start']:+.2f}
             - End: {analysis['end']:+.2f}
             - Change: {analysis['change']:+.2f}
@@ -324,8 +324,8 @@ async def analyze_sentiment(period: str) -> str:
 
 
 @function_tool
-async def generate_sentiment_chart(period: str) -> str:
-    """Generate AAII Investor Sentiment chart (Bull-Bear Spread).
+async def generate_bull_bear_spread_chart(period: str) -> str:
+    """Generate AAII Bull-Bear Spread chart.
     
     Args:
         period: Time period (5d, 1mo, 6mo, 1y, etc.)
@@ -335,7 +335,7 @@ async def generate_sentiment_chart(period: str) -> str:
     actual_period = src.get_actual_period_approx(data)
     chart_info = await src.create_chart(
         data, 'AAII_BULL_BEAR_SPREAD', actual_period,
-        label='AAII Investor Sentiment',
+        label='AAII Bull-Bear Spread',
         ylabel='Bull-Bear Spread',
         value_format='{:.2f}',
         threshold_upper=None,
@@ -388,6 +388,97 @@ async def generate_put_call_chart(period: str) -> str:
         overbought_label='Bearish Sentiment',
         oversold_label='Bullish Sentiment'
     )
+    return chart_info
+
+
+@function_tool
+async def analyze_vix(period: str) -> str:
+    """Analyze VIX (Volatility Index) - market fear gauge.
+    
+    Args:
+        period: Time period (5d, 1mo, 6mo, 1y, etc.)
+    """
+    src = get_data_source('yfinance')
+    data = await src.fetch_data('^VIX', period)
+    actual_period = src.get_actual_period_approx(data)
+    analysis = src.get_analysis(data, actual_period)
+    period_name = get_period_name(actual_period)
+    
+    return f"""{period_name} VIX (Volatility Index):
+            - Start: {analysis['start']:.2f}
+            - End: {analysis['end']:.2f}
+            - Change: {analysis['change_pct']:+.2f}%
+            - High: {analysis['high']:.2f}
+            - Low: {analysis['low']:.2f}"""
+
+
+@function_tool
+async def generate_vix_chart(period: str) -> str:
+    """Generate VIX (Volatility Index) chart.
+    
+    Args:
+        period: Time period (5d, 1mo, 6mo, 1y, etc.)
+    """
+    src = get_data_source('yfinance')
+    data = await src.fetch_data('^VIX', period)
+    actual_period = src.get_actual_period_approx(data)
+    
+    chart_info = await src.create_chart(
+        data, '^VIX', actual_period,
+        label='VIX (Volatility Index)',
+        chart_type='line',
+        ylabel='VIX Level',
+        data_column='Close',
+        value_format='{:.2f}',
+        threshold_upper=30.0,
+        threshold_lower=20.0,
+        overbought_label='Extreme Fear',
+        oversold_label='High Volatility'
+    )
+    return chart_info
+
+
+@function_tool
+async def analyze_high_yield_spread(period: str) -> str:
+    """Analyze ICE BofA US High Yield Spread (credit risk indicator).
+    
+    Args:
+        period: Time period (6mo, 1y, 5y, 10y, etc.)
+    """
+    src = get_data_source('fred')
+    data = await src.fetch_data('BAMLH0A0HYM2', period)
+    actual_period = src.get_actual_period_approx(data)
+    analysis = src.get_analysis(data, actual_period)
+    period_name = get_period_name(actual_period)
+    
+    return f"""{period_name} ICE BofA US High Yield Spread:
+            - Start: {analysis['start']:.2f}%
+            - End: {analysis['end']:.2f}%
+            - Change: {analysis['change_pct']:+.2f}%
+            - High: {analysis['high']:.2f}%
+            - Low: {analysis['low']:.2f}%"""
+
+
+@function_tool
+async def generate_high_yield_spread_chart(period: str) -> str:
+    """Generate ICE BofA US High Yield Spread chart.
+    
+    Args:
+        period: Time period (6mo, 1y, 5y, 10y, etc.)
+    """
+    src = get_data_source('fred')
+    data = await src.fetch_data('BAMLH0A0HYM2', period)
+    actual_period = src.get_actual_period_approx(data)
+    
+    chart_info = await src.create_chart(
+        data, 'BAMLH0A0HYM2', actual_period,
+        label='ICE BofA US High Yield Spread',
+        chart_type='line',
+        baseline=5.0,
+        positive_label='Alert Zone',
+        negative_label='Complacent Zone'
+    )
+
     return chart_info
 
 

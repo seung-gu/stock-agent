@@ -3,9 +3,11 @@ import asyncio
 from src.agent.base.orchestrator_agent import OrchestratorAgent
 from src.agent.trend.equity_agent import EquityTrendAgent
 from src.agent.trend.market_breadth_agent import MarketBreadthAgent
-from src.agent.trend.sentiment_agent import SentimentAgent
+from src.agent.trend.bull_bear_spread_agent import BullBearSpreadAgent
 from src.agent.trend.put_call_agent import PutCallAgent
 from src.agent.trend.margin_debt_agent import MarginDebtAgent
+from src.agent.trend.high_yield_spread_agent import HighYieldSpreadAgent
+from src.agent.trend.vix_agent import VIXAgent
 from src.config import REPORT_LANGUAGE
 
 
@@ -27,9 +29,11 @@ class BroadIndexAgent(OrchestratorAgent):
             .add_sub_agent(EquityTrendAgent("^IXIC", label="Nasdaq Composite"))\
             .add_sub_agent(EquityTrendAgent("^DJI", label="Dow Jones Industrial Average"))\
             .add_sub_agent(MarketBreadthAgent())\
-            .add_sub_agent(SentimentAgent())\
+            .add_sub_agent(BullBearSpreadAgent())\
             .add_sub_agent(PutCallAgent())\
-            .add_sub_agent(MarginDebtAgent())
+            .add_sub_agent(MarginDebtAgent())\
+            .add_sub_agent(HighYieldSpreadAgent())\
+            .add_sub_agent(VIXAgent())
         
         # Create synthesis agent
         self.synthesis_agent = self._create_synthesis_agent(f"""

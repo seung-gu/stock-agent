@@ -207,6 +207,6 @@ class YFinanceSource(APIDataSource):
             'change_pct': change_pct,
             'high': float(hist['Close'].max()),
             'low': float(hist['Close'].min()),
-            'volatility': float(hist['Close'].pct_change().std() * (len(hist) ** 0.5) * 100)
+            'volatility': float(hist['Close'].pct_change(fill_method=None).std() * (len(hist) ** 0.5) * 100)
         }
 
