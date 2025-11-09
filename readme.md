@@ -1,115 +1,86 @@
+# Stock Market Analysis Agent
 
-## Example Report
-English ver:
-https://seunggu-kang.notion.site/Comprehensive-Market-Insights-and-Synthesis-Report-October-2025-Week-5-Year-2025-29d62b45fc808134ae62e76a2dc06ccf?pvs=74
+AI-powered comprehensive market analysis with automated Notion reporting.
 
-Korean ver:
-https://seunggu-kang.notion.site/2025-10-29d62b45fc808174aeb6f355f8eaab1d?pvs=74
+## 📊 Example Output
+
+![Market Analysis Report](readme-assets/screenshot1.png)
+
+![Detailed Analysis with Charts](readme-assets/screenshot2.png)
+
+![Market Synthesis](readme-assets/screenshot3.png)
+
+*Automated market analysis reports with charts, tables, and AI-generated insights published to Notion*
+
+### Live Example Reports
+
+**English**: [Comprehensive Market Insights - October 2025](https://seunggu-kang.notion.site/Comprehensive-Market-Insights-and-Synthesis-Report-October-2025-Week-5-Year-2025-29d62b45fc808134ae62e76a2dc06ccf?pvs=74)
+
+**Korean**: [종합 시장 분석 리포트 - 2025년 10월](https://seunggu-kang.notion.site/2025-10-29d62b45fc808174aeb6f355f8eaab1d?pvs=74)
 
 ---
-### Install uv
 
+## Quick Start
+
+### 1. Install uv
+
+```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
-
 source $HOME/.local/bin/env
+```
 
-#### Check installation
+Check installation:
+```bash
 uv --version
+```
 
+### 2. Install packages
 
-#### Install packages with uv
-
+```bash
 uv run
+```
 
-#### Set Interpreter
+### 3. Set up environment variables
 
-source .venv/bin/activate
+Create `.env` file in project root:
 
-
-### Set Env file
-
-FINNHUB_API_KEY=XXX
+```bash
 GOOGLE_API_KEY=XXX
 OPENAI_API_KEY=XXX
-POLYGON_API_KEY=XXX
-PUSHOVER_TOKEN=XXX
-PUSHOVER_USER=XXX
-HF_TOKEN=XXX
-SENDGRID_API_KEY=XXX
+FRED_API_KEY=XXX
+FINNHUB_API_KEY=XXX
 NOTION_API_KEY=XXX
 NOTION_DATABASE_ID=XXX
 R2_ACCESS_KEY_ID=XXX
 R2_SECRET_ACCESS_KEY=XXX
-R2_BUCKET_NAME=XXX
-R2_ACCOUNT_ID=XXX
-R2_PUBLIC_URL=XXX
-FRED_API_KEY=XXX
-
-### Language Settings
-
-Edit `src/config.py` to change report language:
-```python
-REPORT_LANGUAGE = "English"  # Options: "English" or "Korean"
+...
 ```
 
-TODO:
-1. ~~market_analysis_agent.py refactor~~ ✅
-2. ~~report part workflow refactor~~ ✅ (Parent-child structure)
-3. ~~language configuration refactor~~ ✅ (Centralized REPORT_LANGUAGE)
-4. ~~unified data source system~~ ✅ (Registry pattern with auto-detection)
-5. ~~NFCI integration~~ ✅ (via FREDSource)
-6. ~~markdown parsing improvements~~ ✅ (3-level nested lists, proper indentation)
-7. ~~test functions~~ ✅ (51 comprehensive tests with API limitations handling)
-8. ~~create an entry point~~ ✅ (run_market_report.py)
-9. ~~market_analysis_agent refactor~~ ✅ (MarketReportAgent, direct agent connection)
-10. ~~markdown_to_notion refactor~~ ✅ (recursive heading and bullet point with API limitations)
-11. ~~TNX agent analysis accuracy~~ ✅
-12. ~~AnalysisReport type system~~ ✅ (Structured output types)
-13. ~~FRED API error handling~~ ✅ (Mock data fallback)
-14. ~~SMA (Simple Moving Averages) implementation~~ ✅ (5/20/200-day SMAs with candlestick charts)
-15. ~~Unit testing with Mock API~~ ✅ (51 tests, no real API calls)
-16. API Verificator (Only return values when tool gets 200 request status)
-17. Table and charts correspond to the requirements
-18. ~~Technical Indicator System Refactor~~ ✅ (TechnicalAnalyzer fluent API, chart separation, Equity disparity support)
-19. ~~SMA(200) Chart Cut-off Fix~~ ✅ (Extended buffer with BDay offset, pre-compute SMAs, smart slicing)
-20. ~~Modular Agent Tools Architecture~~ ✅ (9 independent function_tools, complete layer separation, agent autonomy)
-21. Chart analyzer (signal catcher - SMA 50&200, RSI, Disparity, W, M, Cup and handle)
-22. Cross chart checker
-23. ~~S&P 500 Market Breadth ($S5FI 50-day, $S5TH 200-day)~~ ✅
-    - InvestingSource class with validation-based caching
-    - Dual timeframe analysis (50-day & 200-day MA)
-    - Smart cache: validated flag prevents unnecessary scraping
-    - Auto-merge & accumulate to data/market_breadth_history.json
-24. ~~Market breadth integration~~ ✅ (BroadIndexAgent directly includes MarketBreadthAgent)
-25. ~~Markdown link parsing for Notion~~ ✅
-    - Auto-convert `[text](https://...)` to Notion hyperlinks
-    - Standalone URLs (`https://...`) auto-converted to clickable links
-    - Chart links (`sandbox:`) remain separate (R2 image embeds)
-26. ~~Agent instruction refactoring~~ ✅
-    - TrendAgent: Common instructions in base (fetch_data, output format)
-    - Subclasses: Only specific tool usage and analysis focus
-    - Orchestrators: Explicit content preservation rules (tables, charts, links) 
-27. ~~AAII Investor Sentiment (Bull-Bear Spread)~~ ✅
-    - AAIISource class with web scraping from aaii.com
-    - Bull-Bear Spread calculation (Bullish % - Bearish %)
-    - 2-day date offset tolerance for data consistency
-    - Historical data: 2000-01-06 to present (1,369 records)
-    - analyze_sentiment & generate_sentiment_chart tools
-28. ~~Cache & Scrape Logic Refactoring~~ ✅
-    - Unified _fetch_with_cache_and_scrape in DataSource base class
-    - Reusable across InvestingSource and AAIISource
-    - Configurable date offset tolerance (0 for Investing, 2 for AAII)
-    - Smart cache validation with scrape skipping
-    - 28 comprehensive unit tests (all passing)
-29. ~~Data Sources Modular Architecture~~ ✅
-    - Restructured into src/data_sources/ with clear separation
-    - Base classes: DataSource, APIDataSource, WebDataSource
-    - API sources (api/): YFinanceSource, FREDSource, FinnhubSource
-    - Web sources (web/): InvestingSource, AAIISource
-    - Common browser headers in WebDataSource.BROWSER_HEADERS
-    - Scraping fallback to cache on Imperva/bot blocking
-    - Tests moved to src/data_sources/tests/
-    - 1098-line file → 6 organized modules (188+166+108+165+176 lines)
+### 4. Configure language
+
+Edit `src/config.py`:
+```python
+REPORT_LANGUAGE = "Korean"  # Options: "English" or "Korean"
+```
+
+### 5. Run market report
+
+```bash
+uv run python src/run_market_report.py
+```
+
+---
+
+## TODO
+
+- [ ] API Verificator (Only return values when tool gets 200 request status)
+- [ ] Table and charts correspond to the requirements
+- [ ] Chart analyzer (signal catcher - SMA 50&200, RSI, Disparity, W, M, Cup and handle)
+- [ ] Cross chart checker
+- [ ] Vision API integration for Koyfin chart interpretation
+  - Replace brittle Selenium pixel parsing with Claude/GPT-4V
+  - Capture screenshot → Vision API analyzes Forward P/E/PEG values
+  - More robust to UI changes, more agentic approach
 
 
 ---
@@ -228,17 +199,20 @@ src/
 │  1. Direct Agent Execution                                  │
 │     ├── MarketReportAgent (Top-level Orchestrator)          │
 │     │   ├── LiquidityAgent (TNX + NFCI + DX)                │
-│     │   ├── BroadIndexAgent (Major Indices + Market Breadth)│
+│     │   ├── BroadIndexAgent (Indices + Market Indicators)   │
 │     │   │   ├── S&P 500 (^GSPC)                             │
 │     │   │   ├── Nasdaq Composite (^IXIC)                    │
 │     │   │   ├── Dow Jones Industrial Average (^DJI)         │
-│     │   │   └── MarketBreadthAgent (S5FI + S5TH)            │
-│     │   │       • S5FI: 50-day MA (short-term participation)│
-│     │   │       • S5TH: 200-day MA (long-term participation)│
-│     │   └── EquityTrendAgent (Stock Analysis + SMA)         │
+│     │   │   ├── MarketBreadthAgent (S5FI + S5TH)            │
+│     │   │   ├── BullBearSpreadAgent (AAII sentiment)        │
+│     │   │   ├── PutCallAgent (CBOE Put/Call ratio)          │
+│     │   │   ├── MarginDebtAgent (FINRA leverage)            │
+│     │   │   ├── HighYieldSpreadAgent (Credit risk)          │
+│     │   │   └── VIXAgent (Volatility/fear gauge)            │
+│     │   └── EquityTrendAgent (Stock Analysis + Technicals)  │
 │     │       • 4-period analysis (5d/1mo/6mo/1y)             │
 │     │       • Candlestick charts with moving averages       │
-│     │       • Technical indicators (SMA 5/20/200)           │
+│     │       • Technical indicators (SMA, RSI, Disparity)    │
 │     │                                                       │
 │     └── Synthesis Agent (Combined Analysis)                 │
 │                                                             │
@@ -260,24 +234,38 @@ User Request → run_market_report()
         ┌───────────────┼───────────────┐
         ↓               ↓               ↓
   LiquidityAgent  BroadIndexAgent  EquityTrendAgent
-  (3 agents)      (4 agents)       (Stock Analysis)
+  (3 agents)      (9 agents)       (Stock Analysis)
         ↓               ↓               ↓
                                         
-┌─── LiquidityAgent ───┐  ┌──── BroadIndexAgent ────┐
-│ • TNXAgent           │  │ • S&P 500 (^GSPC)       │
-│ • NFCIAgent          │  │ • Nasdaq (^IXIC)        │
-│ • DXAgent            │  │ • Dow Jones (^DJI)      │
-│ ↓                    │  │ • MarketBreadthAgent    │
-│ Synthesis (Liquidity)│  │   - S5FI (50-day MA)    │
-└──────────────────────┘  │   - S5TH (200-day MA)   │
-                          │ ↓                       │
-                          │ Synthesis (Broad Index) │
-                          └─────────────────────────┘
+┌─── LiquidityAgent ───────┐  ┌────── BroadIndexAgent ────────┐
+│ • TNXAgent               │  │ Indices:                       │
+│ • NFCIAgent              │  │ • S&P 500 (^GSPC)              │
+│ • DXAgent                │  │ • Nasdaq (^IXIC)               │
+│ ↓                        │  │ • Dow Jones (^DJI)             │
+│ Synthesis (Liquidity)    │  │                                │
+└──────────────────────────┘  │ Market Indicators:             │
+                              │ • MarketBreadthAgent           │
+                              │   - S5FI (50-day MA)           │
+                              │   - S5TH (200-day MA)          │
+                              │ • BullBearSpreadAgent          │
+                              │   - AAII investor sentiment    │
+                              │ • PutCallAgent                 │
+                              │   - CBOE Put/Call ratio        │
+                              │ • MarginDebtAgent              │
+                              │   - FINRA margin debt YoY      │
+                              │ • HighYieldSpreadAgent         │
+                              │   - Credit risk indicator      │
+                              │ • VIXAgent                     │
+                              │   - Volatility/fear gauge      │
+                              │ ↓                              │
+                              │ Synthesis (Broad Index)        │
+                              └────────────────────────────────┘
 
                           EquityTrendAgent
                           • fetch_data (longest period first)
-                          • analyze_OHLCV_data (all periods)
+                          • analyze_OHLCV (all periods)
                           • generate_OHLCV_chart (with SMAs)
+                          • Technical indicators (RSI, Disparity)
                           • Markdown table output
 
         ↓               ↓               ↓
@@ -292,9 +280,15 @@ User Request → run_market_report()
 MarketReportAgent Synthesis (GPT-4o-mini)
   ↓
   Inputs:
-  • LiquidityAgent result (TNX + NFCI + DX analysis)
-  • BroadIndexAgent result (S&P 500 + Nasdaq + Dow + MarketBreadth)
-  • EquityTrendAgent results (Multiple stock analyses)
+  • LiquidityAgent (TNX + NFCI + DX)
+  • BroadIndexAgent (9 indicators):
+    - Major indices (^GSPC, ^IXIC, ^DJI)
+    - Market breadth (S5FI, S5TH)
+    - Sentiment (Bull-Bear Spread, Put/Call)
+    - Leverage (Margin Debt YoY)
+    - Credit risk (High Yield Spread)
+    - Volatility (VIX)
+  • EquityTrendAgent (Stock analyses)
   ↓
   • Cross-market correlation analysis
   • Identify divergences and confirmations
@@ -304,7 +298,7 @@ MarketReportAgent Synthesis (GPT-4o-mini)
 AnalysisReport {
   title: str                      # Week-specific title
   summary: str                    # Executive summary
-  content: str                    # Comprehensive analysis with preserved links/tables
+  content: str                    # Comprehensive analysis
 }
 ```
 
@@ -341,8 +335,14 @@ upload_report_with_children(title, date, summary, child_pages, uploaded_map)
      ↓
   Child Pages (varies by sub-agents):
      • Liquidity Analysis (TNX + NFCI + DX charts)
-     • Broad Index Analysis (indices + market breadth with reference links)
-     • Equity Analysis (multiple stocks with candlestick + SMA charts)  
+     • Broad Index Analysis (9 indicators):
+       - Major indices charts (^GSPC, ^IXIC, ^DJI)
+       - Market breadth indicators (S5FI, S5TH)
+       - Sentiment indicators (Bull-Bear Spread, Put/Call)
+       - Leverage indicator (Margin Debt YoY)
+       - Credit risk indicator (High Yield Spread)
+       - Volatility indicator (VIX)
+     • Equity Analysis (stocks with candlestick + SMA + technical indicators)  
      • Market Strategy Summary (comprehensive synthesis)
      ↓
   ✅ Published Notion Page with Children
@@ -392,16 +392,21 @@ REPORT_LANGUAGE = "Korean"  # or "English"
 #### Concrete Implementations
 
 **Trend Agents (`agent/trend/`):**
-- `TNXAgent`: Treasury yield analysis (^TNX via yfinance)
-- `NFCIAgent`: Financial conditions analysis (NFCI via FRED)
-- `DXAgent`: Dollar Index analysis (DX=F via yfinance)
-- `EquityTrendAgent`: Stock price analysis (NVDA/SPY/etc via yfinance)
-- `MarketBreadthAgent`: S&P 500 market breadth (50-day & 200-day MA via Investing.com)
+- `TNXAgent`: Treasury yield (^TNX via yfinance)
+- `NFCIAgent`: Financial conditions (NFCI via FRED)
+- `DXAgent`: Dollar Index (DX=F via yfinance)
+- `EquityTrendAgent`: Stock analysis (NVDA/SPY via yfinance)
+- `MarketBreadthAgent`: S&P 500 breadth (S5FI/S5TH via Investing.com)
+- `BullBearSpreadAgent`: Investor sentiment (AAII via web scraping)
+- `PutCallAgent`: Options sentiment (CBOE via YCharts)
+- `MarginDebtAgent`: Leverage indicator (FINRA via web scraping)
+- `HighYieldSpreadAgent`: Credit risk (BAMLH0A0HYM2 via FRED)
+- `VIXAgent`: Volatility/fear gauge (^VIX via yfinance)
 
 **Orchestrators (`agent/orchestrator/`):**
-- `LiquidityAgent`: Orchestrates TNXAgent + NFCIAgent + DXAgent
-- `BroadIndexAgent`: Orchestrates S&P 500 + Nasdaq + Dow Jones + MarketBreadthAgent
-- `MarketReportAgent`: Orchestrates LiquidityAgent + BroadIndexAgent + EquityTrendAgent
+- `LiquidityAgent`: TNXAgent + NFCIAgent + DXAgent (3 agents)
+- `BroadIndexAgent`: 3 major indices + 6 market indicators (9 agents)
+- `MarketReportAgent`: LiquidityAgent + BroadIndexAgent + EquityTrendAgent
 - **Synthesis Instructions**: Explicit content preservation rules
   * All chart links must be included (count and verify)
   * All reference links (external URLs) must be preserved
@@ -416,21 +421,29 @@ REPORT_LANGUAGE = "Korean"  # or "English"
   - `create_chart()`: Generate visualizations
   - `get_analysis()`: Extract metrics
 
-**Implementations:**
-- `YFinanceSource`: Stocks, ETFs, treasuries (^TNX, AAPL, SPY)
+**API Data Sources:**
+- `YFinanceSource`: Stocks, ETFs, indices (^TNX, ^VIX, AAPL, SPY)
   - Automatic SMA calculation (5/20/200-day)
+  - Supports both candlestick and line charts
   - Extended data fetching for SMA 200 (period + 280 days)
-  - Timezone normalization for safe date comparisons
-- `FREDSource`: Economic indicators (NFCI, DFF, T10Y2Y)
+- `FREDSource`: Economic indicators (NFCI, BAMLH0A0HYM2, DFF, T10Y2Y)
+  - High Yield Spread (BAMLH0A0HYM2)
   - Lazy initialization for FRED API key
-  - Indicator-specific configurations
-- `InvestingSource`: S&P 500 market breadth data source
-  - Symbols: S5FI (50-day MA), S5TH (200-day MA)
-  - Web scraping from Investing.com historical data table
-  - Validation-based caching with `_validated` flag (parity bit)
-  - Logic: Always scrape → Compare cached vs scraped last date → Update if needed
-  - Auto-merge & accumulate to `data/market_breadth_history.json`
-  - Returns ~1 month of data per scrape, builds long-term dataset over time
+  - Line charts with baseline support
+- `FinnhubSource`: Company fundamentals (P/E, EPS estimates)
+
+**Web Data Sources:**
+- `InvestingSource`: S&P 500 market breadth (S5FI, S5TH)
+  - Web scraping with validation-based caching
+  - Auto-merge to `data/market_breadth_history.json`
+- `AAIISource`: Investor sentiment (Bull-Bear Spread)
+  - Weekly survey data from aaii.com
+  - 2-day date offset tolerance
+- `YChartsSource`: Options sentiment (CBOE Put/Call Equity)
+  - Weekend-aware caching
+- `FINRASource`: Margin statistics (MARGIN_DEBT_YOY)
+  - 333 months historical data (1998-2025)
+  - Automatic YoY calculation
 
 **Explicit Source Selection:**
 ```python
@@ -447,19 +460,16 @@ get_data_source("finra")      # → FINRASource
 **Data Layer:**
 - `fetch_data(source, symbol, period)`: Fetch and cache data from yfinance/FRED
 
-**Analysis Layer:**
-- `analyze_OHLCV_data(source, symbol, period)`: Extract OHLCV metrics from cache
-- `analyze_SMA_data(symbol, period, windows)`: Calculate SMA indicators
-- `analyze_disparity_data(symbol, period, window)`: Calculate disparity with dynamic thresholds (80th/10th percentile)
-- `analyze_RSI_data(symbol, period, window)`: Calculate RSI with dynamic thresholds (80th/10th percentile)
-- `analyze_market_breadth(symbol, period)`: Analyze S&P 500 market breadth with signal interpretation
-- `generate_market_breadth_chart(symbol, period)`: Generate market breadth chart with thresholds (70%/30%)
+**Analysis Layer (17 tools):**
+- **Price/Technicals**: `analyze_OHLCV`, `analyze_SMA`, `analyze_disparity`, `analyze_RSI`
+- **Market Indicators**: `analyze_market_breadth`, `analyze_bull_bear_spread`, `analyze_put_call`
+- **Risk Indicators**: `analyze_NFCI`, `analyze_margin_debt`, `analyze_high_yield_spread`, `analyze_vix`
 
 **Chart Layer:**
-- `generate_OHLCV_chart(source, symbol, period)`: Generate candlestick/line chart
-- `generate_disparity_chart(symbol, period, window)`: Generate disparity chart with dynamic threshold lines
-- `generate_RSI_chart(symbol, period, window)`: Generate RSI chart with dynamic threshold lines
-- `generate_market_breadth_chart(ma_period=50/200)`: Generate market breadth chart with 70%/30% thresholds
+- **Price Charts**: `generate_OHLCV_chart` (candlestick/line)
+- **Technical Charts**: `generate_disparity_chart`, `generate_RSI_chart`
+- **Market Indicators**: `generate_market_breadth_chart`, `generate_bull_bear_spread_chart`, `generate_put_call_chart`
+- **Risk Indicators**: `generate_NFCI_chart`, `generate_margin_debt_chart`, `generate_high_yield_spread_chart`, `generate_vix_chart`
 
 **Unified Charting (`charts.py`):**
 - `create_chart()`: Universal chart generator
@@ -541,37 +551,17 @@ get_data_source("finra")      # → FINRASource
   - More descriptive naming (Bull-Bear Spread vs generic Sentiment)
   - Function renaming: `analyze_sentiment` → `analyze_bull_bear_spread`
   - Function renaming: `generate_sentiment_chart` → `generate_bull_bear_spread_chart`
-- **File Changes**: 
-  - Deleted: `sentiment_agent.py`
-  - Created: `bull_bear_spread_agent.py`
-  - Updated: `broad_index_agent.py` import
 
 **4. Bug Fixes:**
-- **pandas FutureWarning**: Added `fill_method=None` to `pct_change()` calls
-  - Fixed in: `fred_source.py`, `yfinance_source.py`
-  - Eliminates deprecation warnings in volatility calculations
-
-**Files Added:**
-- `src/agent/trend/high_yield_spread_agent.py` (72 lines)
-- `src/agent/trend/vix_agent.py` (58 lines)
-- `src/agent/trend/bull_bear_spread_agent.py` (70 lines)
-
-**Files Modified:**
-- `src/agent/tools/agent_tools.py`: Added 6 functions (HY spread + VIX tools, renamed sentiment)
-- `src/agent/trend/__init__.py`: Updated exports (3 new agents)
-- `src/agent/orchestrator/broad_index_agent.py`: Updated imports and agent usage
-- `src/data_sources/api/fred_source.py`: Fixed FutureWarning
-- `src/data_sources/api/yfinance_source.py`: Fixed FutureWarning
-
-**Files Deleted:**
-- `src/agent/trend/sentiment_agent.py` (renamed to bull_bear_spread_agent.py)
+- Fixed pandas FutureWarning in volatility calculations
+- Added `fill_method=None` to `pct_change()` calls
 
 **Impact:**
-- ✅ 3 new sentiment/volatility indicators (HY Spread, VIX, renamed Bull-Bear)
-- ✅ Enhanced credit risk monitoring (5%/7% thresholds)
-- ✅ Fear gauge for market timing (VIX >30 contrarian buy)
-- ✅ More descriptive agent naming convention
-- ✅ Cleaner codebase (no deprecation warnings)
+- ✅ 3 new sentiment/volatility indicators for comprehensive market analysis
+- ✅ Credit risk monitoring with 5%/7% alert thresholds
+- ✅ VIX fear gauge for contrarian market timing (>30 buy signal)
+- ✅ Clearer agent naming (Bull-Bear Spread vs generic Sentiment)
+- ✅ No deprecation warnings
 
 ---
 
@@ -611,600 +601,16 @@ get_data_source("finra")      # → FINRASource
   - `Margin_Debt_YoY_pct_10y_chart.png` → Loads successfully
 - **Applied to**: `create_yfinance_chart`, `create_fred_chart`, `create_line_chart`
 
-**4. Test Coverage:**
-- **New Tests**: `TestFINRASource` class (6 comprehensive tests)
-  - Data fetching with mock scraping
-  - Cache validation and update logic
-  - Invalid symbol error handling
-  - Analysis metrics extraction
-  - All 6 tests passing
-
-**Files Added:**
-- `src/data_sources/web/finra_source.py`: FINRA scraping (172 lines)
-- `src/agent/trend/margin_debt_agent.py`: Margin Debt agent (74 lines)
-- `data/margin_debt_history.json`: Historical data (333 records)
-
-**Files Modified:**
-- `src/data_sources/__init__.py`: Added FINRASource registration
-- `src/data_sources/web/__init__.py`: Export FINRASource
-- `src/agent/tools/agent_tools.py`: Added margin debt tools (2 functions)
-- `src/data_sources/tests/data_sources_test.py`: Added 6 FINRA tests
-- `src/utils/charts.py`: Fixed `%` → `pct` in filename cleanup (3 places)
+**4. Testing:**
+- 6 comprehensive tests for FINRA data source
+- Mock scraping, cache validation, error handling
+- All tests passing
 
 **Impact:**
-- ✅ Margin Debt as leverage/sentiment indicator
-- ✅ 333 months of historical data (1998-2025)
-- ✅ Chart filename URL compatibility fixed
-- ✅ Extensible structure for FREE_CREDIT_CASH, FREE_CREDIT_MARGIN
-- ✅ All 65 tests passing (34 data sources + 7 charts + 24 others)
-
----
-
-### Put/Call Ratio & Unified Chart/Cache Systems (v7.0)
-
-**Date: November 8, 2025**
-
-**Major Updates:**
-
-**1. CBOE Equity Put/Call Ratio Integration:**
-- **New DataSource**: `YChartsSource` in `src/data_sources/web/ycharts_source.py`
-  - Web scraping from ycharts.com
-  - CBOE Equity Put/Call Ratio (contrarian sentiment indicator)
-  - 2-3 months of historical data (50 records)
-  - Weekend-aware caching with business day logic
-- **New Agent**: `PutCallAgent` in `src/agent/trend/put_call_agent.py`
-  - Integrated into BroadIndexAgent
-  - Thresholds: >1.5 (Bearish Sentiment), <0.5 (Bullish Sentiment)
-- **New Tools**: `analyze_put_call`, `generate_put_call_chart`
-- **Data File**: `data/put_call_ratio_history.json` (50 records)
-
-**2. Unified Chart Generation System:**
-- **chart_type Parameter**: All DataSources now support `chart_type`
-  - `'candle'`: YFinance OHLCV candlestick charts (default for stocks)
-  - `'line'`: Line charts for all other data (default for FRED, web sources)
-- **Flexible Options via kwargs**: `threshold_upper`, `threshold_lower`, `overbought_label`, `oversold_label`, `value_format`, `ylabel`
-- **Generic create_chart()**: Truly universal across all data sources
-  - YFinanceSource: Supports both 'candle' and 'line' types
-  - FREDSource: 'line' with baseline support
-  - WebDataSources: 'line' with threshold support
-- **agent_tools.py**: Sets all chart parameters explicitly
-  - Disparity & RSI now use `YFinanceSource.create_chart(type='line')`
-  - No more direct `create_line_chart()` calls from agent_tools
-
-**3. Function Naming Unification:**
-- **analyze Functions**: Removed 'data' suffix for consistency
-  - `analyze_OHLCV_data` → `analyze_OHLCV`
-  - `analyze_SMA_data` → `analyze_SMA`
-  - `analyze_disparity_data` → `analyze_disparity`
-  - `analyze_RSI_data` → `analyze_RSI`
-  - `analyze_put_call_ratio` → `analyze_put_call`
-- **generate Functions**: Kept 'chart' suffix for clarity
-  - All remain as `generate_XXX_chart`
-- **NFCI Dedicated Functions**: `analyze_NFCI`, `generate_NFCI_chart`
-  - Separated from generic OHLCV functions
-  - `generate_OHLCV_chart` now YFinance-specific
-
-**4. Web Source JSON Format Unification:**
-- **market_breadth_history.json**: Changed from object to array format
-  ```json
-  // Before
-  "S5TH": {
-    "2015-10-01": {"value": 26.0, "timestamp": "..."},
-    "_validated": true
-  }
-  
-  // After
-  "S5TH": [
-    {"date": "2015-10-01", "value": 26.0}
-  ],
-  "_validated": true
-  ```
-- **Unified Format**: All web sources now use `[{"date": "YYYY-MM-DD", "value": float}]`
-- **Top-level _validated**: Moved validation flag to root level
-
-**5. Web Source Cache Consolidation:**
-- **Generic Cache Methods**: Moved to `WebDataSource` base class
-  - `_load_local_cache(symbol, log_prefix)`: Generic JSON loader
-  - `_save_local_cache(symbol, data, is_validated, log_prefix)`: Generic JSON saver
-- **Code Deduplication**: Removed 131 lines across 3 sources
-  - InvestingSource: -44 lines
-  - AAIISource: -44 lines
-  - YChartsSource: Uses base methods from start
-- **Benefits**: Single source of truth, easier maintenance
-
-**Files Added:**
-- `src/data_sources/web/ycharts_source.py`: YCharts scraping (136 lines)
-- `src/agent/trend/put_call_agent.py`: Put/Call Ratio agent (75 lines)
-- `data/put_call_ratio_history.json`: Historical data (50 records)
-
-**Files Modified:**
-- `src/data_sources/base.py`: Generic cache methods, weekend logic
-- `src/data_sources/api/yfinance_source.py`: chart_type + **kwargs
-- `src/data_sources/api/fred_source.py`: chart_type + **kwargs
-- `src/data_sources/api/finnhub_source.py`: chart_type + **kwargs
-- `src/data_sources/web/investing_source.py`: Use base cache methods
-- `src/data_sources/web/aaii_source.py`: Use base cache methods
-- `src/agent/tools/agent_tools.py`: Function renaming, NFCI functions, Put/Call functions
-- `src/agent/base/trend_agent.py`: Updated function names
-- `src/agent/trend/equity_agent.py`: Updated function names (5 changes)
-- `src/agent/trend/nfci_agent.py`: Use dedicated NFCI functions
-- `src/agent/trend/tnx_agent.py`, `dx_agent.py`: Updated function names
-- `src/agent/orchestrator/broad_index_agent.py`: Added PutCallAgent
-- `data/market_breadth_history.json`: Format change (30,619 lines)
-- `data/aaii_bull_bear_spread_history.json`: Data update
-
-**Files Moved:**
-- `src/utils/data_sources_test.py` → `src/data_sources/tests/data_sources_test.py`
-
-**Files Deleted:**
-- `src/data_sources/tests/test_all_sources.py` (renamed to data_sources_test.py)
-
-**Impact:**
-- ✅ Put/Call Ratio as contrarian sentiment indicator
-- ✅ Truly generic chart generation across all sources
-- ✅ Consistent function naming (analyze_XXX, generate_XXX_chart)
-- ✅ Unified JSON format for all web sources
-- ✅ 131 lines of duplicate code removed
-- ✅ All 67 tests passing (28 data sources, 7 charts, 32 others)
-
----
-
-### Chart Period Accuracy & Data Consistency (v6.4)
-
-**Date: November 6, 2025**
-
-**Major Updates:**
-
-**1. Actual Period Calculation System:**
-- **New Method**: `DataSource.get_actual_period_approx(data)`
-  - Automatically calculates actual data range from fetched data
-  - Removes NaN values to get true valid data range
-  - Approximates to nearest standard period (5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y)
-  - Uses each DataSource's `_period_to_timedelta()` for accurate comparison
-  - Works consistently across all data sources (yfinance, FRED, Investing)
-
-**2. Dynamic Period Detection:**
-- **Problem**: Requested "5y" but actual data only 2 months → Chart showed "5 Years" (misleading)
-- **Solution**: All charts now display actual data period
-  - `analyze_OHLCV_data`: Uses actual period for analysis
-  - `generate_*_chart`: Uses actual period for chart title and filename
-  - Example: Request "5y" → Get 56 days → Display "1 Month"
-
-**3. Chart Improvements:**
-- **Invalid Data Filtering**: `create_yfinance_chart()` filters out rows where High/Low/Open != 0
-  - Fixes abnormally tall candlesticks from incomplete data
-  - Handles negative values (e.g., negative interest rates)
-- **Continuous X-axis**: `create_line_chart()` now uses integer positions (no weekend gaps)
-- **NaN Handling**: Automatic removal in all chart functions
-- **Consistent Date Format**: All charts show `%Y-%m-%d` format (year always included)
-
-**4. Data Key Unification:**
-- **Before**: YFinanceSource used `'history'`, others used `'data'`
-- **After**: All DataSources now use `'data'` key
-- Simplifies `get_actual_period_approx()` implementation
-- Consistent data access pattern across all tools
-
-**5. Agent Instruction Refinements:**
-- **Label Parameter**: Made required for chart generation functions
-  - Prevents Agent from omitting or mistranslating labels
-  - Instruction: "MUST pass label=\"{self.label}\" exactly without adding period information"
-- **Fetch Optimization**: "Call fetch_data ONCE with longest period, NEVER use 'max'"
-  - Prevents unnecessary max period fetches that waste API calls
-- **Period Support**: Added "max" support to all DataSources (36500 days)
-
-**6. Market Breadth Simplification:**
-- **Removed**: Redundant "Signal" calculation in `analyze_market_breadth`
-- **Reason**: Agent has detailed Market Breadth Framework for interpretation
-- Tool now provides pure data, Agent does all interpretation
-
-**Files Modified:**
-- `src/utils/data_sources.py`: Added `get_actual_period_approx()`, unified 'data' key, added 'max' period support
-- `src/agent/tools/agent_tools.py`: Use actual_period throughout, made label required, simplified market_breadth output
-- `src/utils/charts.py`: Invalid data filtering, NaN removal, consistent date format, integer positions for line charts
-- `src/agent/base/trend_agent.py`: Enhanced label instructions, fetch optimization
-- `src/agent/trend/equity_agent.py`: Simplified P/E & PEG valuation instructions
-- `src/agent/trend/market_breadth_agent.py`: Removed redundant interpretation
-
-**Impact:**
-- ✅ Chart titles accurately reflect actual data period
-- ✅ No more misleading "5 Years" when data is only 2 months
-- ✅ Cleaner chart rendering (no invalid data spikes)
-- ✅ Consistent data access across all sources
-- ✅ Better Agent adherence to instructions
-- ✅ Fewer API calls (optimized fetch strategy)
-
----
-
-### P/E & PEG (NTM) Chart Capture with Headless Fix (v6.3)
-
-**Date: November 5, 2025**
-
-**Major Updates:**
-
-**1. Enhanced P/E & PEG (NTM) Chart Generation:**
-- **Tool**: `generate_PE_PEG_ratio_chart(ticker, period='10Y')`
-  - Captures both P/E (NTM) and PEG (NTM) with Historical Price overlay
-  - Extracts current values + ±1 standard deviations for both metrics
-  - Flexible period selection: 1Y, 3Y, 5Y, 10Y, 20Y
-  - Returns formatted metrics for LLM interpretation
-
-**2. Headless Mode Fix:**
-- **Problem**: Headless `maximize_window()` doesn't work → small window → UI rendering issues → "Add Metric" dialog fails
-- **Solution**: Detect screen size with `tkinter.winfo_screenwidth/height()`, fallback to 1920x1080
-- **Implementation**: `set_window_size(SCREEN_WIDTH, SCREEN_HEIGHT)` after driver initialization
-- **Result**: Headless mode now works reliably for chart capture
-
-**3. Metric Formatting:**
-- Moved parsing from `koyfin_chart_capture.py` to `agent_tools.py`
-- Clear output format:
-```
-P/E (NTM):
-- Current value: 34.7
-- Undervalued < 30.7
-- Overvalued > 50.8
-
-PEG (NTM):
-- Current value: 0.97
-- Undervalued < 1.48
-- Overvalued > 4.21
-```
-
-**Files Modified:**
-- `src/utils/koyfin_chart_capture.py`: Screen size detection, return dict instead of string
-- `src/agent/tools/agent_tools.py`: Parse metrics dict into formatted string
-- `src/agent/trend/equity_agent.py`: Simplified P/E & PEG valuation prompts
-
----
-
-### Forward P/E (NTM) Analysis & FinnhubSource (v6.2)
-
-**Date: November 3, 2025**
-
-**Major Updates:**
-
-**1. Forward P/E (NTM) Chart Generation via Koyfin Automation:**
-- **New Tool**: `generate_forward_PE_ratio_chart(ticker)`
-  - Selenium + Firefox automation to capture Koyfin charts
-  - 10-year Forward P/E ratio + Historical Price overlay
-  - Auto-extracts current Forward P/E value from page source
-  - Returns: Chart path + current P/E value (e.g., "NVDA: 35.7x")
-  - ~12-15 seconds per ticker
-- **Implementation**: 
-  - `src/utils/koyfin_chart_capture.py`: `KoyfinChartCapture` class
-  - `src/utils/koyfin_parallel.py`: Parallel execution helper
-  - Headless/visible mode support
-  - Handles popup dismissal, period selection (1Y, 3Y, 5Y, 10Y, 20Y), chart image extraction
-  - Uses `asyncio.to_thread()` to avoid blocking event loop
-
-**2. FinnhubSource Data Layer:**
-- **New DataSource**: `FinnhubSource` in `src/utils/data_sources.py`
-- **Forward P/E Calculation**: Last actual quarter + Next 3 estimated quarters = NTM EPS
-  - Example: NVDA = 39.11x (Finnhub) vs 35.7x (Koyfin)
-- **Methods**:
-  - `fetch_data()`: Quote + EPS estimates from earnings calendar
-  - `get_analysis()`: Calculate Forward P/E ratio
-
-**Current Status & Limitations:**
-
-⚠️ **Unstable Components:**
-- Koyfin automation may break if page structure changes
-- Selenium dependency requires Firefox WebDriver
-- Headless mode rendering issues (fixed in v6.3)
-
-⚠️ **Design Philosophy Conflict:**
-- **Issue**: Web automation with Selenium is not an agentic approach
-  - Hardcoded script instead of agent decision-making
-  - Brittle to UI changes, high maintenance burden
-- **Unavoidable Reason**: **No free API provides historical Forward P/E (NTM) data**
-  - Finnhub, yfinance, Alpha Vantage: Only current value or inaccurate
-  - Koyfin: Accurate market consensus but no API
-  - Investing.com: Bot protection on equities pages
-- **Future Direction**:
-  - Replace with paid API (Bloomberg, FactSet) when available
-  - Consider LLM vision models to interpret chart images directly
-
-**Test Results:**
-| Ticker | Forward P/E (NTM) | Source |
-|--------|-------------------|--------|
-| NVDA   | 35.7x            | Koyfin (accurate) |
-| NVDA   | 39.11x           | Finnhub |
-| MSFT   | 30.9x            | Koyfin |
-| AAPL   | 32.8x            | Koyfin |
-
-**Files Added:**
-- `src/utils/koyfin_chart_capture.py`: Selenium automation class
-- `src/utils/koyfin_parallel.py`: Parallel execution helper
-
-**Files Modified:**
-- `src/agent/tools/agent_tools.py`: Added `generate_forward_PE_ratio_chart()`
-- `src/utils/data_sources.py`: Added `FinnhubSource` class
-
----
-
-### Markdown Link Parsing & Agent Instruction Refactoring (v6.1)
-
-**Date: November 3, 2025**
-
-**Major Updates:**
-
-**1. Markdown Hyperlink Support in MarkdownToNotionParser:**
-- **Auto-convert markdown links**: `[text](https://...)` → Notion hyperlinks
-- **Auto-convert standalone URLs**: `https://...` → clickable links
-- **Chart links preserved**: `[View Chart](sandbox:/path)` → R2 image embeds (unchanged)
-- **Implementation**: Refactored `_parse_rich_text()` with helper methods:
-  - `_create_text_object()`: Unified rich text object creation
-  - `_create_link_rich_text()`: Handle markdown link format
-  - `_parse_text_with_urls()`: Convert standalone URLs to hyperlinks
-- **Benefits**: External reference links (e.g., Investing.com) now clickable in Notion
-
-**2. TrendAgent Instruction Refactoring:**
-- **Moved common instructions to base class**:
-  - `fetch_data()` must be called for longest period first (WORKFLOW)
-  - Markdown table output format (OUTPUT FORMAT)
-  - Chart link inclusion rules (CRITICAL - CHART LINKS)
-- **Subclass instructions simplified**:
-  - Only tool-specific usage (e.g., `analyze_OHLCV_data` for equity agents)
-  - Only analysis-specific focus (e.g., "50-day vs 200-day" for MarketBreadthAgent)
-- **Benefits**: Less redundancy, easier maintenance, consistent behavior
-
-**3. Orchestrator Content Preservation Rules:**
-- **Enhanced synthesis agent instructions**:
-  - Explicit rule: "Count chart links and verify none are missing"
-  - Explicit rule: "All reference links (https://...) must be preserved"
-  - Tables: Can summarize but must include full markdown structure
-  - Text: Can summarize if too long, but NEVER omit links
-- **Applied to**: `BroadIndexAgent`, `LiquidityAgent`
-
-**4. Test Isolation Fix:**
-- **TestInvestingSource now uses separate test cache file**:
-  - Before: Tests overwrote `data/market_breadth_history.json`
-  - After: Tests use `data/test_investing_source_cache.json`
-  - Automatic cleanup in `setUp()` and `tearDown()`
-- **Benefits**: Production cache protected from test runs
-
-**Files Modified:**
-- `src/adapters/markdown_to_notion.py`: Hyperlink parsing with comprehensive comments
-- `src/agent/base/trend_agent.py`: Common instructions in base, WORKFLOW updated
-- `src/agent/orchestrator/broad_index_agent.py`: Content preservation rules
-- `src/agent/orchestrator/liquidity_agent.py`: Content preservation rules
-- `src/agent/trend/market_breadth_agent.py`: Corrected reference link format
-- `src/utils/data_sources_test.py`: Test isolation for InvestingSource
-
----
-
-### Dynamic Thresholds & Agent Enhancements (v6.0)
-
-**Date: October 31, 2025**
-
-**Major Updates:**
-
-**1. BroadIndexAgent - New Orchestrator:**
-- Dedicated orchestrator for major US market indices
-- Combines S&P 500 (^GSPC), Nasdaq Composite (^IXIC), Dow Jones (^DJI)
-- Provides comprehensive broad market analysis
-- Integrated into `MarketReportAgent` workflow
-
-**2. TrendAgent Label & Description:**
-- Added `label` parameter for human-readable asset names
-  - Example: `label="S&P 500"` instead of displaying `^GSPC`
-- Added `description` parameter for brief asset descriptions
-  - Example: `description="Gold-tracking ETF"` for IAU
-- Improves LLM context and report readability
-- Applied to all trend agents (TNX, NFCI, DX, Equity, BroadIndex)
-
-**3. Dynamic Overbought/Oversold Thresholds:**
-- **RSI Analysis**: Now uses 80th/10th percentile instead of fixed 70/30
-  - `analyze_RSI_data()`: Returns current RSI with dynamic thresholds
-  - `generate_RSI_chart()`: Visualizes thresholds with shaded regions
-- **Disparity Analysis**: Now uses 80th/10th percentile instead of fixed ±20%
-  - `analyze_disparity_data()`: Returns current disparity with dynamic thresholds
-  - `generate_disparity_chart()`: Visualizes thresholds with shaded regions
-- **Benefits**: Adapts to each asset's historical volatility patterns
-- **Chart Updates**: `create_line_chart()` now supports `threshold_upper`/`threshold_lower`
-
-**4. Code Cleanup:**
-- Removed MACD-related functions (`analyze_MACD_data`, `generate_MACD_chart`)
-- Removed `calculate_macd` from technical indicators
-- Simplified tool count from 9 to 7 focused tools
-- Maintained `baseline` parameter for FRED charts compatibility
-
-**Agent Tool Updates:**
-```python
-# analyze_RSI_data output (NEW)
-"RSI(14): 65.32 [Overbought>72.1, Oversold<31.5]"
-
-# analyze_disparity_data output (NEW)
-"Disparity(200): 15.23% [Overbought>18.5%, Oversold<-12.3%]"
-
-# EquityTrendAgent example with label & description
-EquityTrendAgent(
-    "IAU", 
-    label="iShares Gold Trust",
-    description="Gold-tracking ETF"
-)
-```
-
-**Files Modified:**
-- `src/agent/base/trend_agent.py`: Added `label`, `description` parameters
-- `src/agent/trend/equity_agent.py`: Updated to accept and pass new parameters
-- `src/agent/trend/tnx_agent.py`, `nfci_agent.py`, `dx_agent.py`: Applied labels
-- `src/agent/orchestrator/broad_index_agent.py`: NEW orchestrator
-- `src/agent/orchestrator/market_report_agent.py`: Integrated BroadIndexAgent
-- `src/agent/tools/agent_tools.py`: Dynamic thresholds, removed MACD
-- `src/utils/charts.py`: Enhanced `create_line_chart()` with threshold support
-- `src/utils/technical_indicators.py`: Removed `calculate_macd`
-
----
-
-### Modular Agent Tools Architecture (v5.0)
-
-**Revolutionary Refactor - Complete Layer Separation:**
-
-**Before (Coupled):**
-```python
-# TrendAgent had monolithic methods
-class TrendAgent:
-    def get_yf_data(...)          # Fetch + analyze + chart
-    def get_fred_data(...)         # Fetch + analyze + chart
-    def _get_technical_indicators(...)  # Tightly coupled
-```
-
-**After (Modular):**
-```python
-# 7 independent @function_tool in agent_tools.py (v6.0: removed MACD)
-@function_tool async def fetch_data(source, symbol, period)
-@function_tool async def analyze_OHLCV_data(source, symbol, period)
-@function_tool async def generate_OHLCV_chart(source, symbol, period)
-@function_tool async def analyze_SMA_data(symbol, period, windows)
-@function_tool async def analyze_disparity_data(symbol, period, window)  # v6.0: dynamic thresholds
-@function_tool async def analyze_RSI_data(symbol, period, window)        # v6.0: dynamic thresholds
-@function_tool async def generate_disparity_chart(symbol, period, window)  # v6.0: threshold visualization
-@function_tool async def generate_RSI_chart(symbol, period, window)        # v6.0: threshold visualization
-```
-
-**Design Principles:**
-1. **Layer Separation**: Data fetching ↔ Analysis ↔ Chart generation completely decoupled
-2. **Agent Autonomy**: Each agent selects only the tools it needs
-3. **Cache-Based**: Fetch once (longest period first), then all tools reuse cached data
-4. **Modularity**: Adding new indicators = adding new independent tools
-5. **Zero Coupling**: `technical_indicators.py` only has pure functions
-
-**Agent-Specific Tool Selection:**
-```python
-# TNXAgent: Basic OHLCV + SMA
-tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart, analyze_SMA_data]
-
-# EquityTrendAgent: Full suite including disparity and RSI
-tools=[
-    fetch_data, analyze_OHLCV_data, generate_OHLCV_chart,
-    analyze_SMA_data, analyze_disparity_data, generate_disparity_chart,
-    generate_RSI_chart, analyze_RSI_data
-]
-
-# NFCIAgent: FRED-only (no technical indicators)
-tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart]
-```
-
-**Benefits:**
-- ✅ **Flexibility**: Mix and match tools per agent
-- ✅ **Maintainability**: Single Responsibility per tool
-- ✅ **Extensibility**: Add tools without touching existing code
-- ✅ **Testability**: Each tool independently testable
-- ✅ **Performance**: Cached data reused across all tool calls
-
-**Deprecated & Removed:**
-- `TrendAgent.get_yf_data()`, `TrendAgent.get_fred_data()` ❌
-- `TrendAgent._get_technical_indicators()` ❌
-- `TrendAgent._create_yfinance_indicators_tool()` ❌
-- `TechnicalAnalyzer` class (fluent API) ❌
-  - Replaced with pure functions: `calculate_sma()`, `calculate_disparity()`, etc.
-
-**Files:**
-- **New**: `src/agent/tools/agent_tools.py` (v6.0: 7 tools with dynamic thresholds)
-- **Modified**: `src/agent/base/trend_agent.py` (simplified to 112 lines, added label/description)
-- **Modified**: All trend agents (TNX, DX, NFCI, Equity) with tool selection and labels
-- **Modified**: `src/utils/technical_indicators.py` (removed MACD, pure functions remain)
-
----
-
-### SMA(200) Chart Fix (v4.1)
-
-**Problem Solved:**
-- **SMA_200 lines were cut off** at the beginning of 1y charts for TNX and DX=F
-- Issue: Insufficient historical data buffer causing rolling average calculation to start from chart start date
-
-**Solution:**
-1. **Extended Data Fetching**: Fetch 220+ *business days* (not calendar days) before display period
-   - Used `pandas.tseries.offsets.BDay` for accurate trading day calculation
-   - Additional 20 business day margin to handle holidays/market closures
-2. **Pre-compute SMAs**: Calculate SMA (5, 20, 200) on full buffered history *before* slicing for display
-3. **Smart Slicing Logic**: Display starts from the later of:
-   - Requested start date (e.g., 1 year ago)
-   - First valid SMA_200 date (199 business days into fetched data)
-4. **Fixed Test Data**: Corrected mock DataFrame generation to avoid NaN Close values
-
-**Results:**
-- ✅ TNX 1y chart: SMA_200 displayed from first row (no cut-off)
-- ✅ DX=F 1y chart: SMA_200 displayed from first row (no cut-off)
-- ✅ All unit tests passing with 0 null SMA values in display window
-- ✅ Charts show complete SMA lines across entire display period
-
-**Files Modified:**
-- `src/utils/data_sources.py`: Enhanced fetch logic with BDay offset, removed redundant slicing condition
-- `src/utils/data_sources_test.py`: Fixed mock data generation (list comprehension instead of Series misalignment)
-
-### Chart Separation & Disparity Features (v4.0)
-
-**Chart System Refactor:**
-- **Separated Chart Functions**: Dedicated functions per data type
-  - `create_yfinance_chart()`: Candlestick with SMA overlays
-  - `create_fred_chart()`: Line chart with baseline
-  - `create_line_chart()`: Generic line chart for technical indicators (disparity, RSI, MACD)
-- **DataSource Purity**: `fetch_data()` returns raw OHLCV only, no calculations
-
-**Equity-Specific Features:**
-- **200-day Disparity (이격도)** available as independent tool
-- **Separate Disparity Chart**: Visual representation of price vs SMA relationship
-- Formula: `(Current Price / SMA_200 - 1) * 100`
-- Interpretation: >0% = above long-term average, <0% = below
-- Accessible via `analyze_disparity_data()` and `generate_disparity_chart()` tools
-
-**Pythonic Improvements:**
-- Python 3.13 compatible (using builtin `list`, `dict` types)
-- Type hints with modern syntax (`list[int]`, `dict[str, float]`)
-- Single Responsibility Principle per function
-
-### SMA (Simple Moving Averages) Implementation (v3.0)
-
-**Technical Analysis Enhancement:**
-- **5-day, 20-day, 200-day Simple Moving Averages** automatically calculated
-- **Candlestick Charts** with SMA overlays for professional stock analysis
-- **Conditional SMA Display** based on chart period:
-  * 5-day charts: No SMAs (too short for meaningful analysis)
-  * 1mo, 3mo, 6mo: SMA 5, 20 (short to medium-term trends)
-  * 1y+: SMA 5, 20, 200 (comprehensive trend analysis)
-- **Weekend Gap Removal** for continuous candlestick display
-- **Extended Data Fetching** (period + 280 days) to ensure sufficient data for SMA 200
-
-**Chart Features:**
-- OHLC (Open, High, Low, Close) candlestick visualization
-- Distinct colors and line weights for each SMA
-- Professional financial chart styling
-- Automatic timezone handling for accurate date comparisons
-
-**Agent Integration:**
-- SMA data included in trend analysis output
-- Current price vs SMA comparisons
-- Enhanced technical analysis capabilities
-
-### Advanced Markdown Parsing (v2.0)
-
-**3-Level Nested List Support:**
-```markdown
-1. 주요 패턴 및 트렌드
-   - TNX (10년 만기 국채 수익률)
-     - 단기 및 중기적 하락
-     - 6개월 기준으로도 큰 하락
-   - NFCI (국가 금융 조건 지수)
-     - 느슨한 금융 조건
-```
-
-**Notion Output:**
-```
-1. 주요 패턴 및 트렌드
-   • TNX (10년 만기 국채 수익률)
-      • 단기 및 중기적 하락
-      • 6개월 기준으로도 큰 하락
-   • NFCI (국가 금융 조건 지수)
-      • 느슨한 금융 조건
-```
-
-**Key Features:**
-- ✅ **Smart Hierarchy Detection**: Automatic recognition of nested structures
-- ✅ **Pythonic Code**: Clean, maintainable recursive parsing
-- ✅ **Notion API Compatibility**: Proper `paragraph` + `children` structure
-- ✅ **Test Coverage**: 30 comprehensive tests, all passing
-- ✅ **Performance**: Efficient parsing without infinite loops
+- ✅ Margin Debt as contrarian leverage indicator (빚투 지표)
+- ✅ 333 months of historical data (1998-2025) for long-term analysis
+- ✅ Chart filename URL compatibility fixed (% → pct)
+- ✅ Extensible structure for future FINRA indicators
 
 ---
 
@@ -1213,27 +619,18 @@ tools=[fetch_data, analyze_OHLCV_data, generate_OHLCV_chart]
 ### Import Agents
 
 ```python
-# Import from organized structure
-from src.agent.base import AsyncAgent, OrchestratorAgent, TrendAgent
-from src.agent.trend import TNXAgent, NFCIAgent, DXAgent, EquityTrendAgent
+from src.agent.trend import (
+    TNXAgent, NFCIAgent, DXAgent, EquityTrendAgent,
+    MarketBreadthAgent, BullBearSpreadAgent, PutCallAgent,
+    MarginDebtAgent, HighYieldSpreadAgent, VIXAgent
+)
 from src.agent.orchestrator import LiquidityAgent, BroadIndexAgent, MarketReportAgent
 
 # Initialize agents
-tnx_agent = TNXAgent()                      # ^TNX analysis with label "10-Year Treasury Yield"
-nfci_agent = NFCIAgent()                    # NFCI analysis with label "National Financial Conditions Index"
-dx_agent = DXAgent()                        # DX=F analysis with label "US Dollar Index"
-equity_agent = EquityTrendAgent(
-    "NVDA", 
-    label="NVIDIA"
-)                                           # NVDA analysis with custom label
-equity_etf = EquityTrendAgent(
-    "IAU",
-    label="iShares Gold Trust",
-    description="Gold-tracking ETF"
-)                                           # IAU with label and description
-liquidity_agent = LiquidityAgent()          # TNX + NFCI + DX orchestrator
-broad_index_agent = BroadIndexAgent()       # S&P 500 + Nasdaq + Dow Jones orchestrator
-manager = MarketReportAgent()               # Full analysis orchestrator
+vix_agent = VIXAgent()                       # VIX volatility analysis
+margin_agent = MarginDebtAgent()             # FINRA margin debt analysis
+hy_spread_agent = HighYieldSpreadAgent()     # High yield spread analysis
+broad_index_agent = BroadIndexAgent()        # Full broad index orchestrator
 ```
 
 ### Run Full Market Analysis
@@ -1243,9 +640,7 @@ import asyncio
 from src.run_market_report import run_market_report
 
 async def main():
-    # Run full analysis and post to Notion
     result = await run_market_report()
-    
     print(f"✅ Report published: {result['url']}")
 
 asyncio.run(main())
@@ -1257,46 +652,50 @@ asyncio.run(main())
 
 **Run all tests:**
 ```bash
-python -m unittest discover src -p "*_test.py"
+uv run python -m unittest discover src -p "*_test.py"
 ```
 
-**Run tests with Notion upload (creates actual pages):**
-```bash
-# Method 1: Set environment variable inline
-TEST_MODE=true python -m unittest discover src -p "*_test.py"
+**Test Coverage:** 71+ tests covering data sources, charts, agents, and integrations
 
-# Method 2: Set environment variable in shell
-export TEST_MODE=true
-python -m unittest discover src -p "*_test.py"
-export TEST_MODE=false  # Turn off after testing
-```
+---
 
-**Test Coverage:**
-- ✅ **MarkdownToNotionParser**: 17 tests (nested lists, headings, tables, code blocks, Notion upload verification)
-- ✅ **NotionAPI**: 9 tests (page creation, child pages)
-- ✅ **ReportBuilder**: 2 tests (parent page creation, failure handling)
-- ✅ **ImageService**: 4 tests (Cloudflare R2 upload, local image finding)
-- ✅ **DataSources**: 28 tests (yfinance/FRED/Investing/AAII with Mock API, cache validation, date offset tolerance)
-- ✅ **Charts**: 7 tests (candlestick charts, SMA overlays, weekend gap removal)
-- ✅ **Total**: 67 comprehensive tests (0.03s execution time)
-- ⚠️ **Notion Upload Test**: Only runs when `TEST_MODE=true` (prevents creating pages during normal testing)
-- 🚫 **No Real API Calls**: All tests use Mock data for fast, reliable execution
+## Known Limitations
 
-**Test Explorer**: Use VS Code/Cursor Test Explorer (configured in `.vscode/settings.json`)
+### Forward P/E (NTM) Data - Koyfin Automation
 
-**Recent Test Results:**
-```
-# Data Sources Tests (including AAII)
-Ran 28 tests in 0.030s
-OK
+**Current Implementation:**
+- Uses Selenium + Firefox to capture Forward P/E and PEG charts from Koyfin
+- ~12-15 seconds per ticker
+- Extracts metrics by parsing page source HTML
 
-# Charts Tests  
-Ran 7 tests in 0.590s
-OK
+**Why This Approach:**
+- ❌ **No free API** provides historical Forward P/E (NTM) data
+  - Finnhub, yfinance, Alpha Vantage: Only current values or inaccurate
+  - Koyfin: Accurate market consensus but no public API
+- ✅ **Best available option** for accurate historical valuation data
 
-# All Tests Combined
-Ran 67 tests in 0.620s
-OK
-✅ All tests passed (includes AAII sentiment, cache validation, date offset tests)
-```
+**Known Issues:**
+- **Brittle**: Breaks if Koyfin changes UI structure
+- **Slow**: ~12-15 seconds per ticker (vs <1s for APIs)
+- **Non-agentic**: Hardcoded script instead of AI decision-making
+- **Maintenance**: Requires updates when Koyfin changes
+- **Dependency**: Requires Firefox WebDriver
 
+**Future Plans:**
+- **Short-term**: Vision API integration (Claude/GPT-4V) to interpret screenshots
+  - More robust to UI changes
+  - More agentic approach (AI reads charts)
+  - Added to TODO list
+- **Long-term**: Replace with paid API when budget allows (Bloomberg/FactSet)
+
+**Related Files:**
+- `src/utils/koyfin_chart_capture.py`
+- `src/agent/tools/agent_tools.py`: `generate_PE_PEG_ratio_chart()`
+
+---
+
+## Version History
+
+For detailed changelog including v7.0 and earlier versions, see [CHANGELOG.md](CHANGELOG.md).
+
+---
