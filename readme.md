@@ -125,14 +125,15 @@ src/
 │   │   └── vix_agent.py           # VIX (Volatility Index, fear gauge)
 │   │
 │   ├── orchestrator/          # 🎭 Orchestrator agents (combine multiple agents)
-│   │   ├── __init__.py       # Exports: LiquidityAgent, BroadIndexAgent, MarketReportAgent
+│   │   ├── __init__.py       # Exports: LiquidityAgent, BroadIndexAgent, MarketReportAgent, MarketHealthAgent
 │   │   ├── liquidity_agent.py     # Liquidity orchestrator (TNX + NFCI + DX)
 │   │   ├── broad_index_agent.py   # Broad index orchestrator (^GSPC + ^IXIC + ^DJI + MarketBreadth)
+│   │   ├── market_health_agent.py # Market health orchestrator (5 contrarian indicators)
 │   │   └── market_report_agent.py  # Main report agent (Liquidity + BroadIndex + Equity)
 │   │
 │   └── types/                 # 📋 Type definitions
 │       ├── __init__.py       # Package initialization
-│       └── analysis_report.py  # AnalysisReport Pydantic model
+│       └── analysis_report.py  # AnalysisReport Pydantic model (with optional score field)
 │   │
 │   └── email_agent.py         # 📧 Email notification agent
 │
@@ -199,11 +200,12 @@ src/
 │  1. Direct Agent Execution                                  │
 │     ├── MarketReportAgent (Top-level Orchestrator)          │
 │     │   ├── LiquidityAgent (TNX + NFCI + DX)                │
-│     │   ├── BroadIndexAgent (Indices + Market Indicators)   │
+│     │   ├── BroadIndexAgent (Indices + Market Breadth)      │
 │     │   │   ├── S&P 500 (^GSPC)                             │
 │     │   │   ├── Nasdaq Composite (^IXIC)                    │
 │     │   │   ├── Dow Jones Industrial Average (^DJI)         │
-│     │   │   ├── MarketBreadthAgent (S5FI + S5TH)            │
+│     │   │   └── MarketBreadthAgent (S5FI + S5TH)            │
+│     │   ├── MarketHealthAgent (5 Contrarian Indicators)     │
 │     │   │   ├── BullBearSpreadAgent (AAII sentiment)        │
 │     │   │   ├── PutCallAgent (CBOE Put/Call ratio)          │
 │     │   │   ├── MarginDebtAgent (FINRA leverage)            │
@@ -233,33 +235,26 @@ User Request → run_market_report()
                         ↓
         ┌───────────────┼───────────────┐
         ↓               ↓               ↓
-  LiquidityAgent  BroadIndexAgent  EquityTrendAgent
-  (3 agents)      (9 agents)       (Stock Analysis)
+  LiquidityAgent  BroadIndexAgent  MarketHealthAgent  EquityTrendAgent
+  (3 agents)      (4 agents)       (5 agents)         (Stock Analysis)
         ↓               ↓               ↓
                                         
-┌─── LiquidityAgent ───────┐  ┌────── BroadIndexAgent ────────┐
-│ • TNXAgent               │  │ Indices:                       │
-│ • NFCIAgent              │  │ • S&P 500 (^GSPC)              │
-│ • DXAgent                │  │ • Nasdaq (^IXIC)               │
-│ ↓                        │  │ • Dow Jones (^DJI)             │
-│ Synthesis (Liquidity)    │  │                                │
-└──────────────────────────┘  │ Market Indicators:             │
-                              │ • MarketBreadthAgent           │
-                              │   - S5FI (50-day MA)           │
-                              │   - S5TH (200-day MA)          │
-                              │ • BullBearSpreadAgent          │
-                              │   - AAII investor sentiment    │
-                              │ • PutCallAgent                 │
-                              │   - CBOE Put/Call ratio        │
-                              │ • MarginDebtAgent              │
-                              │   - FINRA margin debt YoY      │
-                              │ • HighYieldSpreadAgent         │
-                              │   - Credit risk indicator      │
-                              │ • VIXAgent                     │
-                              │   - Volatility/fear gauge      │
-                              │ ↓                              │
-                              │ Synthesis (Broad Index)        │
-                              └────────────────────────────────┘
+┌─── LiquidityAgent ───────┐  ┌───── BroadIndexAgent ─────┐  ┌──── MarketHealthAgent -────┐
+│ • TNXAgent               │  │ Indices:                  │  │ Contrarian Indicators:     │
+│ • NFCIAgent              │  │ • S&P 500 (^GSPC)         │  │ • BullBearSpreadAgent      │
+│ • DXAgent                │  │ • Nasdaq (^IXIC)          │  │   - AAII sentiment         │
+│ ↓                        │  │ • Dow Jones (^DJI)        │  │ • PutCallAgent             │
+│ Synthesis (Liquidity)    │  │                           │  │   - CBOE Put/Call ratio    │
+└──────────────────────────┘  │ Market Breadth:           │  │ • MarginDebtAgent          │
+                              │ • MarketBreadthAgent      │  │   - FINRA margin debt YoY  │
+                              │   - S5FI (50-day MA)      │  │ • HighYieldSpreadAgent     │
+                              │   - S5TH (200-day MA)     │  │   - Credit risk            │
+                              │ ↓                         │  │ • VIXAgent                 │
+                              │ Synthesis (Broad Index)   │  │   - Volatility/fear gauge  │
+                              └───────────────────────────┘  │ ↓                          │
+                                                             │ Composite Score (0-5)      │
+                                                             │ Synthesis (Market Health)  │
+                                                             └────────────────────────────┘
 
                           EquityTrendAgent
                           • fetch_data (longest period first)
@@ -281,9 +276,10 @@ MarketReportAgent Synthesis (GPT-4o-mini)
   ↓
   Inputs:
   • LiquidityAgent (TNX + NFCI + DX)
-  • BroadIndexAgent (9 indicators):
+  • BroadIndexAgent (4 agents):
     - Major indices (^GSPC, ^IXIC, ^DJI)
     - Market breadth (S5FI, S5TH)
+  • MarketHealthAgent (5 contrarian indicators with composite score):
     - Sentiment (Bull-Bear Spread, Put/Call)
     - Leverage (Margin Debt YoY)
     - Credit risk (High Yield Spread)
@@ -299,6 +295,7 @@ AnalysisReport {
   title: str                      # Week-specific title
   summary: str                    # Executive summary
   content: str                    # Comprehensive analysis
+  score: float | None             # Optional score (TrendAgent: individual, OrchestratorAgent: composite)
 }
 ```
 
@@ -335,9 +332,10 @@ upload_report_with_children(title, date, summary, child_pages, uploaded_map)
      ↓
   Child Pages (varies by sub-agents):
      • Liquidity Analysis (TNX + NFCI + DX charts)
-     • Broad Index Analysis (9 indicators):
+     • Broad Index Analysis (4 agents):
        - Major indices charts (^GSPC, ^IXIC, ^DJI)
        - Market breadth indicators (S5FI, S5TH)
+     • Market Health Analysis (5 contrarian indicators with composite score):
        - Sentiment indicators (Bull-Bear Spread, Put/Call)
        - Leverage indicator (Margin Debt YoY)
        - Credit risk indicator (High Yield Spread)
@@ -405,7 +403,8 @@ REPORT_LANGUAGE = "Korean"  # or "English"
 
 **Orchestrators (`agent/orchestrator/`):**
 - `LiquidityAgent`: TNXAgent + NFCIAgent + DXAgent (3 agents)
-- `BroadIndexAgent`: 3 major indices + 6 market indicators (9 agents)
+- `BroadIndexAgent`: 3 major indices + MarketBreadthAgent (4 agents)
+- `MarketHealthAgent`: 5 contrarian indicators with composite score (BullBearSpread + PutCall + MarginDebt + HighYieldSpread + VIX)
 - `MarketReportAgent`: LiquidityAgent + BroadIndexAgent + EquityTrendAgent
 - **Synthesis Instructions**: Explicit content preservation rules
   * All chart links must be included (count and verify)
@@ -520,6 +519,39 @@ get_data_source("finra")      # → FINRASource
 
 ## Recent Improvements
 
+### Market Health Monitor & Score System (v7.3)
+
+**Date: November 10, 2025**
+
+**Major Updates:**
+
+**1. Market Health Monitor Agent:**
+- **New Agent**: `MarketHealthAgent` in `src/agent/orchestrator/market_health_agent.py`
+  - Synthesizes 5 contrarian indicators: Bull-Bear Spread, Put/Call Ratio, Margin Debt, High Yield Spread, VIX
+  - Composite score calculation (0 to 5 range)
+  - Market status: STRONG_BUY / BUY / NEUTRAL / CAUTION / STRONG_SELL
+  - Structured output with charts/tables from each sub-agent
+
+**2. BroadIndexAgent Refactoring:**
+- **Agent Simplified**: Contrarian indicators moved from `BroadIndexAgent` to `MarketHealthAgent`
+  - Before: 3 major indices + 6 market indicators (9 agents)
+  - After: 3 major indices + MarketBreadthAgent (4 agents)
+  - Better separation of concerns: indices vs contrarian sentiment
+
+**3. Score System Infrastructure:**
+- **Enhanced Type**: `AnalysisReport` now includes optional `score: float | None` field
+  - TrendAgent: Individual indicator score
+  - OrchestratorAgent: Composite aggregated score
+  - Strict JSON schema compatible
+
+**Impact:**
+- ✅ Single view for overall market health across 5 contrarian indicators
+- ✅ Better separation: BroadIndexAgent (indices) vs MarketHealthAgent (sentiment/risk)
+- ✅ Quantified composite scoring for systematic decision-making
+- ✅ Flexible score infrastructure (float type) for future agent expansions
+
+---
+
 ### High Yield Spread & VIX Agents + Sentiment Refactoring (v7.2)
 
 **Date: November 9, 2025**
@@ -562,55 +594,6 @@ get_data_source("finra")      # → FINRASource
 - ✅ VIX fear gauge for contrarian market timing (>30 buy signal)
 - ✅ Clearer agent naming (Bull-Bear Spread vs generic Sentiment)
 - ✅ No deprecation warnings
-
----
-
-### FINRA Margin Debt Integration (v7.1)
-
-**Date: November 8, 2025**
-
-**Major Updates:**
-
-**1. FINRA Margin Statistics Data Source:**
-- **New DataSource**: `FINRASource` in `src/data_sources/web/finra_source.py`
-  - Web scraping from finra.org margin statistics page
-  - Symbol: `MARGIN_DEBT_YOY` (Year-over-Year change percentage)
-  - Automatic YoY calculation (12-month pct_change)
-  - File-based caching with `_validated` flag
-  - Extensible SYMBOL_CONFIG structure for future additions
-- **Historical Data**: `data/margin_debt_history.json`
-  - 333 monthly data points (1998-01 ~ 2025-09)
-  - Latest: +38.52% YoY (approaching extreme leverage zone)
-  - Format unified with other web sources
-
-**2. Margin Debt Analysis Agent:**
-- **New Agent**: `MarginDebtAgent` in `src/agent/trend/margin_debt_agent.py`
-  - Contrarian sentiment indicator (leverage as market overheating signal)
-  - Critical thresholds:
-    * 🔴 Sell: YoY > +50% | Peak → below 50%
-    * 🟡 Buy: YoY < -20% | YoY < -30% | Trough → above -20%
-  - Historical leading indicator (1-3 months before market moves)
-- **New Tools**: `analyze_margin_debt`, `generate_margin_debt_chart`
-  - Analysis periods: 6mo tables, 10y charts
-  - Threshold visualization: +50% (Extreme Leverage), -20% (Deleveraging)
-
-**3. Chart Filename Bug Fix:**
-- **Problem**: `%` symbol in filenames broke URL loading in Notion
-  - `Margin_Debt_YoY_%_10y_chart.png` → Failed to load
-- **Solution**: Replace `%` with `pct` in all chart generation functions
-  - `Margin_Debt_YoY_pct_10y_chart.png` → Loads successfully
-- **Applied to**: `create_yfinance_chart`, `create_fred_chart`, `create_line_chart`
-
-**4. Testing:**
-- 6 comprehensive tests for FINRA data source
-- Mock scraping, cache validation, error handling
-- All tests passing
-
-**Impact:**
-- ✅ Margin Debt as contrarian leverage indicator (빚투 지표)
-- ✅ 333 months of historical data (1998-2025) for long-term analysis
-- ✅ Chart filename URL compatibility fixed (% → pct)
-- ✅ Extensible structure for future FINRA indicators
 
 ---
 

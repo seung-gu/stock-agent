@@ -51,6 +51,13 @@ class MarginDebtAgent(TrendAgent):
             CRITICAL:
             - MUST include the Margin Debt chart
             
+            Score:
+            YoY > 0.4: 5
+            0.2 < YoY < 0.4: 4
+            -0.2 < YoY < 0.2: 3
+            -0.3 < YoY < -0.2: 2
+            YoY < -0.3: 1
+            
             PERIOD REQUIREMENTS:
             - Tables: "6mo", "1y"
             - Charts: "10y"

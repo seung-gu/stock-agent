@@ -5,6 +5,7 @@ from datetime import datetime
 from src.agent.orchestrator.liquidity_agent import LiquidityAgent
 from src.agent.orchestrator.broad_index_agent import BroadIndexAgent
 from src.agent.trend.equity_agent import EquityTrendAgent
+from src.agent.orchestrator.market_health_agent import MarketHealthAgent
 from src.agent.base.orchestrator_agent import OrchestratorAgent
 from src.config import REPORT_LANGUAGE
 
@@ -27,6 +28,7 @@ class MarketReportAgent(OrchestratorAgent):
         """Set up sub-agents and synthesis agent."""
         # Add sub-agents using method chaining
         self.add_sub_agent(LiquidityAgent())\
+            .add_sub_agent(MarketHealthAgent())\
             .add_sub_agent(BroadIndexAgent())\
             .add_sub_agent(EquityTrendAgent("IAU", label="iShares Gold Trust", description="Gold-tracking ETF"))\
             .add_sub_agent(EquityTrendAgent("QLD", label="ProShares Ultra QQQ", description="2x leveraged Nasdaq-100 ETF"))\
@@ -35,7 +37,6 @@ class MarketReportAgent(OrchestratorAgent):
             .add_sub_agent(EquityTrendAgent("AHR", label="American Health Care REITs", description="Provides access to a broad range of health care real estate investment trusts (REITs)"))\
             .add_sub_agent(EquityTrendAgent("SBUX", label="Starbucks"))\
             .add_sub_agent(EquityTrendAgent("JPM", label="JPMorgan Chase"))\
-            .add_sub_agent(EquityTrendAgent("ADBE", label="Adobe Systems"))\
             .add_sub_agent(EquityTrendAgent("PLTR", label="Palantir Technologies"))\
             .add_sub_agent(EquityTrendAgent("COPX", label="Global X Copper Miners ETF", description="Provides access to a broad range of copper mining companies"))
   

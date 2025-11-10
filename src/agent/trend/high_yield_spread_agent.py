@@ -46,8 +46,14 @@ class HighYieldSpreadAgent(TrendAgent):
             
             CRITICAL:
             - MUST include the High Yield Spread chart
-            - MUST highlight if spread > 5% or > 7% (alert/crisis zones)
             - MUST identify if peak above 5% is declining (buy signal)
+            
+            Score:
+            Spread < 3%: 5
+            From bottom +1% below 3%: 4
+            3% < Spread < 5%: 3
+            Spread > 5%: 2
+            From peak -1% above 5%: 1
             
             PERIOD REQUIREMENTS:
             - Tables: "6mo", "1y"

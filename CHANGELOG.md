@@ -4,6 +4,55 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## v7.1 - FINRA Margin Debt Integration
+
+**Date: November 8, 2025**
+
+### Major Updates
+
+**1. FINRA Margin Statistics Data Source:**
+- **New DataSource**: `FINRASource` in `src/data_sources/web/finra_source.py`
+  - Web scraping from finra.org margin statistics page
+  - Symbol: `MARGIN_DEBT_YOY` (Year-over-Year change percentage)
+  - Automatic YoY calculation (12-month pct_change)
+  - File-based caching with `_validated` flag
+  - Extensible SYMBOL_CONFIG structure for future additions
+- **Historical Data**: `data/margin_debt_history.json`
+  - 333 monthly data points (1998-01 ~ 2025-09)
+  - Latest: +38.52% YoY (approaching extreme leverage zone)
+  - Format unified with other web sources
+
+**2. Margin Debt Analysis Agent:**
+- **New Agent**: `MarginDebtAgent` in `src/agent/trend/margin_debt_agent.py`
+  - Contrarian sentiment indicator (leverage as market overheating signal)
+  - Critical thresholds:
+    * 🔴 Sell: YoY > +50% | Peak → below 50%
+    * 🟡 Buy: YoY < -20% | YoY < -30% | Trough → above -20%
+  - Historical leading indicator (1-3 months before market moves)
+- **New Tools**: `analyze_margin_debt`, `generate_margin_debt_chart`
+  - Analysis periods: 6mo tables, 10y charts
+  - Threshold visualization: +50% (Extreme Leverage), -20% (Deleveraging)
+
+**3. Chart Filename Bug Fix:**
+- **Problem**: `%` symbol in filenames broke URL loading in Notion
+  - `Margin_Debt_YoY_%_10y_chart.png` → Failed to load
+- **Solution**: Replace `%` with `pct` in all chart generation functions
+  - `Margin_Debt_YoY_pct_10y_chart.png` → Loads successfully
+- **Applied to**: `create_yfinance_chart`, `create_fred_chart`, `create_line_chart`
+
+**4. Testing:**
+- 6 comprehensive tests for FINRA data source
+- Mock scraping, cache validation, error handling
+- All tests passing
+
+### Impact
+- ✅ Margin Debt as contrarian leverage indicator (빚투 지표)
+- ✅ 333 months of historical data (1998-2025) for long-term analysis
+- ✅ Chart filename URL compatibility fixed (% → pct)
+- ✅ Extensible structure for future FINRA indicators
+
+---
+
 ## v7.0 - Put/Call Ratio & Unified Chart/Cache Systems
 
 **Date: November 8, 2025**

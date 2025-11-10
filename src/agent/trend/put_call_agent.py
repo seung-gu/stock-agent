@@ -40,7 +40,7 @@ class PutCallAgent(TrendAgent):
             │                                                                  │
             │ 🟡 Ratio > 1.0: FEAR → 1st BUY signal                            │
             │    Ratio > 1.5: EXTREME FEAR → 2nd BUY signal                    │
-            │ 🔴 Ratio < 0.5: GREED → 1st SELL signal                  │
+            │ 🔴 Ratio < 0.5: GREED → 1st SELL signal                          │
             └──────────────────────────────────────────────────────────────────┘
             
             KEY INSIGHTS:
@@ -55,7 +55,13 @@ class PutCallAgent(TrendAgent):
             
             CRITICAL:
             - MUST include the Put/Call Ratio chart
-            - MUST highlight if ratio is > 1.5 (extreme fear) or < 0.5 (extreme greed)
+
+            Score:
+            Ratio < 0.4: 5
+            0.4 < Ratio < 0.5: 4
+            0.5 < Ratio < 1.0: 3
+            1.0 < Ratio < 1.2: 2
+            Ratio > 1.2: 1
             """
         )
         
