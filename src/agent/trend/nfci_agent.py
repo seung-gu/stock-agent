@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """NFCI (National Financial Condition Index) Trend Analysis Agent"""
+import asyncio
 
 from src.agent.base.trend_agent import TrendAgent
 from src.agent.tools.agent_tools import fetch_data, analyze_NFCI, generate_NFCI_chart
+
 
 class NFCIAgent(TrendAgent):
     """Specialized agent for NFCI (National Financial Condition Index) analysis"""
@@ -31,3 +33,18 @@ class NFCIAgent(TrendAgent):
             - Charts: "2y"
             """
         )
+
+
+# Usage example
+if __name__ == "__main__":
+    async def main():
+        print("=" * 80)
+        print("NFCI (National Financial Condition Index) Analysis")
+        print("=" * 80)
+        
+        agent = NFCIAgent()
+        result = await agent.run("Analyze the NFCI (National Financial Condition Index)")
+        print(result.content)
+
+    asyncio.run(main())
+    

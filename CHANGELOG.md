@@ -4,6 +4,51 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## v7.2 - High Yield Spread & VIX Agents + Sentiment Refactoring
+
+**Date: November 9, 2025**
+
+### Major Updates
+
+**1. High Yield Spread Agent:**
+- **New Agent**: `HighYieldSpreadAgent` in `src/agent/trend/high_yield_spread_agent.py`
+  - FRED data source: `BAMLH0A0HYM2` (ICE BofA US High Yield Index)
+  - Credit risk and contrarian sentiment indicator
+  - Critical thresholds: >5% (alert), >7% (crisis), Peak→Declining (buy)
+  - 10-year historical analysis for long-term perspective
+- **New Tools**: `analyze_high_yield_spread`, `generate_high_yield_spread_chart`
+  - Analysis periods: 6mo, 1y tables | 10y chart
+  - Leads equity market by 1-2 months during stress periods
+
+**2. VIX Agent:**
+- **New Agent**: `VIXAgent` in `src/agent/trend/vix_agent.py`
+  - YFinance data source: `^VIX` (CBOE Volatility Index)
+  - Market fear gauge and contrarian indicator
+  - Critical thresholds: >30 (extreme fear/buy), <12 (complacency/sell)
+  - 2,512 data points covering 10 years of volatility history
+- **New Tools**: `analyze_vix`, `generate_vix_chart`
+  - Analysis periods: 5d, 1mo tables | 1y chart
+  - Inversely correlates with S&P 500, spikes mark market bottoms
+
+**3. Sentiment Agent Refactoring:**
+- **Renamed**: `SentimentAgent` → `BullBearSpreadAgent`
+  - More descriptive naming (Bull-Bear Spread vs generic Sentiment)
+  - Function renaming: `analyze_sentiment` → `analyze_bull_bear_spread`
+  - Function renaming: `generate_sentiment_chart` → `generate_bull_bear_spread_chart`
+
+**4. Bug Fixes:**
+- Fixed pandas FutureWarning in volatility calculations
+- Added `fill_method=None` to `pct_change()` calls
+
+### Impact
+- ✅ 3 new sentiment/volatility indicators for comprehensive market analysis
+- ✅ Credit risk monitoring with 5%/7% alert thresholds
+- ✅ VIX fear gauge for contrarian market timing (>30 buy signal)
+- ✅ Clearer agent naming (Bull-Bear Spread vs generic Sentiment)
+- ✅ No deprecation warnings
+
+---
+
 ## v7.1 - FINRA Margin Debt Integration
 
 **Date: November 8, 2025**

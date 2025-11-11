@@ -61,16 +61,16 @@ def create_yfinance_chart(data, period: str, ylabel: str, value_format: str, lab
     try:
         sma_plotted = False
         period_lower = period.lower()
-        show_5_20 = period_lower in ["1mo", "3mo", "6mo"]
+        show_5_50 = period_lower in ["1mo", "3mo", "6mo"]
         show_200 = period_lower in ["1y", "2y", "5y", "10y", "max"]
         
-        if show_5_20 or show_200:
-            if 'SMA_5' in data.columns and (show_5_20 or show_200):
+        if show_5_50 or show_200:
+            if 'SMA_5' in data.columns and (show_5_50 or show_200):
                 ax.plot(positions, data['SMA_5'], label='SMA 5', linewidth=1.2, color='#e377c2', 
                         alpha=0.9, linestyle='-', zorder=4)
                 sma_plotted = True
-            if 'SMA_20' in data.columns and (show_5_20 or show_200):
-                ax.plot(positions, data['SMA_20'], label='SMA 20', linewidth=1.2, color='#8c564b', 
+            if 'SMA_50' in data.columns and (show_5_50 or show_200):
+                ax.plot(positions, data['SMA_50'], label='SMA 50', linewidth=1.2, color='#8c564b', 
                         alpha=0.9, linestyle='-', zorder=4)
                 sma_plotted = True
             if 'SMA_200' in data.columns and show_200:

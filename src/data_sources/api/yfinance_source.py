@@ -106,6 +106,8 @@ class YFinanceSource(APIDataSource):
                 hist['SMA_5'] = calculate_sma(hist, 5)
             if 'SMA_20' not in hist.columns:
                 hist['SMA_20'] = calculate_sma(hist, 20)
+            if 'SMA_50' not in hist.columns:
+                hist['SMA_50'] = calculate_sma(hist, 50)
             if 'SMA_200' not in hist.columns:
                 hist['SMA_200'] = calculate_sma(hist, 200)
 

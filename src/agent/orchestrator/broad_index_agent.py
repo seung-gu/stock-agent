@@ -3,11 +3,6 @@ import asyncio
 from src.agent.base.orchestrator_agent import OrchestratorAgent
 from src.agent.trend.equity_agent import EquityTrendAgent
 from src.agent.trend.market_breadth_agent import MarketBreadthAgent
-from src.agent.trend.bull_bear_spread_agent import BullBearSpreadAgent
-from src.agent.trend.put_call_agent import PutCallAgent
-from src.agent.trend.margin_debt_agent import MarginDebtAgent
-from src.agent.trend.high_yield_spread_agent import HighYieldSpreadAgent
-from src.agent.trend.vix_agent import VIXAgent
 from src.config import REPORT_LANGUAGE
 
 
@@ -44,12 +39,50 @@ class BroadIndexAgent(OrchestratorAgent):
         - Assess market health: Do indicators confirm index movements?
         - Look for warning signs (e.g., indices rising but breadth weakening)
         - Provide actionable insights on market direction and risk
+        - Extract individual scores and sum to calculate average composite score (0 to 5)
         
         CRITICAL - CONTENT REQUIREMENTS:
         - You MUST include ALL chart links ([View Chart](sandbox:/path)) - count them and verify none are missing
         - You MUST include ALL reference links ([text](https://...))
         - Tables: You can summarize key findings, but include the full markdown table structure
         - If output is too long, summarize analysis text but NEVER omit chart/reference links
+        
+        COMPOSITE SCORE INTERPRETATION:
+        - Score < 1: 🟢 STRONG_BUY (Extreme fear/panic)
+        - 1 <= Score < 2: 🟡 BUY (Oversold)
+        - 2 <= Score < 3: ⚪ NEUTRAL (Normal range)
+        - 3 <= Score < 4: 🟠 CAUTION (Overheated)
+        - 4 <= Score: 🔴 STRONG_SELL (Extreme greed/bubble)
+        
+        OUTPUT FORMAT:
+        
+        ## Composite Score
+        | Indicator | Score | Interpretation |
+        | S&P 500 RSI(14) | X | ... |
+        | S&P 500 Disparity(200) | Y | ... |
+        | Market Breadth S5FI | A | ... |
+        | Market Breadth S5TH | B | ... |
+        | **Composite (Avg of 4)** | **(X+Y+A+B)/4** | ... |
+        
+        ## 1. [Indicator Name]
+        [Brief analysis]
+        [Chart link from sub-agent]
+        [Data table from sub-agent]
+        [Reference links from sub-agent] (Optional)
+        
+        ## 2. [Next Indicator]
+        [Brief analysis]
+        [Chart link]
+        [Data table]
+        [Reference links] (Optional)
+        
+        ... (repeat for all indicators)
+        
+        ## Strategic Interpretation
+        [Overall interpretation based on composite score]
+        
+        CRITICAL: Place charts/tables/links RIGHT AFTER each indicator's analysis, NOT at the end.
+        COPY & PASTE exact chart paths and tables from sub-agents.
         """
         )
 

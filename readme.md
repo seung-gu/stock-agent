@@ -73,6 +73,16 @@ uv run python src/run_market_report.py
 
 ## TODO
 
+- [ ] Score System Refactoring
+  - Current: String-based score ('RSI(14):4, Disparity(200):3') requires LLM parsing
+  - Issue: LLM frequently fails to extract/format scores correctly
+  - Solution: Consider structured approach (nested BaseModel, separate score fields, or agent splitting)
+- [ ] Guardrail System (Input/Output validation)
+  - Data Source Guardrail: Validate fetched data quality (empty check, freshness, min data points)
+  - Score Guardrail: Validate score range (1-5) in all analyze functions
+  - Period Guardrail: Validate period parameter against allowed values
+  - Output Guardrail: Validate AnalysisReport completeness (chart links, reference links, min length)
+  - Koyfin Scraping Guardrail: Validate extracted metrics (P/E range check, required fields)
 - [ ] API Verificator (Only return values when tool gets 200 request status)
 - [ ] Table and charts correspond to the requirements
 - [ ] Chart analyzer (signal catcher - SMA 50&200, RSI, Disparity, W, M, Cup and handle)
@@ -519,6 +529,40 @@ get_data_source("finra")      # → FINRASource
 
 ## Recent Improvements
 
+### Score System Enhancement & Technical Improvements (v7.4)
+
+**Date: November 11, 2025**
+
+**Major Updates:**
+
+**1. Score System Enhancement:**
+- **Score Type Change**: `AnalysisReport.score` changed from `float` to `str`
+  - Single indicator: `'3'`
+  - Multiple indicators: `'RSI(14):4, Disparity(200):3'`
+  - Supports complex agents with multiple scoring components
+
+**2. Score Logic Migration:**
+- Moved score calculation from agent instructions to function tools
+  - `analyze_bull_bear_spread`, `analyze_put_call`, `analyze_vix`, `analyze_high_yield_spread`, `analyze_margin_debt`
+  - Deterministic scoring logic now in code (not LLM)
+  - More accurate and consistent
+
+**3. Technical Indicator Enhancement:**
+- **Disparity Calculation**: Now reuses pre-calculated SMA from `yfinance_source`
+  - Full period disparity charts (1y chart shows full year, not just 3 months)
+  - Added `SMA_50` to yfinance calculations (5, 20, 50, 200)
+
+**4. BroadIndexAgent Composite Score:**
+- S&P 500 indicators (RSI14, Disparity200) + Market Breadth (S5FI, S5TH)
+- 4-indicator composite score calculation
+
+**Impact:**
+- ✅ Flexible score system for complex agents
+- ✅ Accurate score calculation (code-based, not LLM-based)
+- ✅ Full period technical indicator charts
+
+---
+
 ### Market Health Monitor & Score System (v7.3)
 
 **Date: November 10, 2025**
@@ -549,51 +593,6 @@ get_data_source("finra")      # → FINRASource
 - ✅ Better separation: BroadIndexAgent (indices) vs MarketHealthAgent (sentiment/risk)
 - ✅ Quantified composite scoring for systematic decision-making
 - ✅ Flexible score infrastructure (float type) for future agent expansions
-
----
-
-### High Yield Spread & VIX Agents + Sentiment Refactoring (v7.2)
-
-**Date: November 9, 2025**
-
-**Major Updates:**
-
-**1. High Yield Spread Agent:**
-- **New Agent**: `HighYieldSpreadAgent` in `src/agent/trend/high_yield_spread_agent.py`
-  - FRED data source: `BAMLH0A0HYM2` (ICE BofA US High Yield Index)
-  - Credit risk and contrarian sentiment indicator
-  - Critical thresholds: >5% (alert), >7% (crisis), Peak→Declining (buy)
-  - 10-year historical analysis for long-term perspective
-- **New Tools**: `analyze_high_yield_spread`, `generate_high_yield_spread_chart`
-  - Analysis periods: 6mo, 1y tables | 10y chart
-  - Leads equity market by 1-2 months during stress periods
-
-**2. VIX Agent:**
-- **New Agent**: `VIXAgent` in `src/agent/trend/vix_agent.py`
-  - YFinance data source: `^VIX` (CBOE Volatility Index)
-  - Market fear gauge and contrarian indicator
-  - Critical thresholds: >30 (extreme fear/buy), <12 (complacency/sell)
-  - 2,512 data points covering 10 years of volatility history
-- **New Tools**: `analyze_vix`, `generate_vix_chart`
-  - Analysis periods: 5d, 1mo tables | 1y chart
-  - Inversely correlates with S&P 500, spikes mark market bottoms
-
-**3. Sentiment Agent Refactoring:**
-- **Renamed**: `SentimentAgent` → `BullBearSpreadAgent`
-  - More descriptive naming (Bull-Bear Spread vs generic Sentiment)
-  - Function renaming: `analyze_sentiment` → `analyze_bull_bear_spread`
-  - Function renaming: `generate_sentiment_chart` → `generate_bull_bear_spread_chart`
-
-**4. Bug Fixes:**
-- Fixed pandas FutureWarning in volatility calculations
-- Added `fill_method=None` to `pct_change()` calls
-
-**Impact:**
-- ✅ 3 new sentiment/volatility indicators for comprehensive market analysis
-- ✅ Credit risk monitoring with 5%/7% alert thresholds
-- ✅ VIX fear gauge for contrarian market timing (>30 buy signal)
-- ✅ Clearer agent naming (Bull-Bear Spread vs generic Sentiment)
-- ✅ No deprecation warnings
 
 ---
 

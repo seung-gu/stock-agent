@@ -55,13 +55,6 @@ class PutCallAgent(TrendAgent):
             
             CRITICAL:
             - MUST include the Put/Call Ratio chart
-
-            Score:
-            Ratio < 0.4: 5
-            0.4 < Ratio < 0.5: 4
-            0.5 < Ratio < 1.0: 3
-            1.0 < Ratio < 1.2: 2
-            Ratio > 1.2: 1
             """
         )
         

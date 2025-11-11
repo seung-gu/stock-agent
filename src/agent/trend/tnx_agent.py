@@ -25,6 +25,6 @@ class TNXAgent(TrendAgent):
             - Charts: "1mo","1y"
             
             ADDITIONAL TOOLS:
-            - analyze_SMA to analyze SMA data (Mandatory)
+            - analyze_SMA to analyze SMA data (window: 5, 50, 200)
             """
         )

@@ -69,7 +69,7 @@ async def generate_OHLCV_chart(source: str, symbol: str, period: str, label: str
 
 
 @function_tool
-async def analyze_SMA(symbol: str, period: str, windows: list[int] = [5, 20, 200]) -> str:
+async def analyze_SMA(symbol: str, period: str, windows: list[int] = [5, 50, 200]) -> str:
     """Build SMA indicators text using cached yfinance data."""
     src = get_data_source("yfinance")
     data = await src.fetch_data(symbol, period)
@@ -79,6 +79,7 @@ async def analyze_SMA(symbol: str, period: str, windows: list[int] = [5, 20, 200
         col = f"SMA_{w}"
         if col in hist.columns and not hist[col].empty and hist[col].iloc[-1] == hist[col].iloc[-1]:
             parts.append(f"SMA({w}): {float(hist[col].iloc[-1]):.3f}")
+            
     return ", ".join(parts)
 
 
@@ -97,13 +98,25 @@ async def analyze_disparity(symbol: str, period: str, window: int = 200) -> str:
         return ""
     
     current_disp = float(disp.iloc[-1])
+    current_disp_rank = float(disp.rank(pct=True).iloc[-1] * 100)
+    
+    if current_disp_rank > 80:
+        score = 5
+    elif current_disp_rank > 60:
+        score = 4
+    elif current_disp_rank > 30:
+        score = 3
+    elif current_disp_rank > 10:
+        score = 2
+    else:
+        score = 1
     
     # Calculate historical percentiles for dynamic thresholds
     upper_threshold = float(disp.quantile(0.80))  # 80th percentile (overbought)
     lower_threshold = float(disp.quantile(0.10))  # 10th percentile (oversold)
     
-    return (f"Disparity({window}): {current_disp:.2f}% "
-            f"[Overbought>{upper_threshold:.1f}%, Oversold<{lower_threshold:.1f}%]")
+    return (f"Disparity({window}): {current_disp:.2f}% (Rank: {current_disp_rank:.2f}%) "
+            f"[Overbought>{upper_threshold:.1f}%, Oversold<{lower_threshold:.1f}%] Score: {score}")
     
 
 @function_tool
@@ -159,13 +172,25 @@ async def analyze_RSI(symbol: str, period: str, window: int = 14) -> str:
         return ""
     
     current_rsi = float(rsi.iloc[-1])
+    current_rsi_rank = float(rsi.rank(pct=True).iloc[-1] * 100)
+    
+    if current_rsi_rank > 80:
+        score = 5
+    elif current_rsi_rank > 60:
+        score = 4
+    elif current_rsi_rank > 30:
+        score = 3
+    elif current_rsi_rank > 10:
+        score = 2
+    else:
+        score = 1
     
     # Calculate historical percentiles for dynamic thresholds
     upper_threshold = float(rsi.quantile(0.80))  # 80th percentile (overbought)
     lower_threshold = float(rsi.quantile(0.10))  # 10th percentile (oversold)
     
-    return (f"RSI({window}): {current_rsi:.2f} "
-            f"[Overbought>{upper_threshold:.1f}, Oversold<{lower_threshold:.1f}]")
+    return (f"RSI({window}): {current_rsi:.2f} (Rank: {current_rsi_rank:.2f}%) "
+            f"[Overbought>{upper_threshold:.1f}, Oversold<{lower_threshold:.1f}] Score: {score}")
 
 
 @function_tool
@@ -262,6 +287,18 @@ async def analyze_market_breadth(symbol: str, period: str) -> str:
     analysis = src.get_analysis(data, actual_period)
     period_name = get_period_name(actual_period)
     
+    end = analysis['end']
+    if end > 80:
+        score = 5
+    elif end > 70:
+        score = 4
+    elif end > 30:
+        score = 3
+    elif end > 20:
+        score = 2
+    else:
+        score = 1
+        
     ma_period = analysis['ma_period']
     
     return f"""{period_name} Market Breadth ({symbol} - {ma_period}day MA):
@@ -269,7 +306,8 @@ async def analyze_market_breadth(symbol: str, period: str) -> str:
             - End: {analysis['end']:.2f}%
             - Change: {analysis['change']:+.2f}%
             - High: {analysis['high']:.2f}%
-            - Low: {analysis['low']:.2f}%"""
+            - Low: {analysis['low']:.2f}%
+            - Score: {score}"""
 
 
 @function_tool
@@ -314,13 +352,28 @@ async def analyze_bull_bear_spread(period: str) -> str:
     analysis = src.get_analysis(data, actual_period)
     period_name = get_period_name(actual_period)
     
+    # Calculate score based on Bull-Bear Spread
+    end = analysis['end']
+    
+    if end > 0.3:
+        score = 5  # Extreme bullish sentiment (sell signal)
+    elif 0.2 < end <= 0.3:
+        score = 4  # Bullish sentiment
+    elif -0.2 <= end <= 0.2:
+        score = 3  # Neutral
+    elif -0.3 <= end < -0.2:
+        score = 2  # Bearish sentiment
+    else:  # end < -0.3
+        score = 1  # Extreme bearish sentiment (buy signal)
+    
     return f"""{period_name} AAII Bull-Bear Spread:
             - Start: {analysis['start']:+.2f}
             - End: {analysis['end']:+.2f}
             - Change: {analysis['change']:+.2f}
             - High: {analysis['high']:+.2f}
             - Low: {analysis['low']:+.2f}
-            - Mean: {analysis['mean']:+.2f}"""
+            - Mean: {analysis['mean']:+.2f}
+            - Score: {score}"""
 
 
 @function_tool
@@ -359,13 +412,28 @@ async def analyze_put_call(period: str) -> str:
     analysis = src.get_analysis(data, actual_period)
     period_name = get_period_name(actual_period)
     
+    # Calculate score based on Put/Call Ratio
+    end = analysis['end']
+    
+    if end < 0.4:
+        score = 5  # Extreme greed (sell signal)
+    elif 0.4 <= end < 0.5:
+        score = 4  # Greed
+    elif 0.5 <= end < 1.0:
+        score = 3  # Neutral
+    elif 1.0 <= end < 1.2:
+        score = 2  # Fear
+    else:  # end >= 1.2
+        score = 1  # Extreme fear (buy signal)
+    
     return f"""{period_name} CBOE Equity Put/Call Ratio:
             - Start: {analysis['start']:.2f}
             - End: {analysis['end']:.2f}
             - Change: {analysis['change']:+.2f}
             - High: {analysis['high']:.2f}
             - Low: {analysis['low']:.2f}
-            - Mean: {analysis['mean']:.2f}"""
+            - Mean: {analysis['mean']:.2f}
+            - Score: {score}"""
 
 
 @function_tool
@@ -404,12 +472,27 @@ async def analyze_vix(period: str) -> str:
     analysis = src.get_analysis(data, actual_period)
     period_name = get_period_name(actual_period)
     
+    # Calculate score based on VIX level
+    end = analysis['end']
+    
+    if end < 15:
+        score = 5  # Low fear, complacency risk (sell signal)
+    elif 15 <= end < 20:
+        score = 4  # Calm
+    elif 20 <= end < 30:
+        score = 3  # Normal volatility
+    elif 30 <= end < 40:
+        score = 2  # High volatility, fear rising
+    else:  # end >= 40
+        score = 1  # Extreme fear, panic (buy signal)
+    
     return f"""{period_name} VIX (Volatility Index):
             - Start: {analysis['start']:.2f}
             - End: {analysis['end']:.2f}
             - Change: {analysis['change_pct']:+.2f}%
             - High: {analysis['high']:.2f}
-            - Low: {analysis['low']:.2f}"""
+            - Low: {analysis['low']:.2f}
+            - Score: {score}"""
 
 
 @function_tool
@@ -451,12 +534,34 @@ async def analyze_high_yield_spread(period: str) -> str:
     analysis = src.get_analysis(data, actual_period)
     period_name = get_period_name(actual_period)
     
+    # Calculate score based on spread levels
+    end = analysis['end']
+    low = analysis['low']
+    high = analysis['high']
+    
+    if end < 3.0:
+        # Below 3%: Complacency zone
+        if end - low < 1.0:  # From bottom +1% below 3%
+            score = 4
+        else:
+            score = 5  # Very low spread (complacency)
+    elif 3.0 <= end < 5.0:
+        # Normal range
+        score = 3
+    else:  # end >= 5.0
+        # Above 5%: Alert/Crisis zone
+        if high - end < 1.0:  # From peak -1% above 5%
+            score = 1  # Peak declining (buy signal)
+        else:
+            score = 2  # High spread (alert)
+    
     return f"""{period_name} ICE BofA US High Yield Spread:
             - Start: {analysis['start']:.2f}%
             - End: {analysis['end']:.2f}%
             - Change: {analysis['change_pct']:+.2f}%
             - High: {analysis['high']:.2f}%
-            - Low: {analysis['low']:.2f}%"""
+            - Low: {analysis['low']:.2f}%
+            - Score: {score}"""
 
 
 @function_tool
@@ -495,8 +600,18 @@ async def analyze_margin_debt(symbol: str, period: str) -> str:
     actual_period = src.get_actual_period_approx(data)
     analysis = src.get_analysis(data, actual_period)
     period_name = get_period_name(actual_period)
-    
     label = data.get('label', symbol)
+    
+    if analysis['end'] >= 40: # Extreme Leverage
+        score = 5
+    elif analysis['end'] >= 20: # Significant Leverage
+        score = 4
+    elif analysis['end'] >= 20: # Moderate Leverage
+        score = 3
+    elif analysis['end'] >= 10: # Mild Leverage
+        score = 2
+    else: # No Leverage
+        score = 1
     
     return f"""{period_name} {label}:
             - Start: {analysis['start']:.2f}
@@ -504,7 +619,8 @@ async def analyze_margin_debt(symbol: str, period: str) -> str:
             - Change: {analysis['change']:+.2f}
             - High: {analysis['high']:.2f}
             - Low: {analysis['low']:.2f}
-            - Mean: {analysis['mean']:.2f}"""
+            - Mean: {analysis['mean']:.2f}
+            - Score: {score}"""
 
 
 @function_tool

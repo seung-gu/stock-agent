@@ -46,14 +46,7 @@ class BullBearSpreadAgent(TrendAgent):
             
             CRITICAL:
             - MUST include the Bull-Bear Spread chart
-            
-            Score:
-            Bull-Bear Spread > 0.3: 5
-            0.2 < Bull-Bear Spread < 0.3: 4
-            -0.2 < Bull-Bear Spread < 0.2: 3
-            -0.3 < Bull-Bear Spread < -0.2: 2
-            Bull-Bear Spread < -0.3: 1
-            
+          
             PERIOD REQUIREMENTS:
             - Tables: "1mo"
             - Charts: "5y"

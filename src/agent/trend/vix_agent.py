@@ -25,11 +25,11 @@ class VIXAgent(TrendAgent):
             ALL responses MUST be in {REPORT_LANGUAGE}.
             
             INTERPRETATION:
-            - VIX < 15:  Low fear, complacency risk (Score: 5)
-            - VIX 15-20: Calm (Low fear, complacency risk) (Score: 4)
-            - VIX 20-30: Normal volatility (Score: 3)
-            - VIX 30-40: High volatility (Fear rising, Alert)) (Score: 2)
-            - VIX > 40:  Extreme fear (Panic, Shock readiness) (Score: 1)
+            - VIX < 15:  Low fear, complacency risk
+            - VIX 15-20: Calm
+            - VIX 20-30: Normal volatility
+            - VIX 30-40: High volatility (Fear rising, Alert)
+            - VIX > 40:  Extreme fear (Panic, Shock readiness)
           
             TOOL USAGE:
             - fetch_data: fetch data from yfinance (yfinance)

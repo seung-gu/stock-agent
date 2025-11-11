@@ -50,7 +50,7 @@ class MarketHealthAgent(OrchestratorAgent):
         OUTPUT FORMAT (MUST FOLLOW):
         
         ## Market Health Score Summary
-        [Summary table with all indicator scores]
+        [Summary table with all indicator scores and interpretation]
         
         ## 1. [Indicator Name]
         [Brief analysis]

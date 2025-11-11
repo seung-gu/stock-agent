@@ -52,7 +52,13 @@ def calculate_disparity(data: pd.DataFrame, window: int, price_column: str = 'Cl
     Returns:
         Series with disparity values
     """
-    sma = calculate_sma(data, window=window, price_column=price_column)
+    # Check if SMA is already calculated (e.g., by yfinance_source)
+    sma_col = f'SMA_{window}'
+    if sma_col in data.columns:
+        sma = data[sma_col]
+    else:
+        sma = calculate_sma(data, window=window, price_column=price_column)
+    
     return (data[price_column] / sma - 1) * 100
 
 

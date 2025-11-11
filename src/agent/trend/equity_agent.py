@@ -51,10 +51,11 @@ class EquityTrendAgent(TrendAgent):
             - Entry/exit point considerations
             
             Technical Indicators:
-            - Moving Averages (5, 20, 200) for trend analysis
-              * 5, 20: Short-term trends
+            - Moving Averages (5, 50, 200) for trend analysis
+              * 5: Short-term trends
+              * 50: Medium-term trends
               * 200: Long-term trend and market psychology
-            - 200-day Disparity for 5y period
+            - 200-day Disparity for 1y period
             - RSI (14 window) for 1y period
             - P/E & PEG Valuation (Must analyze both)
               * If it is in the middle range (lowerbound < value < upperbound), it is a neutral range
@@ -66,9 +67,9 @@ class EquityTrendAgent(TrendAgent):
             - Charts: "1mo", "1y"
             
             ADDITIONAL TOOLS:
-            - analyze_SMA to analyze SMA data (Mandatory)
-            - generate_disparity_chart (5y period) to generate disparity chart
-            - analyze_disparity (5y period) to analyze disparity data
+            - analyze_SMA to analyze SMA data
+            - generate_disparity_chart (200 window for 1y period) to generate disparity chart
+            - analyze_disparity (200 window for 1y period) to analyze disparity data
             - generate_RSI_chart (14 window for 1y period) to generate RSI chart
             - analyze_RSI (14 window for 1y period) to analyze RSI data
             - generate_PE_PEG_ratio_chart to generate P/E and PEG ratio charts for 5 years period (call only for stocks, not for indices or ETFs)
@@ -79,12 +80,12 @@ class EquityTrendAgent(TrendAgent):
 # Usage examples
 if __name__ == "__main__":
     async def main():
-        ticker = "MSFT"
+        ticker = "NVDA"
         print("\n" + "=" * 80)
         print(f"Example: Equity Analysis ({ticker})")
         print("=" * 80)
         # Example: Equity analysis (Stock)
-        equity_agent = EquityTrendAgent(ticker, label="Microsoft", description="Microsoft Corporation is a technology company that develops and sells software, services, and devices.")
+        equity_agent = EquityTrendAgent(ticker, label="NVIDIA", description="NVIDIA Corporation is a technology company that develops and sells software, services, and devices.")
         result = await equity_agent.run(f"{ticker}의 추세를 분석하고 투자 관점에서 해석해줘")
         print(result.content)
  
