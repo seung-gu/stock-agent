@@ -56,6 +56,9 @@ coverage.xml
 # VS Code
 .vscode/
 
+# Cursor
+.cursor/
+
 # dotenv
 .env
 .env.*
