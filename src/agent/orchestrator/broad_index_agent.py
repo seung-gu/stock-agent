@@ -54,15 +54,17 @@ class BroadIndexAgent(OrchestratorAgent):
         - 3 <= Score < 4: 🟠 CAUTION (Overheated)
         - 4 <= Score: 🔴 STRONG_SELL (Extreme greed/bubble)
         
-        OUTPUT FORMAT:
+        OUTPUT FORMAT (translate all headings to {REPORT_LANGUAGE}):
         
-        ## Composite Score
+        ## Composite Score (S&P 500)
+        Extract 4 scores: S&P 500 (RSI, Disparity) + MarketBreadth (S5FI, S5TH)
+
         | Indicator | Score | Interpretation |
         | S&P 500 RSI(14) | X | ... |
         | S&P 500 Disparity(200) | Y | ... |
-        | Market Breadth S5FI | A | ... |
-        | Market Breadth S5TH | B | ... |
-        | **Composite (Avg of 4)** | **(X+Y+A+B)/4** | ... |
+        | MarketBreadth 50-day MA | A | ... |
+        | MarketBreadth 200-day MA | B | ... |
+        [Summary table with all indicator scores and interpretation]
         
         ## 1. [Indicator Name]
         [Brief analysis]
@@ -80,7 +82,7 @@ class BroadIndexAgent(OrchestratorAgent):
         
         ## Strategic Interpretation
         [Overall interpretation based on composite score]
-        
+
         CRITICAL: Place charts/tables/links RIGHT AFTER each indicator's analysis, NOT at the end.
         COPY & PASTE exact chart paths and tables from sub-agents.
         """

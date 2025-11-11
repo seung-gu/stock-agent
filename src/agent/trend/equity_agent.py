@@ -24,6 +24,8 @@ class EquityTrendAgent(TrendAgent):
         """
         self.ticker = ticker  # Store ticker before calling super
         agent_name = f"equity_agent_{ticker.replace('^', '').replace('-', '_')}"
+        agent_label = label or ticker  # Use label if provided, otherwise use ticker
+        
         super().__init__(
             ticker=ticker,
             agent_name=agent_name,
@@ -31,7 +33,7 @@ class EquityTrendAgent(TrendAgent):
             description=description,
             tools=[fetch_data, analyze_OHLCV, generate_OHLCV_chart, analyze_SMA, analyze_disparity, 
                    generate_disparity_chart, generate_RSI_chart, analyze_RSI, generate_PE_PEG_ratio_chart],
-            context_instructions="""
+            context_instructions=f"""
             EQUITY ANALYSIS FOCUS:
             You are an equity analyst specializing in stock or index price analysis.
 
@@ -73,6 +75,25 @@ class EquityTrendAgent(TrendAgent):
             - generate_RSI_chart (14 window for 1y period) to generate RSI chart
             - analyze_RSI (14 window for 1y period) to analyze RSI data
             - generate_PE_PEG_ratio_chart to generate P/E and PEG ratio charts for 5 years period (call only for stocks, not for indices or ETFs)
+            
+            SCORE CALCULATION:
+            Based on Rank values from tool outputs:
+            
+            RSI Score (from "RSI(14): ... (Rank: XX%)"):
+            - Rank > 80: score = 5
+            - Rank > 60: score = 4
+            - Rank > 30: score = 3
+            - Rank > 10: score = 2
+            - Rank <= 10: score = 1
+            
+            Disparity Score (from "Disparity(200): ... (Rank: YY%)"):
+            - Rank > 80: score = 5
+            - Rank > 60: score = 4
+            - Rank > 30: score = 3
+            - Rank > 10: score = 2
+            - Rank <= 10: score = 1
+            
+            Set AnalysisReport.score field to: [{{"agent":"{agent_label}", "indicator":"RSI(14)", "value":X}}, {{"agent":"{agent_label}", "indicator":"Disparity(200)", "value":Y}}]
             """
         )
 

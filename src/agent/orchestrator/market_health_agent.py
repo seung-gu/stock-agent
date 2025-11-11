@@ -37,7 +37,7 @@ class MarketHealthAgent(OrchestratorAgent):
         - Identify trends, patterns, and divergences across indicators
         - Assess market health: Do indicators confirm each other's movements?
         - Look for warning signs (e.g., indicators rising but others weakening)
-        - Extract individual scores and sum to calculate average composite score (0 to 5)
+        - Extract individual scores and sum to calculate average markethealth score (0 to 5)
         - Present results in clear summary table with strategic interpretation
         
         AVERAGE COMPOSITE SCORE INTERPRETATION:
@@ -47,7 +47,7 @@ class MarketHealthAgent(OrchestratorAgent):
         - 3 <= Score < 4: 🟠 CAUTION (Overheating)
         - 4 <= Score: 🔴 STRONG_SELL (Extreme greed/bubble)
         
-        OUTPUT FORMAT (MUST FOLLOW):
+        OUTPUT FORMAT (translate all headings to {REPORT_LANGUAGE}):
         
         ## Market Health Score Summary
         [Summary table with all indicator scores and interpretation]

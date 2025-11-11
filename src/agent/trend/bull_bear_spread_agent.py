@@ -46,6 +46,16 @@ class BullBearSpreadAgent(TrendAgent):
             
             CRITICAL:
             - MUST include the Bull-Bear Spread chart
+            
+            SCORE CALCULATION:
+            Based on End value from analyze_bull_bear_spread:
+            - End > 0.3: score = 5 (Extreme bullish, sell signal)
+            - 0.2 < End <= 0.3: score = 4
+            - -0.2 <= End <= 0.2: score = 3 (Neutral)
+            - -0.3 <= End < -0.2: score = 2
+            - End < -0.3: score = 1 (Extreme bearish, buy signal)
+            
+            Set AnalysisReport.score field to: [{{"agent":"BullBear", "indicator":"BullBear", "value":X}}]
           
             PERIOD REQUIREMENTS:
             - Tables: "1mo"

@@ -36,6 +36,16 @@ class VIXAgent(TrendAgent):
             - analyze_vix: analyze VIX metrics
             - generate_vix_chart: generate chart
             
+            SCORE CALCULATION:
+            Based on End value from analyze_vix:
+            - End < 15: score = 5 (Low fear, complacency, sell signal)
+            - 15 <= End < 20: score = 4
+            - 20 <= End < 30: score = 3 (Normal)
+            - 30 <= End < 40: score = 2
+            - End >= 40: score = 1 (Extreme fear, buy signal)
+            
+            Set AnalysisReport.score field to: [{{"agent":"VIX", "indicator":"VIX", "value":X}}]
+            
             PERIOD REQUIREMENTS:
             - Tables: "5d", "1mo"
             - Charts: "1y"

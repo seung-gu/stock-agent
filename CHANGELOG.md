@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## v7.3 - Market Health Monitor & Score System
+
+**Date: November 10, 2025**
+
+### Major Updates
+
+**1. Market Health Monitor Agent:**
+- **New Agent**: `MarketHealthAgent` in `src/agent/orchestrator/market_health_agent.py`
+  - Synthesizes 5 contrarian indicators: Bull-Bear Spread, Put/Call Ratio, Margin Debt, High Yield Spread, VIX
+  - Composite score calculation (0 to 5 range)
+  - Market status: STRONG_BUY / BUY / NEUTRAL / CAUTION / STRONG_SELL
+  - Structured output with charts/tables from each sub-agent
+
+**2. BroadIndexAgent Refactoring:**
+- **Agent Simplified**: Contrarian indicators moved from `BroadIndexAgent` to `MarketHealthAgent`
+  - Before: 3 major indices + 6 market indicators (9 agents)
+  - After: 3 major indices + MarketBreadthAgent (4 agents)
+  - Better separation of concerns: indices vs contrarian sentiment
+
+**3. Score System Infrastructure:**
+- **Enhanced Type**: `AnalysisReport` now includes optional `score: float | None` field
+  - TrendAgent: Individual indicator score
+  - OrchestratorAgent: Composite aggregated score
+  - Strict JSON schema compatible
+
+### Impact
+- ✅ Single view for overall market health across 5 contrarian indicators
+- ✅ Better separation: BroadIndexAgent (indices) vs MarketHealthAgent (sentiment/risk)
+- ✅ Quantified composite scoring for systematic decision-making
+- ✅ Flexible score infrastructure (float type) for future agent expansions
+
+---
+
 ## v7.2 - High Yield Spread & VIX Agents + Sentiment Refactoring
 
 **Date: November 9, 2025**

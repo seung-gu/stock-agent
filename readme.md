@@ -73,10 +73,6 @@ uv run python src/run_market_report.py
 
 ## TODO
 
-- [ ] Score System Refactoring
-  - Current: String-based score ('RSI(14):4, Disparity(200):3') requires LLM parsing
-  - Issue: LLM frequently fails to extract/format scores correctly
-  - Solution: Consider structured approach (nested BaseModel, separate score fields, or agent splitting)
 - [ ] Guardrail System (Input/Output validation)
   - Data Source Guardrail: Validate fetched data quality (empty check, freshness, min data points)
   - Score Guardrail: Validate score range (1-5) in all analyze functions
@@ -143,7 +139,7 @@ src/
 │   │
 │   └── types/                 # 📋 Type definitions
 │       ├── __init__.py       # Package initialization
-│       └── analysis_report.py  # AnalysisReport Pydantic model (with optional score field)
+│       └── analysis_report.py  # AnalysisReport + IndicatorScore Pydantic models
 │   │
 │   └── email_agent.py         # 📧 Email notification agent
 │
@@ -305,7 +301,7 @@ AnalysisReport {
   title: str                      # Week-specific title
   summary: str                    # Executive summary
   content: str                    # Comprehensive analysis
-  score: float | None             # Optional score (TrendAgent: individual, OrchestratorAgent: composite)
+  score: list[IndicatorScore]     # List of scores with agent/indicator/value (v8.0+)
 }
 ```
 
@@ -529,11 +525,52 @@ get_data_source("finra")      # → FINRASource
 
 ## Recent Improvements
 
-### Score System Enhancement & Technical Improvements (v7.4)
+### v8.0 - Structured Score System (November 11, 2025) 🚀 MAJOR RELEASE
 
-**Date: November 11, 2025**
+**⚠️ BREAKING CHANGES:**
+- Score type changed: `str` → `list[IndicatorScore]`
+- All agents now return structured format instead of string
 
-**Major Updates:**
+**1. Structured Score System**
+- **Before**: String-based score (`"RSI(14):4, Disparity(200):3"`) requiring manual parsing
+- **After**: Type-safe `list[IndicatorScore]` with Pydantic validation
+  ```python
+  [
+    {"agent": "S&P 500", "indicator": "RSI(14)", "value": 4},
+    {"agent": "S&P 500", "indicator": "Disparity(200)", "value": 3}
+  ]
+  ```
+- **Benefits**:
+  - Automatic type and range validation (1-5)
+  - Direct access without string parsing
+  - JSON-compatible structure
+
+**2. Multi-Agent Score Identification**
+- **Problem**: S&P 500, Nasdaq, Dow Jones all return RSI/Disparity scores, causing confusion
+- **Solution**: Added `agent` field to distinguish score sources
+- **Impact**: Orchestrator can now accurately filter and aggregate scores by agent
+
+**3. Score Policy Enforcement**
+- Scoring agents (7): EquityTrendAgent, MarketBreadthAgent, VIXAgent, HighYieldSpreadAgent, BullBearSpreadAgent, MarginDebtAgent, PutCallAgent
+- Non-scoring agents (3): DXAgent, TNXAgent, NFCIAgent - explicitly return empty list
+- Prevents LLM from generating arbitrary scores
+
+**Files Changed (10):**
+- `src/types/analysis_report.py`: Added IndicatorScore BaseModel
+- Scoring TrendAgents (7): Updated score format instructions
+- Non-scoring agents (3): Added "Do NOT set score" instructions
+- Orchestrator agents: Updated score extraction logic
+
+**Impact:**
+- ✅ Type-safe score system with automatic Pydantic validation
+- ✅ Clear agent identification for multi-agent scenarios
+- ✅ Prevents LLM score generation errors and format mistakes
+- ✅ Foundation for advanced score aggregation and analysis
+- ✅ Better maintainability and extensibility
+
+---
+
+### v7.4 - Score System Enhancement & Technical Improvements (November 11, 2025)
 
 **1. Score System Enhancement:**
 - **Score Type Change**: `AnalysisReport.score` changed from `float` to `str`
@@ -560,39 +597,6 @@ get_data_source("finra")      # → FINRASource
 - ✅ Flexible score system for complex agents
 - ✅ Accurate score calculation (code-based, not LLM-based)
 - ✅ Full period technical indicator charts
-
----
-
-### Market Health Monitor & Score System (v7.3)
-
-**Date: November 10, 2025**
-
-**Major Updates:**
-
-**1. Market Health Monitor Agent:**
-- **New Agent**: `MarketHealthAgent` in `src/agent/orchestrator/market_health_agent.py`
-  - Synthesizes 5 contrarian indicators: Bull-Bear Spread, Put/Call Ratio, Margin Debt, High Yield Spread, VIX
-  - Composite score calculation (0 to 5 range)
-  - Market status: STRONG_BUY / BUY / NEUTRAL / CAUTION / STRONG_SELL
-  - Structured output with charts/tables from each sub-agent
-
-**2. BroadIndexAgent Refactoring:**
-- **Agent Simplified**: Contrarian indicators moved from `BroadIndexAgent` to `MarketHealthAgent`
-  - Before: 3 major indices + 6 market indicators (9 agents)
-  - After: 3 major indices + MarketBreadthAgent (4 agents)
-  - Better separation of concerns: indices vs contrarian sentiment
-
-**3. Score System Infrastructure:**
-- **Enhanced Type**: `AnalysisReport` now includes optional `score: float | None` field
-  - TrendAgent: Individual indicator score
-  - OrchestratorAgent: Composite aggregated score
-  - Strict JSON schema compatible
-
-**Impact:**
-- ✅ Single view for overall market health across 5 contrarian indicators
-- ✅ Better separation: BroadIndexAgent (indices) vs MarketHealthAgent (sentiment/risk)
-- ✅ Quantified composite scoring for systematic decision-making
-- ✅ Flexible score infrastructure (float type) for future agent expansions
 
 ---
 
@@ -679,5 +683,3 @@ uv run python -m unittest discover src -p "*_test.py"
 ## Version History
 
 For detailed changelog including v7.0 and earlier versions, see [CHANGELOG.md](CHANGELOG.md).
-
----

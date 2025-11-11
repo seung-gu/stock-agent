@@ -51,6 +51,16 @@ class MarginDebtAgent(TrendAgent):
             CRITICAL:
             - MUST include the Margin Debt chart
             
+            SCORE CALCULATION:
+            Based on End value (YoY %) from analyze_margin_debt:
+            - End >= 40: score = 5 (Extreme leverage, sell signal)
+            - End >= 20: score = 4 (Significant leverage)
+            - End >= -20: score = 3 (Moderate)
+            - End >= -30: score = 2
+            - End < -30: score = 1 (Deleveraging, buy signal)
+            
+            Set AnalysisReport.score field to: [{{"agent":"MarginDebt", "indicator":"MarginDebt", "value":X}}]
+            
             PERIOD REQUIREMENTS:
             - Tables: "6mo", "1y"
             - Charts: "10y"

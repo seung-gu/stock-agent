@@ -66,6 +66,20 @@ class MarketBreadthAgent(TrendAgent):
             - Add reference links at end in markdown format:
               * [50-day MA Stock Breadth](https://www.investing.com/indices/s-p-500-stocks-above-50-day-average-chart)
               * [200-day MA Stock Breadth](https://www.investing.com/indices/sp-500-stocks-above-200-day-average-chart)
+            
+            SCORE CALCULATION:
+            Call analyze_market_breadth for both S5FI and S5TH, then calculate scores based on End values:
+            
+            For each indicator:
+            - End > 80: score = 5
+            - End > 70: score = 4
+            - End > 30: score = 3
+            - End > 20: score = 2
+            - End <= 20: score = 1
+            
+            Set AnalysisReport.score field to: 
+            [{{"agent":"MarketBreadth", "indicator":"50-day MA(S5FI)", "value":X}}, 
+            {{"agent":"MarketBreadth", "indicator":"200-day MA(S5TH)", "value":Y}}]
             """
         )
         

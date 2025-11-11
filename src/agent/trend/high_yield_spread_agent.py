@@ -48,6 +48,16 @@ class HighYieldSpreadAgent(TrendAgent):
             - MUST include the High Yield Spread chart
             - MUST identify if peak above 5% is declining (buy signal)
             
+            SCORE CALCULATION:
+            Based on End, Low, High values from analyze_high_yield_spread:
+            - End < 3.0 and (End - Low < 1.0): score = 4 (Near bottom)
+            - End < 3.0: score = 5 (Complacency)
+            - 3.0 <= End < 5.0: score = 3 (Normal)
+            - End >= 5.0 and (High - End < 1.0): score = 1 (Peak declining, buy signal)
+            - End >= 5.0: score = 2 (Alert/Crisis)
+            
+            Set AnalysisReport.score field to: [{{"agent":"HYSpread", "indicator":"HYSpread", "value":X}}]
+            
             PERIOD REQUIREMENTS:
             - Tables: "6mo", "1y"
             - Charts: "10y"

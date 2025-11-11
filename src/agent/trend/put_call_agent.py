@@ -55,6 +55,16 @@ class PutCallAgent(TrendAgent):
             
             CRITICAL:
             - MUST include the Put/Call Ratio chart
+            
+            SCORE CALCULATION:
+            Based on End value from analyze_put_call:
+            - End < 0.4: score = 5 (Extreme greed, sell signal)
+            - 0.4 <= End < 0.5: score = 4
+            - 0.5 <= End < 1.0: score = 3 (Neutral)
+            - 1.0 <= End < 1.2: score = 2
+            - End >= 1.2: score = 1 (Extreme fear, buy signal)
+            
+            Set AnalysisReport.score field to: [{{"agent":"PutCall", "indicator":"PutCall", "value":X}}]
             """
         )
         

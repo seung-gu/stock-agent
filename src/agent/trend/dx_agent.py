@@ -26,6 +26,9 @@ class DXAgent(TrendAgent):
             
             ADDITIONAL TOOLS:
             - analyze_SMA to analyze SMA data (window: 5, 50, 200)
+            
+            SCORE:
+            This agent does NOT provide scoring. Do NOT set AnalysisReport.score field (leave it as default empty list []).
             """
         )
 
