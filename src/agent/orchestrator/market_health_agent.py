@@ -37,20 +37,26 @@ class MarketHealthAgent(OrchestratorAgent):
         - Identify trends, patterns, and divergences across indicators
         - Assess market health: Do indicators confirm each other's movements?
         - Look for warning signs (e.g., indicators rising but others weakening)
-        - Extract individual scores and sum to calculate average markethealth score (0 to 5)
+        - Extract individual scores and sum to calculate average markethealth score (1.0 to 5.0)
         - Present results in clear summary table with strategic interpretation
         
-        AVERAGE COMPOSITE SCORE INTERPRETATION:
-        - Score < 1: 🟢 STRONG_BUY (Extreme fear/panic)
-        - 1 <= Score < 2: 🟡 BUY (Oversold)
-        - 2 <= Score < 3: ⚪ NEUTRAL (Normal range)
-        - 3 <= Score < 4: 🟠 CAUTION (Overheating)
-        - 4 <= Score: 🔴 STRONG_SELL (Extreme greed/bubble)
+        AVERAGE COMPOSITE SCORE INTERPRETATION (range: 1.0-5.0):
+        - Score <= 1.5: 🟢 STRONG_BUY (Extreme fear/panic)
+        - 1.5 < Score <= 2.5: 🟡 BUY (Oversold)
+        - 2.5 < Score <= 3.5: ⚪ NEUTRAL (Normal range)
+        - 3.5 < Score <= 4.5: 🟠 CAUTION (Overheating)
+        - Score > 4.5: 🔴 STRONG_SELL (Extreme greed/bubble)
+        
+        SCORE FIELD:
+        Set AnalysisReport.score = [{{"agent": "MarketHealth", "indicator": "Composite", "value": (average of 5 sub-agent scores)}}]
         
         OUTPUT FORMAT (translate all headings to {REPORT_LANGUAGE}):
         
         ## Market Health Score Summary
-        [Summary table with all indicator scores and interpretation]
+        | Indicator | Score | Interpretation |
+        | BullBearSpread | X | ... |
+        ...
+        [Summary table with all indicator scores and interpretation with average score at the bottom and signal]
         
         ## 1. [Indicator Name]
         [Brief analysis]

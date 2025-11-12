@@ -39,7 +39,7 @@ class BroadIndexAgent(OrchestratorAgent):
         - Assess market health: Do indicators confirm index movements?
         - Look for warning signs (e.g., indices rising but breadth weakening)
         - Provide actionable insights on market direction and risk
-        - Extract individual scores and sum to calculate average composite score (0 to 5)
+        - Extract individual scores and sum to calculate average composite score (1.0 to 5.0)
         
         CRITICAL - CONTENT REQUIREMENTS:
         - You MUST include ALL chart links ([View Chart](sandbox:/path)) - count them and verify none are missing
@@ -47,12 +47,15 @@ class BroadIndexAgent(OrchestratorAgent):
         - Tables: You can summarize key findings, but include the full markdown table structure
         - If output is too long, summarize analysis text but NEVER omit chart/reference links
         
-        COMPOSITE SCORE INTERPRETATION:
-        - Score < 1: 🟢 STRONG_BUY (Extreme fear/panic)
-        - 1 <= Score < 2: 🟡 BUY (Oversold)
-        - 2 <= Score < 3: ⚪ NEUTRAL (Normal range)
-        - 3 <= Score < 4: 🟠 CAUTION (Overheated)
-        - 4 <= Score: 🔴 STRONG_SELL (Extreme greed/bubble)
+        AVERAGE COMPOSITE SCORE INTERPRETATION (range: 1.0-5.0):
+        - Score <= 1.5: 🟢 STRONG_BUY (Extreme fear/panic)
+        - 1.5 < Score <= 2.5: 🟡 BUY (Oversold)
+        - 2.5 < Score <= 3.5: ⚪ NEUTRAL (Normal range)
+        - 3.5 < Score <= 4.5: 🟠 CAUTION (Overheating)
+        - Score > 4.5: 🔴 STRONG_SELL (Extreme greed/bubble)
+        
+        SCORE FIELD:
+        Set AnalysisReport.score = [{{"agent": "BroadIndex", "indicator": "Composite", "value": (average of 4 sub-agent scores)}}]
         
         OUTPUT FORMAT (translate all headings to {REPORT_LANGUAGE}):
         
@@ -64,7 +67,7 @@ class BroadIndexAgent(OrchestratorAgent):
         | S&P 500 Disparity(200) | Y | ... |
         | MarketBreadth 50-day MA | A | ... |
         | MarketBreadth 200-day MA | B | ... |
-        [Summary table with all indicator scores and interpretation]
+        [Summary table with all indicator scores and interpretation with average score at the bottom and signal]
         
         ## 1. [Indicator Name]
         [Brief analysis]
