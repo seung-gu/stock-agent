@@ -33,31 +33,39 @@ class MarkdownToNotionParser:
     
     def _parse_rich_text(self, text: str) -> list[dict]:
         """
-        Parse markdown text into Notion rich_text array (links, bold, italic, code).
+        Parse markdown text into Notion rich_text array (links, bold, italic, code, equations).
         
         Processing order (critical for correct parsing):
-        1. Markdown links: [text](url) - converts to Notion links
-        2. Bold italic: ***text*** - must come before bold/italic
-        3. Bold: **text**
-        4. Italic: *text*
-        5. Code: `text`
-        6. Plain text with standalone URLs: https://... becomes clickable
+        1. Inline equations: $...$ - converts to Notion equation
+        2. Markdown links: [text](url) - converts to Notion links
+        3. Bold italic: ***text*** - must come before bold/italic
+        4. Bold: **text**
+        5. Italic: *text*
+        6. Code: `text`
+        7. Plain text with standalone URLs: https://... becomes clickable
         
         Note: [text](sandbox:/path) should already be {{IMAGE_PLACEHOLDER}}
         """
         rich_texts = []
         
-        # Split by markdown patterns (links, bold, italic, code)
-        # Order matters: links and bold italic must come before bold
-        pattern = r'(\[[^\]]+\]\([^\)]+\)|\*\*\*.*?\*\*\*|\*\*.*?\*\*|\*.*?\*|`.*?`)'
+        # Split by markdown patterns (equations, links, bold, italic, code)
+        # Order matters: equations first, then links and bold italic must come before bold
+        pattern = r'(\$[^\$]+\$|\[[^\]]+\]\([^\)]+\)|\*\*\*.*?\*\*\*|\*\*.*?\*\*|\*.*?\*|`.*?`)'
         parts = re.split(pattern, text)
         
         for part in parts:
             if not part:
                 continue
             
+            # Inline equation: $text$
+            if part.startswith('$') and part.endswith('$') and len(part) > 2:
+                equation_text = part[1:-1]
+                rich_texts.append({
+                    'type': 'equation',
+                    'equation': {'expression': equation_text}
+                })
             # Markdown link: [text](url)
-            if link_match := re.match(r'\[([^\]]+)\]\(([^\)]+)\)', part):
+            elif link_match := re.match(r'\[([^\]]+)\]\(([^\)]+)\)', part):
                 rich_texts.extend(self._create_link_rich_text(link_match.group(1), link_match.group(2)))
             # Bold Italic: ***text***
             elif part.startswith('***') and part.endswith('***'):
@@ -163,7 +171,11 @@ class MarkdownToNotionParser:
         rich_text = self._parse_rich_text(text)
         
         # If total length exceeds 2000 chars, split into multiple blocks
-        total_length = sum(len(rt['text']['content']) for rt in rich_text)
+        total_length = sum(
+            len(rt.get('text', {}).get('content', '')) if rt['type'] == 'text' 
+            else len(rt.get('equation', {}).get('expression', ''))
+            for rt in rich_text
+        )
         
         if total_length <= 2000:
             block = {
@@ -181,7 +193,10 @@ class MarkdownToNotionParser:
             current_length = 0
             
             for rt in rich_text:
-                rt_length = len(rt['text']['content'])
+                rt_length = (
+                    len(rt.get('text', {}).get('content', '')) if rt['type'] == 'text'
+                    else len(rt.get('equation', {}).get('expression', ''))
+                )
                 if current_length + rt_length > 2000 and current_rich_texts:
                     # Complete current block and start new one
                     block = {
@@ -418,7 +433,41 @@ class MarkdownToNotionParser:
         processed_lines = set()
         
         for i, line in enumerate(lines):
-            if i in processed_lines or not line.strip():
+            if i in processed_lines:
+                continue
+            
+            # Skip empty lines
+            if not line.strip():
+                continue
+            
+            # Horizontal divider (--- or ***)
+            if line.strip() in ['---', '***', '___']:
+                children.append({
+                    'object': 'block',
+                    'type': 'divider',
+                    'divider': {}
+                })
+                continue
+            
+            # Math equation block ($$...$$)
+            if line.strip() == '$$':
+                equation_lines = []
+                
+                # Find closing $$
+                for j in range(i + 1, len(lines)):
+                    if lines[j].strip() == '$$':
+                        processed_lines.update(range(i, j + 1))
+                        break
+                    equation_lines.append(lines[j])
+                
+                if equation_lines:
+                    children.append({
+                        'object': 'block',
+                        'type': 'equation',
+                        'equation': {
+                            'expression': '\n'.join(equation_lines).strip()
+                        }
+                    })
                 continue
             
             # Code block (```language)
@@ -466,19 +515,42 @@ class MarkdownToNotionParser:
                 children.extend(bullet_blocks)
                 processed_lines.update(range(i, next_index))
                 continue
+            # Image (![alt](url))
+            if img_match := re.match(r'^!\[([^\]]*)\]\(([^\)]+)\)', line.strip()):
+                alt_text = img_match.group(1)
+                image_url = img_match.group(2)
+                children.append(self._create_image_block(image_url, alt_text))
+                continue
+            
             # Paragraph
             else:
                 children.extend(self._create_text_block('paragraph', line))
         
         return children
     
-    def _create_image_block(self, image_url: str) -> dict:
-        """Create Notion embed block for image"""
-        return {
+    def _create_image_block(self, image_url: str, caption: str = '') -> dict:
+        """Create Notion image block"""
+        image_block = {
             'object': 'block',
-            'type': 'embed',
-            'embed': {'url': image_url}
+            'type': 'image',
+            'image': {
+                'type': 'external',
+                'external': {
+                    'url': image_url
+                }
+            }
         }
+        
+        # Add caption if provided
+        if caption:
+            image_block['image']['caption'] = [
+                {
+                    'type': 'text',
+                    'text': {'content': caption}
+                }
+            ]
+        
+        return image_block
 
 
 # Convenience function for backward compatibility
