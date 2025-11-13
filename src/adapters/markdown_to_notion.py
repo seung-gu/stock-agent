@@ -452,15 +452,20 @@ class MarkdownToNotionParser:
             # Math equation block ($$...$$)
             if line.strip() == '$$':
                 equation_lines = []
+                closing_found = False
+                end_idx = i + 1  # Default: only mark opening line
                 
                 # Find closing $$
                 for j in range(i + 1, len(lines)):
                     if lines[j].strip() == '$$':
-                        processed_lines.update(range(i, j + 1))
+                        end_idx = j + 1
+                        closing_found = True
                         break
                     equation_lines.append(lines[j])
                 
-                if equation_lines:
+                # Only create block if closing delimiter found
+                if closing_found and equation_lines:
+                    processed_lines.update(range(i, end_idx))
                     children.append({
                         'object': 'block',
                         'type': 'equation',
@@ -468,28 +473,40 @@ class MarkdownToNotionParser:
                             'expression': '\n'.join(equation_lines).strip()
                         }
                     })
+                else:
+                    # No closing delimiter: treat as regular paragraph
+                    processed_lines.add(i)
                 continue
             
             # Code block (```language)
             if line.startswith('```'):
                 language = line[3:].strip() or 'plain text'
                 code_lines = []
+                closing_found = False
+                end_idx = i + 1  # Default: only mark opening line
                 
                 # Find closing ```
                 for j in range(i + 1, len(lines)):
                     if lines[j].startswith('```'):
-                        processed_lines.update(range(i, j + 1))
+                        end_idx = j + 1
+                        closing_found = True
                         break
                     code_lines.append(lines[j])
                 
-                children.append({
-                    'object': 'block',
-                    'type': 'code',
-                    'code': {
-                        'rich_text': [{'type': 'text', 'text': {'content': '\n'.join(code_lines)}}],
-                        'language': language
-                    }
-                })
+                # Only create block if closing delimiter found
+                if closing_found:
+                    processed_lines.update(range(i, end_idx))
+                    children.append({
+                        'object': 'block',
+                        'type': 'code',
+                        'code': {
+                            'rich_text': [{'type': 'text', 'text': {'content': '\n'.join(code_lines)}}],
+                            'language': language
+                        }
+                    })
+                else:
+                    # No closing delimiter: treat as regular paragraph
+                    processed_lines.add(i)
                 continue
             
             # Table
@@ -547,7 +564,7 @@ class MarkdownToNotionParser:
                 {
                     'type': 'text',
                     'text': {'content': caption}
-                }
+        }
             ]
         
         return image_block
