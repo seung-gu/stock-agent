@@ -473,10 +473,8 @@ class MarkdownToNotionParser:
                             'expression': '\n'.join(equation_lines).strip()
                         }
                     })
-                else:
-                    # No closing delimiter: treat as regular paragraph
-                    processed_lines.add(i)
-                continue
+                    continue
+                # No closing delimiter: fall through to paragraph handling
             
             # Code block (```language)
             if line.startswith('```'):
@@ -504,10 +502,8 @@ class MarkdownToNotionParser:
                             'language': language
                         }
                     })
-                else:
-                    # No closing delimiter: treat as regular paragraph
-                    processed_lines.add(i)
-                continue
+                    continue
+                # No closing delimiter: fall through to paragraph handling
             
             # Table
             if line.startswith('|'):
@@ -575,4 +571,5 @@ def create_notion_blocks(content: str, uploaded_map: dict[str, str]) -> list[dic
     """Parse markdown content into Notion blocks (convenience function)"""
     parser = MarkdownToNotionParser()
     return parser.parse(content, uploaded_map)
+
 
