@@ -164,7 +164,22 @@ class WebDataSource(DataSource):
                 return None, False
             
             is_validated = all_data.get('_validated', False)
-            data_dict = {pd.to_datetime(item['date']): item['value'] for item in symbol_data}
+            # Filter out NaN values (both actual NaN and string "NaN")
+            data_dict = {}
+            for item in symbol_data:
+                value = item['value']
+                # Skip NaN values (both actual NaN and string "NaN")
+                if isinstance(value, str) and value.lower() == 'nan':
+                    continue
+                if pd.isna(value):
+                    continue
+                data_dict[pd.to_datetime(item['date'])] = value
+            
+            # Check if all data was filtered out (all NaN)
+            if not data_dict:
+                print(f"[{log_prefix}][CACHE] All data for {symbol} was NaN, cache invalid")
+                return None, False
+            
             series = pd.Series(data_dict).sort_index()
             
             print(f"[{log_prefix}][CACHE] Loaded {len(series)} records for {symbol}, latest: {series.index[-1].date()}, validated: {is_validated}")
@@ -183,10 +198,29 @@ class WebDataSource(DataSource):
         else:
             all_data = {}
         
-        symbol_data = [
-            {'date': d.strftime('%Y-%m-%d'), 'value': float(v)}
-            for d, v in data.items()
-        ]
+        # Filter out NaN values - don't save NaN, preserve existing good values
+        # Also remove duplicate dates (keep last occurrence)
+        symbol_data_dict = {}
+        existing_dates = set()
+        if symbol in all_data:
+            existing_dates = {item['date'] for item in all_data[symbol]}
+        
+        for d, v in data.items():
+            date_str = d.strftime('%Y-%m-%d')
+            if pd.notna(v):  # Only save non-NaN values
+                symbol_data_dict[date_str] = {'date': date_str, 'value': float(v)}
+            elif date_str in existing_dates:
+                # Keep existing value if it exists and new value is NaN
+                existing_item = next((item for item in all_data[symbol] if item['date'] == date_str), None)
+                if existing_item and pd.notna(existing_item.get('value')):
+                    symbol_data_dict[date_str] = existing_item
+                    print(f"[{log_prefix}][CACHE] Preserved existing value for {date_str} (new value was NaN)")
+        
+        # Convert dict to list (duplicates already removed by dict key)
+        symbol_data = list(symbol_data_dict.values())
+        # Sort by date
+        symbol_data.sort(key=lambda x: x['date'])
+        
         all_data[symbol] = symbol_data
         all_data['_validated'] = is_validated
         
@@ -290,17 +324,37 @@ class WebDataSource(DataSource):
         # Update cache if needed
         if need_update:
             if local is not None:
-                # Merge: keep all local data + add new scraped data
-                merged = pd.concat([local, scraped]).sort_index()
-                # Remove duplicates, keeping the scraped value (more recent)
-                merged = merged[~merged.index.duplicated(keep='last')]
+                # Merge: keep all local data + add/update with new scraped data
+                # If tolerance=0: update existing dates with scraped values, add new dates
+                # If tolerance>0: skip dates within tolerance (preserve local), add dates outside tolerance
+                merged = local.copy()
+                tolerance_days = date_offset_tolerance
                 
-                missing_dates = scraped.index.difference(local.index)
-                if len(missing_dates) > 0:
-                    print(f"[MERGE] Added {len(missing_dates)} missing dates")
-                print(f"[MERGE] Total after merge: {len(merged)} records")
+                # Sort scraped dates to process them in order
+                scraped_sorted = scraped.sort_index()
+                
+                for scraped_date, scraped_value in scraped_sorted.items():
+                    # Skip NaN values - don't add them to merged data
+                    if pd.isna(scraped_value):
+                        continue
+                    
+                    # Check if scraped date is within tolerance of any existing local date
+                    # Use local.index (not merged.index) to avoid checking against newly added dates
+                    if tolerance_days > 0:
+                        # If tolerance > 0, skip dates within tolerance (preserve local data for offset dates)
+                        # Use < (not <=) to allow exact matches (0 days) to be updated with newer scraped data
+                        if any(0 < abs((scraped_date - local_date).days) <= tolerance_days for local_date in local.index):
+                            continue
+                    
+                    # Add or update the date with scraped value (more recent)
+                    merged[scraped_date] = scraped_value
+                    if scraped_date not in local.index:
+                        print(f"[MERGE] Added new date: {scraped_date}")
+                
+                merged = merged.sort_index()
             else:
-                merged = scraped
+                # Remove duplicates from scraped data too
+                merged = scraped[~scraped.index.duplicated(keep='last')].sort_index()
             
             # Save with validation flag (validated)
             save_cache_fn(merged, is_validated=True)

@@ -687,21 +687,21 @@ Use the quarter-end EPS for all dates within that quarter
 
 Example:
 ┌──────────────────────────────────────────────────────────┐
-│ Period: 2025-07-01 ~ 2025-09-30 (Q3)                    │
-│ EPS Used: Values from 2025-09-30 row                    │
+│ Period: 2025-07-01 ~ 2025-09-30 (Q3)                     │
+│ EPS Used: Values from 2025-09-30 row                     │
 │                                                          │
-│ EPS Composition by Variable (Q' = Est, Q = Actual):     │
-│   - Forward Operating:  294.11 = Q'(1)+Q'(2)+Q'(3)+Q'(4)│
-│                                   (Q4'+2026Q1'+Q2'+Q3') │
-│   - Mixed Operating:    288.10 = Q(0)+Q'(1)+Q'(2)+Q'(3) │
-│                                   (Q3'+Q4'+2026Q1'+Q2') │
-│   - TTM Operating:      255.80 = Q(-3)+Q(-2)+Q(-1)+Q(0) │
-│                                   (2024Q4+Q1+Q2+Q3')    │
+│ EPS Composition by Variable (Q' = Est, Q = Actual):      │
+│   - Forward Operating:  294.11 = Q'(1)+Q'(2)+Q'(3)+Q'(4) │
+│                                   (Q4'+2026Q1'+Q2'+Q3')  │
+│   - Mixed Operating:    288.10 = Q(0)+Q'(1)+Q'(2)+Q'(3)  │
+│                                   (Q3'+Q4'+2026Q1'+Q2')  │
+│   - TTM Operating:      255.80 = Q(-3)+Q(-2)+Q(-1)+Q(0)  │
+│                                   (2024Q4+Q1+Q2+Q3')     │
 │                                                          │
-│ Daily P/E Calculation (Forward Operating example):      │
-│   - 2025-07-01: P/E = 5,475 ÷ 294.11 = 18.61           │
-│   - 2025-07-02: P/E = 5,480 ÷ 294.11 = 18.63           │
-│   - 2025-09-30: P/E = 5,738 ÷ 294.11 = 19.51           │
+│ Daily P/E Calculation (Forward Operating example):       │
+│   - 2025-07-01: P/E = 5,475 ÷ 294.11 = 18.61             │
+│   - 2025-07-02: P/E = 5,480 ÷ 294.11 = 18.63             │
+│   - 2025-09-30: P/E = 5,738 ÷ 294.11 = 19.51             │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -710,7 +710,7 @@ Example:
 - Daily: **9,003 data points** (60.8x increase)
 - Standard Error: **8x reduction** (0.083 → 0.010)
 
-#### 4.2.3 Result 1: Correlation Comparison
+#### 4.3.3 Result 1: Correlation Comparison
 
 **Table 4-1: Quarterly vs Daily Correlation Comparison**
 
@@ -741,7 +741,7 @@ Example:
 *Forward Operating P/E time series and future return correlations using 9,003 daily data points. Mixed Operating and TTM Operating charts show similar patterns but lower correlations, thus omitted.*
 
 
-#### 4.2.4 Result 2: Annualized Return Differential Comparison
+#### 4.3.4 Result 2: Annualized Return Differential Comparison
 
 **Table 4-2: Annualized Return Differential (Low P/E - High P/E) - Quarterly vs Daily**
 
@@ -764,7 +764,7 @@ Example:
    - K: +0.81pp improvement
    - L: +1.10pp improvement
 
-#### 4.2.5 Result 3: P/E Quartile Returns (37-Year vs 10-Year)
+#### 4.3.5 Result 3: P/E Quartile Returns (37-Year vs 10-Year)
 
 **Table 4-3: Forward Operating - P/E Quartile Returns Comparison (Daily Data)**
 
