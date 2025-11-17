@@ -28,7 +28,7 @@ Key findings include:
 6. **Returns drop sharply beyond threshold:** P/E < 21: +13~17%, P/E ≥ 21: -4.5%  (loss)
 7. Current market (P/E 22.72) exceeds threshold by 1.9pt, in loss risk zone
 
-This research contributes theoretically by challenging traditional mean reversion explanations and practically by establishing concrete P/E-based trading signals with statistical significance.
+The true significance of this research is to empirically demonstrate that **P/E ratios that showed strong predictive power in backtesting decrease to nearly meaningless levels when using actual estimates in a real-world environment**. This suggests that the simple logic of "high P/E means overvalued and risky, low P/E means undervalued opportunity" may not work in actual investment environments, and warns of the risks of relying on a single indicator for investment decisions, which has both academic and practical significance (see Sections 6 and 7 for details).
 
 **Keywords:** Forward P/E, Mean Reversion, Market Timing, S&P 500, Valuation Metrics, Predictive Analytics
 
@@ -51,53 +51,32 @@ This research contributes theoretically by challenging traditional mean reversio
 - 2.6 Selection of Analysis Variables
 
 ### **3. Methodology**
-- 3.1 Data Collection and Preprocessing (Quarterly 148, 1988-2025)
-- 3.2 P/E Ratio Calculation (3 Operating Definitions)
-- 3.3 Z-Score Normalization
-- 3.4 Future Returns Calculation (1Q, 2Q, 3Q, 4Q)
-- 3.5 Evaluation Metrics (Correlation, Accuracy, Return Differential)
+- 3.1 Backtesting Methodology (Actuals-based)
+- 3.2 Real-world Estimates Validation Methodology
+- 3.3 Evaluation Metrics
 
-### **4. Empirical Results**
-- **4.1 Comparative Analysis of 3 Operating P/E Definitions (Quarterly Data)**
-  - 4.1.1 Correlation Analysis
-  - 4.1.2 Prediction Accuracy Analysis
-  - 4.1.3 Actual Return Differential Analysis
-  - 4.1.4 Annualized Analysis: Removing Period Effect
-- 4.2 Practical Interpretation: -0.59 ≠ 59% Probability
-- **4.3 Daily Data Validation: Enhanced Sample Size Analysis (9,003 points)**
-  - 4.3.1 Research Motivation
-  - 4.3.2 Methodology: Daily Data Mapping
-  - 4.3.3 Result 1: Correlation Comparison
-  - 4.3.4 Result 2: Annualized Return Differential Comparison
-  - 4.3.5 Result 3: P/E Quartile Returns (37-Year vs 10-Year)
-  - 4.3.6 Quarterly vs Daily: Which is Better?
+### **4. Backtesting Results: Actuals-based Analysis**
+- 4.1 Quarterly Analysis Results
+- 4.2 Daily Analysis Results
+- 4.3 Key Findings
 
-### **5. Deep Analysis: Why Does Forward P/E Work?**
-- 5.1 Traditional Explanation: Valuation Mean Reversion
-- 5.2 Our Explanation: Consensus Forecast Realization
-  - 5.2.1 Core Mechanism: Value of Forecast Information
-  - 5.2.2 Why Forward Operating Strongest?
-- 5.3 Asymmetric Prediction Accuracy
+### **5. Real-world Validation: Estimates-based Analysis**
+- 5.1 Methodology and Data
+- 5.2 Analysis Results
+- 5.3 Percentile Analysis
 
-### **6. P/E Range Investment Strategy**
-- 6.1 Historical P/E Distribution: 37-Year vs 10-Year
-- 6.2 Average Returns by Range
-- **6.3 Key Finding: P/E ≈ 21, Critical Threshold**
-- 6.3.1 Why Only Forward Operating Shows Clear 20.8 Threshold?
-- 6.4 Practical Investment Strategy
-  - 6.4.1 Signal Framework (Daily Data-Based)
-  - 6.4.2 Current Market Assessment (As of November 2025)
+### **6. Key Discovery: Backtesting vs Real-world Environment**
+- 6.1 Correlation Comparison
+- 6.2 Spread Comparison
+- 6.3 Analysis of Predictive Power Differences
+- 6.4 What This Means
 
-### **7. Limitations and Future Research**
-- 7.1 Data Limitations
-- 7.2 Model Limitations
-- 7.3 Future Research Directions
+### **7. Research Limitations and Implications**
+- 7.1 Limitations of Backtesting
+- 7.2 Implications for Real-world Investment Environment
+- 7.3 Risks of Simple P/E-based Judgment
 
-### **8. Conclusion**
-- 8.1 Research Summary
-- 8.2 Theoretical Contributions
-- 8.3 Practical Implications
-- 8.4 Final Conclusions
+### **8. Conclusion: The True Significance of This Research**
 
 ---
 
@@ -338,7 +317,9 @@ Based on above analysis, **this research analyzes only Operating Earnings-based 
 
 ## 3. Methodology
 
-### 3.1 Data Collection and Preprocessing
+### 3.1 Backtesting Methodology (Actuals-based)
+
+#### 3.1.1 Data Collection and Preprocessing
 
 #### 3.1.1 Price Data
 
@@ -395,7 +376,7 @@ date_parsed = pd.to_datetime(date_str)
 - **Total Observations:** 148 quarters
 - **Valid Data per EPS Column:** 148 observations (no missing values)
 
-### 3.2 P/E Ratio Calculation
+#### 3.1.2 P/E Ratio Calculation
 
 For each quarter $t$, P/E ratio is calculated as:
 
@@ -405,7 +386,7 @@ $$
 
 Where $Price_t$ is the smoothed average closing price for quarter $t$, and $EPS_t$ is the EPS estimate for that quarter.
 
-### 3.3 Z-Score Normalization
+#### 3.1.3 Z-Score Normalization
 
 Since absolute P/E levels vary across eras, we normalize using Z-scores to measure relative over/undervaluation:
 
@@ -419,7 +400,7 @@ Where:
 
 Z-score > 0 indicates overvaluation, Z-score < 0 indicates undervaluation relative to historical mean.
 
-### 3.4 Forward Returns Calculation
+#### 3.1.4 Forward Returns Calculation
 
 For each quarter $t$, cumulative return $n$ quarters ahead is calculated as:
 
@@ -463,9 +444,44 @@ Where:
 - Standardizes P/E signal's pure predictive power to annual basis
 - Enables fair comparison across different time horizons
 
-### 3.5 Evaluation Metrics
+### 3.2 Real-world Estimates Validation Methodology
 
-#### 3.5.1 Pearson Correlation
+#### 3.2.1 Data Collection
+
+**Estimates Data:**
+- Source: Actual estimates extracted from FactSet PDFs
+- Period: December 2016 - November 2025 (approximately 8 years)
+- Report Frequency: Weekly (approximately 345 report dates)
+- Feature: Uses actual future estimates (*)
+
+**Price Data:**
+- Source: Yahoo Finance API (yfinance library)
+- Uses actual daily closing prices
+- Total trading days: approximately 22,358
+
+#### 3.2.2 P/E Calculation Method
+
+For each report date's EPS estimates, calculate daily P/E from that report date until the next report date:
+
+- Fix EPS estimates from the report date
+- Calculate P/E using actual daily prices
+- Use the same EPS until the next report arrives
+
+This mirrors the actual investment environment.
+
+#### 3.2.3 Future Returns Calculation
+
+For each date, calculate returns using actual prices exactly 63 days (1Q), 126 days (2Q), 189 days (3Q), and 252 days (4Q) later:
+
+$$
+Return_{t,nQ} = \frac{Price_{t+nQ} - Price_t}{Price_t} \times 100\%
+$$
+
+Where $nQ$ is the date $n$ quarters later (1Q = 63 days, 4Q = 252 days).
+
+### 3.3 Evaluation Metrics
+
+#### 3.3.1 Pearson Correlation
 
 Measures linear relationship between P/E Z-score and future returns:
 
@@ -475,7 +491,7 @@ $$
 
 Negative correlation implies "high P/E → low returns."
 
-#### 3.5.2 Prediction Accuracy
+#### 3.3.2 Prediction Accuracy
 
 Using median return as threshold, we dichotomize returns and calculate accuracy:
 
@@ -486,7 +502,7 @@ $$
 Accuracy = \frac{\text{Number of Correct Predictions}}{\text{Total Predictions}} \times 100\%
 $$
 
-#### 3.5.3 Average Return Differential
+#### 3.3.3 Average Return Differential (Spread)
 
 Most critical metric for investment decisions:
 
@@ -498,11 +514,13 @@ Calculates average return difference between Low P/E and High P/E groups.
 
 ---
 
-## 4. Empirical Results
+## 4. Backtesting Results: Actuals-based Analysis
 
-### 4.1 Comparative Analysis of Three Operating P/E Definitions
+### 4.1 Quarterly Analysis Results
 
-#### 4.1.1 Correlation Analysis
+#### 4.1.1 Comparative Analysis of Three Operating P/E Definitions
+
+**Correlation Analysis**
 
 **Table 1: Pearson Correlation Between P/E Z-score and Future Returns**
 
@@ -519,7 +537,7 @@ Calculates average return difference between Low P/E and High P/E groups.
 4. More forward-looking → better predictive power
 5. Sample size of n=145-148 provides sufficient observations
 
-#### 4.1.2 Prediction Accuracy Analysis
+**Prediction Accuracy Analysis**
 
 **Table 2: P/E-Based Return Prediction Accuracy (Median Threshold)**
 
@@ -534,7 +552,7 @@ Calculates average return difference between Low P/E and High P/E groups.
 - **Forward Operating achieves 61-63% accuracy**, statistically significant
 - **TTM Operating (Trailing) at 49.8% = no better than random**
 
-#### 4.1.3 Actual Return Differential Analysis (Most Important)
+**Actual Return Differential Analysis (Most Important)**
 
 **Table 3: Average 1-Year Returns by P/E Group (High vs Low)**
 
@@ -550,7 +568,7 @@ Calculates average return difference between Low P/E and High P/E groups.
 3. Low P/E periods deliver strong ~16% annual returns
 4. **TTM Operating (Trailing) shows weak discrimination (3.87%p), 1/4 of Forward**
 
-#### 4.1.4 Annualized Analysis: Removing Period Effect
+**Annualized Analysis: Removing Period Effect**
 
 **Important Question:** "Isn't 4Q (12 months) having higher absolute returns than 1Q (3 months) simply due to longer time period?"
 
@@ -631,43 +649,15 @@ To verify, we converted to **annualized returns** (30-year data, 148 quarters):
 ![Figure 2-3: TTM Operating](https://pub-8ab005469c4042798a7550efc290ac49.r2.dev/charts/pe_mean_reversion_I_1762956823.jpg)
 
 
-### 4.2 Understanding Correlation: -0.59 ≠ 59% Probability
+### 4.2 Daily Analysis Results
 
-During initial research, a question arose: "Does correlation -0.59 mean 59% prediction probability?"
+#### 4.2.1 Research Motivation
 
-**This is a misinterpretation.**
+The previous quarterly analysis used 148 observations. To enhance statistical reliability, we performed **validation analysis using daily (daily) price data**.
 
-#### 4.2.1 Relationship Between Correlation and Predictive Power
-
-- **Correlation (r):** Strength and direction of linear relationship (-1 to +1)
-- **Coefficient of Determination (R²):** r² = 0.59² = 0.35, meaning P/E explains 35% of return variance
-- **Prediction Accuracy:** Actually 61-63%
-
-#### 4.2.2 The 92% Trap: Market Upward Bias
-
-Initial analysis yielded "92% probability of positive returns when P/E is low," which proved misleading:
-
-**Flawed Analysis (Actual Results, Forward Operating 4Q):**
-- Low P/E (Z<0): Positive returns = 81/88 = **92%**
-- High P/E (Z>0): Positive returns = 49/56 = **88%**
-- Difference: Only **4 percentage points**
-
-**Problem:** 
-- S&P 500 rose in approximately **130/144 = 90% of quarters** over 37 years
-- Thus 92% reflects **market's inherent upward bias**, not P/E's predictive power
-- Most periods show positive returns regardless of P/E, making this metric meaningless
-
-**Correct Analysis: Using Median Return as Threshold**
-
-The median 1-year return across 144 quarters is **+11.33%**. Using this to distinguish "good/poor returns" and recalculating:
-
-- Low P/E (Z<0): Returns above median (11.33%) = 53/88 = **60.2%**
-- High P/E (Z>0): Returns above median = 19/56 = **33.9%**
-- Difference: **26.3 percentage points** (now a clear distinction!)
-
-Now P/E's true predictive power emerges.
-
-#### 4.2.3 Going Further: Magnitude Matters
+**Key Questions:**
+- If we increase sample size 60x (148 → 9,003), do results change?
+- Does daily data noise dilute signals, or enable more precise estimation?
 
 Beyond simple "above/below median," **actual return magnitudes** matter most:
 
@@ -720,7 +710,7 @@ Example:
 - Daily: **9,003 data points** (60.8x increase)
 - Standard Error: **8x reduction** (0.083 → 0.010)
 
-### 4.3.3 Result 1: Correlation Comparison
+#### 4.2.3 Result 1: Correlation Comparison
 
 **Table 4-1: Quarterly vs Daily Correlation Comparison**
 
@@ -751,7 +741,7 @@ Example:
 *Forward Operating P/E time series and future return correlations using 9,003 daily data points. Mixed Operating and TTM Operating charts show similar patterns but lower correlations, thus omitted.*
 
 
-### 4.3.4 Result 2: Annualized Return Differential Comparison
+#### 4.2.4 Result 2: Annualized Return Differential Comparison
 
 **Table 4-2: Annualized Return Differential (Low P/E - High P/E) - Quarterly vs Daily**
 
@@ -774,7 +764,7 @@ Example:
    - K: +0.81pp improvement
    - L: +1.10pp improvement
 
-### 4.3.5 Result 3: P/E Quartile Returns (37-Year vs 10-Year)
+#### 4.2.5 Result 3: P/E Quartile Returns (37-Year vs 10-Year)
 
 **Table 4-3: Forward Operating - P/E Quartile Returns Comparison (Daily Data)**
 
@@ -813,7 +803,272 @@ Example:
 
 *Strong negative correlation between P/E and 1-year returns confirmed with 9,003 daily data points (r = -0.62)*
 
-### 4.3.6 Quarterly vs Daily: Which is Better?
+### 4.3 Key Findings
+
+Summarizing the backtesting results:
+
+1. **Forward Operating P/E shows superior predictive power**
+   - Correlation: -0.533 (quarterly), -0.623 (daily 4Q)
+   - Prediction accuracy: 61-63%
+   - Spread: +15.31%p (quarterly), +14.37%p (daily)
+
+2. **P/E ≈ 21 is a critical threshold**
+   - 37-year basis: P/E 20.8
+   - 10-year basis: P/E 21.2
+   - Returns drop sharply beyond threshold (-4.65% ~ +2.44%)
+
+3. **Daily data confirms quarterly findings**
+   - Sample size increased 60x (148 → 9,003)
+   - Results remain consistent
+
+---
+
+## 5. Real-world Validation: Estimates-based Analysis
+
+### 5.1 Methodology and Data
+
+#### 5.1.1 Data Collection
+
+**Estimates Data:**
+- Source: Actual estimates extracted from FactSet PDFs
+- Period: December 2016 - November 2025 (approximately 8 years)
+- Report Frequency: Weekly (approximately 345 report dates)
+- Feature: Uses actual future estimates (*)
+
+**Price Data:**
+- Source: Yahoo Finance API (yfinance library)
+- Uses actual daily closing prices
+- Total trading days: approximately 22,358
+
+#### 5.1.2 P/E Calculation Method
+
+For each report date's EPS estimates, calculate daily P/E from that report date until the next report date:
+
+- Fix EPS estimates from the report date
+- Calculate P/E using actual daily prices
+- Use the same EPS until the next report arrives
+
+This mirrors the actual investment environment.
+
+#### 5.1.3 Future Returns Calculation
+
+For each date, calculate returns using actual prices exactly 63 days (1Q), 126 days (2Q), 189 days (3Q), and 252 days (4Q) later:
+
+$$
+Return_{t,nQ} = \frac{Price_{t+nQ} - Price_t}{Price_t} \times 100\%
+$$
+
+Where $nQ$ is the date $n$ quarters later (1Q = 63 days, 4Q = 252 days).
+
+### 5.2 Analysis Results
+
+#### 5.2.1 Correlation Analysis
+
+**Table 5-1: Real-world Estimates-based P/E vs Future Returns Correlation (2016-2025, 8 years)**
+
+| P/E Type | 1Q | 2Q | 3Q | 4Q | Sample Size |
+|---------|-----|-----|-----|-----|-------------|
+| **Forward Operating** | -0.080 | -0.068 | -0.081 | **-0.132** | 20,177 |
+| **Mixed Operating** | -0.053 | -0.036 | -0.040 | **-0.086** | 20,177 |
+| **TTM Operating** | -0.041 | -0.017 | -0.026 | **-0.087** | 20,177 |
+
+**Key Findings:**
+- Using actual estimates, correlations **decrease dramatically**
+- Forward Operating: -0.132 (backtesting: -0.623, approximately 79% decrease)
+- Mixed Operating: -0.086 (backtesting: -0.532, approximately 84% decrease)
+- TTM Operating: -0.087 (backtesting: -0.234, approximately 63% decrease)
+
+### 5.3 Percentile Analysis
+
+**Table 5-2: Real-world Estimates-based Percentile Returns (Forward Operating PE, 4Q basis)**
+
+| Percentile Range | P/E Range | 1Q Return | 2Q Return | 3Q Return | 4Q Return |
+|------------------|-----------|------------|------------|------------|------------|
+| Bottom 25% | 12.37 - 17.76 | 2.78% | 5.07% | 6.95% | 9.99% |
+| 25-50% | 17.76 - 20.27 | 2.39% | 5.48% | 9.73% | 12.32% |
+| 50-75% | 20.27 - 21.76 | 3.35% | 5.96% | 7.49% | 8.16% |
+| Top 25% | 21.76 - 24.79 | 1.44% | 3.71% | 5.51% | 8.00% |
+| **Spread (Bottom-Top)** | - | **+1.34%p** | **+1.35%p** | **+1.44%p** | **+1.99%p** |
+
+**Table 5-3: Real-world Estimates-based Percentile Returns (Mixed Operating PE, 4Q basis)**
+
+| Percentile Range | P/E Range | 1Q Return | 2Q Return | 3Q Return | 4Q Return |
+|------------------|-----------|------------|------------|------------|------------|
+| Bottom 25% | 12.73 - 18.23 | 2.63% | 4.89% | 6.75% | 9.75% |
+| 25-50% | 18.23 - 20.98 | 2.44% | 5.46% | 9.68% | 12.23% |
+| 50-75% | 20.98 - 22.63 | 3.01% | 5.50% | 6.47% | 6.71% |
+| Top 25% | 22.63 - 27.73 | 1.90% | 4.46% | 7.01% | 9.92% |
+| **Spread (Bottom-Top)** | - | **+0.73%p** | **+0.43%p** | **-0.26%p** | **-0.16%p** |
+
+**Table 5-4: Real-world Estimates-based Percentile Returns (TTM Operating PE, 4Q basis)**
+
+| Percentile Range | P/E Range | 1Q Return | 2Q Return | 3Q Return | 4Q Return |
+|------------------|-----------|------------|------------|------------|------------|
+| Bottom 25% | 13.54 - 19.24 | 3.13% | 5.19% | 6.82% | 10.38% |
+| 25-50% | 19.24 - 22.44 | 1.74% | 4.49% | 8.98% | 11.50% |
+| 50-75% | 22.44 - 24.72 | 3.28% | 6.14% | 7.25% | 6.19% |
+| Top 25% | 24.72 - 29.11 | 1.83% | 4.49% | 6.87% | 10.35% |
+| **Spread (Bottom-Top)** | - | **+1.30%p** | **+0.70%p** | **-0.05%p** | **+0.02%p** |
+
+**Table 5-5: Real-world Estimates-based Spread Summary (Bottom 25% - Top 25%)**
+
+| P/E Type | 1Q Spread | 2Q Spread | 3Q Spread | 4Q Spread |
+|---------|-----------|-----------|-----------|-----------|
+| Forward Operating | +1.34%p | +1.35%p | +1.44%p | +1.99%p |
+| Mixed Operating | +0.73%p | +0.43%p | -0.26%p | -0.16%p |
+| TTM Operating | +1.30%p | +0.70%p | -0.05%p | +0.02%p |
+
+**Key Findings:**
+- Using actual estimates, spreads **decrease dramatically**
+- Forward Operating: +1.99%p (backtesting: +20.68%p, approximately 90% decrease)
+- Mixed Operating: -0.16%p (negative, reversal phenomenon)
+- TTM Operating: +0.02%p (nearly meaningless)
+
+---
+
+## 6. Key Discovery: Backtesting vs Real-world Environment
+
+### 6.1 Correlation Comparison
+
+**Table 6-1: Backtesting vs Real-world Correlation Comparison (Forward Operating, 4Q basis)**
+
+| Environment | Correlation | Sample Size | Data Period |
+|-------------|------------|-------------|-------------|
+| **Backtesting (Actuals)** | **-0.623** | 9,003 | 1988-2025 (37 years) |
+| **Real-world (Estimates)** | **-0.132** | 20,177 | 2016-2025 (8 years) |
+| **Difference** | **-0.491** | - | - |
+| **Decrease Rate** | **Approximately 79% decrease** | - | - |
+
+**Table 6-2: Backtesting vs Real-world Correlation Comparison (All P/E Types, 4Q basis)**
+
+| P/E Type | Backtesting | Real-world | Difference | Decrease Rate |
+|---------|------------|------------|-----------|---------------|
+| **Forward Operating** | -0.623 | -0.132 | -0.491 | 79% |
+| **Mixed Operating** | -0.532 | -0.086 | -0.446 | 84% |
+| **TTM Operating** | -0.234 | -0.087 | -0.147 | 63% |
+
+**Key Findings:**
+- All P/E types show **dramatic correlation decrease** in real-world environment
+- Forward Operating shows largest decrease rate but still highest absolute value
+- In real-world environment, relationship between P/E and future returns becomes nearly meaningless
+
+### 6.2 Spread Comparison
+
+**Table 6-3: Backtesting vs Real-world Spread Comparison (Bottom 25% - Top 25%, 4Q basis)**
+
+| P/E Type | Backtesting | Real-world | Difference | Decrease Rate |
+|---------|------------|------------|-----------|---------------|
+| **Forward Operating** | +20.68%p | +1.99%p | -18.69%p | 90% |
+| **Mixed Operating** | +15.84%p | -0.16%p | -16.00%p | 101% (reversal) |
+| **TTM Operating** | +4.16%p | +0.02%p | -4.14%p | 100% |
+
+**Key Findings:**
+- Spreads **decrease by 90-100%**
+- Mixed Operating and TTM Operating turn negative, showing **reverse effects**
+- Forward Operating remains positive but decreases by 90% compared to backtesting
+
+### 6.3 Analysis of Predictive Power Differences
+
+#### 6.3.1 Impact of Estimate Errors
+
+Backtesting uses already-realized actuals, assuming "perfect prediction," but in real-world environment:
+
+1. **Estimate errors affect P/E calculation**
+   - If estimates are inaccurate, P/E calculation becomes inaccurate
+   - Inaccurate P/E distorts relationship with future returns
+
+2. **Larger estimate errors → greater distortion**
+   - If estimates are higher than actual, P/E calculated lower
+   - If estimates are lower than actual, P/E calculated higher
+   - This distortion weakens predictive power
+
+3. **Result: P/E-based predictive power decreases dramatically**
+   - Correlation: -0.623 → -0.132 (79% decrease)
+   - Spread: +20.68%p → +1.99%p (90% decrease)
+
+#### 6.3.2 Limitations of Backtesting
+
+Backtesting has the following limitations:
+
+1. **"Perfect prediction" assumption**
+   - Uses already-realized actuals
+   - Impossible in actual investment environment
+
+2. **Overly optimistic results**
+   - Does not consider estimate errors
+   - Shows higher predictive power than reality
+
+3. **Difficulty in practical application**
+   - Strategies showing good performance in backtesting may differ in real-world environment
+
+### 6.4 What This Means
+
+#### 6.4.1 Risks of Simple P/E-based Judgment
+
+Results using actual estimates have the following implications:
+
+**❌ Approaches to Avoid:**
+- "P/E of 25 means overvalued, so sell"
+- "P/E of 15 means undervalued, so buy"
+- Making investment decisions based solely on P/E numbers
+
+**✅ Recommended Approaches:**
+- P/E is only a reference indicator, not an absolute judgment criterion
+- Consider estimate accuracy and reliability together
+- Judge comprehensively with other indicators (company growth, industry trends, macro environment, etc.)
+- High P/E does not necessarily mean risky, and low P/E does not necessarily mean opportunity
+
+#### 6.4.2 Recognizing Limitations of Backtesting Results
+
+This research provides the following important lessons:
+
+1. **Do not blindly trust backtesting results**
+   - Strategies showing good performance in backtesting may differ in real-world environment
+   - Backtesting that does not consider estimate errors may show overly optimistic results
+
+2. **Importance of multi-faceted analysis**
+   - Do not rely solely on a single indicator (P/E), but consider various indicators and information comprehensively
+   - Evaluate estimate accuracy and reliability together
+
+3. **Re-examination of investment philosophy**
+   - Limitations of simple dichotomous thinking of "overvalued/undervalued"
+   - Markets are complex, and a single indicator cannot explain everything
+
+---
+
+## 7. Research Limitations and Implications
+
+### 7.1 Limitations of Backtesting
+
+#### 7.1.1 Limitations of Backtesting Data: Actuals vs Estimates
+
+**Core Problem:**
+
+This research was based on **backtesting using past actuals (Actuals)**. While this was a necessary methodological approach, it contains a fundamental limitation: **in actual investment environments, future estimates (Estimates) must be used**.
+
+**Backtesting Results (Actuals-based):**
+- Forward Operating P/E vs 4Q forward return correlation: **-0.623** (37-year data, 9,003 daily samples)
+- Bottom 25% vs Top 25% spread: **+20.68%p** (37-year basis)
+- P/E < 21 range average return: **+16.03%**
+- P/E ≥ 21 range average return: **-4.65%** (loss)
+
+**Real-world Estimates-based Analysis Results (2016-2025, 8 years):**
+- Forward Operating P/E vs 4Q forward return correlation: **-0.132** (20,177 daily samples)
+- Bottom 25% vs Top 25% spread: **+1.99%p** (4Q basis)
+- Mixed Operating P/E spread: **-0.16%p** (negative, reversal phenomenon)
+- TTM Operating P/E spread: **+0.02%p** (nearly meaningless)
+
+**Conclusion:**
+
+Using actual estimates, the strong negative correlation (-0.623) and large spread (+20.68%p) found in backtesting **decrease to nearly meaningless levels** in actual investment environments. Specifically:
+
+1. **Correlation decrease:** -0.623 → -0.132 (approximately 79% decrease)
+2. **Spread decrease:** +20.68%p → +1.99%p (approximately 90% decrease)
+3. **Loss of predictive power:** Mixed Operating and TTM Operating show spreads turning negative, causing reverse effects
+
+This is because **estimate errors** affect P/E calculation, distorting the relationship between P/E and future returns. Backtesting uses already-realized actuals, assuming "perfect prediction," but in real-world environments, estimate uncertainty significantly weakens predictive power.
+
+#### 7.1.2 Sample Size
 
 **Comparison Summary:**
 
@@ -842,407 +1097,74 @@ Example:
    - Forward Operating superior performance (both methods agree)
    - Trailing P/E useless (both methods agree)
 
----
+### 7.2 Implications for Real-world Investment Environment
 
-## 5. Deep Analysis: Why Does Forward P/E Work?
+#### 7.2.1 Estimate Accuracy Dependency
 
-### 5.1 Traditional Explanation: Valuation Mean Reversion
+The "superior predictive power of Forward Operating P/E" and "P/E ≈ 21 threshold" presented in this research are **valid only in backtesting environments**, and have the following limitations in actual investment:
 
-Traditionally explained as "high P/E reverts to mean, thus lower returns."
+1. **Estimate accuracy dependency:** Predictive power increases with estimate accuracy, but decreases dramatically with large estimate errors
+2. **Difficulty in practical application:** Strong signals found in backtesting decrease to nearly meaningless levels in real-world environments
+3. **Limitation of differentiation:** The "superiority of Forward Operating" emphasized in this research is valid only in actuals environments, and shows little difference from Mixed Operating and TTM Operating in estimates environments
 
-However, this explanation has a problem:
-- **If truly mean reversion, Trailing P/E should also work**
-- But Trailing P/E has zero predictive power (r = +0.07)
+#### 7.2.2 Model Limitations
 
-### 5.2 Our Explanation: Consensus Forecast Realization
+**Prediction Accuracy Limitations:**
+- Even in backtesting, accuracy is only 61-63% (37-39% error rate)
+- Expected to be even lower in real-world environments
 
-**Forward P/E's negative correlation is not true "mean reversion" but "consensus EPS forecast realization."**
-
-#### 5.2.1 Mechanism
-
-1. Forward P/E incorporates analyst EPS forecasts
-2. High P/E = Price high relative to expected EPS = growth expectations already priced in
-3. 3-4 quarters later, when forecasts materialize, prices adjust or stagnate
-4. Thus lower returns result
-
-**Evidence:**
-- Trailing P/E (past EPS): No predictive power
-- Forward P/E (includes future EPS forecasts): Strong predictive power
-
-**Difference = Informational value of analyst forecasts**
-
-#### 5.2.2 Why Forward Operating Strongest?
-
-**Table 4: Operating EPS Variable Definitions**
-
-| Variable | Composition | Forward-Looking | Estimate Component |
-|----------|-------------|----------------|-------------------|
-| **TTM Operating** | Q(-3)+Q(-2)+Q(-1)+Q(0) | None | 0% |
-| **Mixed Operating** | Q(0)+Q'(1)+Q'(2)+Q'(3) | Moderate | 75% (3Q) |
-| **Forward Operating** | Q'(1)+Q'(2)+Q'(3)+Q'(4) | **Maximum** | **100% (4Q)** |
-
-Forward Operating is **purely forward-looking**, thus:
-- Best alignment with market's forward-looking nature
-- Strongest reflection of analyst consensus
-- Highest predictive power
-
-### 5.3 Asymmetric Prediction Accuracy
-
-**Table 5: Forward Operating Prediction Accuracy Comparison (3Q, Median 11.33% Threshold)**
-
-| P/E State | Correct Prediction | Accuracy |
-|-----------|-------------------|----------|
-| High P/E (Z>0) | Below-median returns occur | 38/57 = **66.7%** |
-| Low P/E (Z<0) | Above-median returns occur | 54/88 = **61.4%** |
-
-**Finding:** Accuracy is higher when P/E is high (66.7% vs 61.4%)
-
-**Interpretation:**
-- High P/E → Predicts "below-average returns" with 66.7% probability
-- Low P/E → Predicts "above-average returns" with 61.4% probability
-- Difference exists, but both exceed 60% (meaningful level)
-
-**Practical Implications:**
-- High P/E periods' risks are more clearly identified
-- "When NOT to buy" signal is more reliable
-
----
-
-## 6. P/E Quartile-Based Investment Strategy
-
-### 6.1 Historical P/E Distribution: 37-Year vs 10-Year
-
-#### 6.1.1 37-Year Baseline (1988-2025) - Daily Data
-
-**Table 6: Forward P/E (M) Historical Distribution - 37 Years (Daily 9,003)**
-
-| Statistic | Value | Interpretation |
-|-----------|-------|----------------|
-| Minimum | 7.89 | Historical low (2008 Financial Crisis) |
-| 10th percentile | 13.09 | Bottom 10% (Ultra-Aggressive Buy Zone) |
-| 25th percentile | 14.67 | Bottom 25% (Aggressive Buy Zone) |
-| Median (50th) | 17.25 | Middle (Cautious Buy Zone) |
-| Mean | 17.71 | - |
-| **75th percentile** | **20.84** | **Top 25% (Threshold!)** |
-| 90th percentile | 23.04 | Top 10% (Danger Zone) |
-| Maximum | 27.66 | Historical high (2020-2021 Bubble) |
-
-**Note:** Daily 9,003 samples provide **60x increase** vs quarterly 148, significantly enhanced statistical confidence
-
-#### 6.1.2 10-Year Baseline (2015-2025): "New Normal"
-
-**Table 7: Forward P/E (M) Historical Distribution - 10yr vs 37yr Comparison (Daily Data)**
-
-| Statistic | 30-Year Basis<br>(9,003) | 10-Year Basis<br>(2,452) | Difference<br>(10y-30y) | % Change |
-|-----------|--------------|---------------------------|---------------------|----------|
-| 10th percentile | 13.09 | 16.84 | +3.75 | +28.7% |
-| 25th percentile | 14.67 | 17.66 | +2.99 | +20.4% |
-| Median (50th) | 17.25 | 18.92 | +1.67 | +9.7% |
-| Mean | 17.71 | 19.16 | +1.45 | +8.2% |
-| **75th percentile** | **20.84** | **21.24** | **+0.40** | **+1.9%** |
-| 90th percentile | 23.04 | 22.20 | -0.84 | -3.6% |
-
-**Key Findings: "New Normal" Evidence (Reconfirmed with 9,003 Daily Samples)**
-
-1. **Undervaluation bar raised:** 25th percentile rose from 14.7 → 17.7 (~3pt increase)
-2. **Median elevated:** 17.3 → 18.9 (~1.7pt increase)
-3. **Threshold stable:** 75th percentile 20.8 → 21.2 (modest +0.4pt, 1.9%)
-4. **Ceiling lowered:** 90th percentile actually declined (23.0 → 22.2)
-
-**Causes:**
-- Post-2015 low interest rate environment
-- Quantitative easing policies
-- Long-term bond yields declined → equity discount rates declined → P/E elevated
-
-### 6.2 Average Returns and Win Rates by Zone
-
-#### 6.2.1 37-Year Baseline - Daily Data
-
-**Table 8: Average 1-Year Returns & Win Rates by P/E Zone (37 Years, Daily 9,003)**
-
-*Note: Zones split by P/E percentiles, each percentile range contains equal proportion of samples*
-
-| P/E Range | Avg Return | Win Rate | Samples | Percentile<br>(Proportion) | Assessment |
-|-----------|-----------|----------|---------|------------|------------|
-| < 13.1 | **+19.65%** | **97.6%** | 901 | 0-10%<br>(10%) | Ultra-Aggressive Buy |
-| 13.1 - 14.7 | **+14.40%** | **95.0%** | 1,350 | 10-25%<br>(15%) | Aggressive Buy |
-| 14.7 - 17.2 | **+14.49%** | **93.4%** | 2,250 | 25-50%<br>(25%) | Cautious Buy |
-| 17.2 - 20.8 | +12.84% | 88.7% | 2,251 | 50-75%<br>(25%) | Border Zone |
-| **≥ 20.8** | **-4.65%** | **40.4%** | 2,251 | **75-100%**<br>**(25%)** | **Danger (Threshold!)** |
-
-**Sample size explanation:** Percentile-based split means 25-50%, 50-75%, 75-100% zones each contain 25% of total → ~2,250 samples each
-
-**Key Statistics:**
-- **Return spread:** Lowest vs Highest = **24.3pp**
-- **Win rate spread:** Lowest vs Highest = **57.2pp** (97.6% → 40.4%)
-- **Threshold 20.8:** Both returns and win rates deteriorate sharply beyond this level
-
-#### 6.2.2 10-Year Baseline (2015-2025) - "New Normal" Validation
-
-**Table 9: Average 1-Year Returns by P/E Zone (10 Years, Daily 2,452)**
-
-*Note: Zones split by P/E percentiles*
-
-| P/E Range | Avg Return | Win Rate | Samples | Percentile<br>(Proportion) | Assessment |
-|-----------|-----------|----------|---------|------------|------------|
-| < 16.8 | **+19.11%** | **95.9%** | 245 | 0-10%<br>(10%) | Ultra-Aggressive Buy |
-| 16.8 - 17.7 | **+16.60%** | **94.3%** | 368 | 10-25%<br>(15%) | Aggressive Buy |
-| 17.7 - 18.9 | +14.84% | 91.5% | 613 | 25-50%<br>(25%) | Cautious Buy |
-| 18.9 - 21.2 | +10.43% | 87.6% | 613 | 50-75%<br>(25%) | Border Zone |
-| **≥ 21.2** | **+2.44%** | **60.0%** | 613 | **75-100%**<br>**(25%)** | **Danger (10yr Threshold)** |
-
-**Sample size explanation:** Percentile-based split means 25-50%, 50-75%, 75-100% zones each contain 25% of total → ~613 samples each (2,452 × 25% ≈ 613)
-
-**10-Year Characteristics:**
-- **Threshold elevated:** 20.8 → 21.2 (+0.4pt)
-- **Win rate improved:** 40.4% → 60.0% (slightly better than coin flip 50%)
-- **Return improved:** -4.65% → +2.44% (loss → minimal return)
-- **Sufficient samples:** 245~613 per zone, statistical significance secured
-
-### 6.3 Critical Discovery: P/E ≈ 21, The Decisive Threshold
-
-**Important Finding (Validated with 9,003 Daily Data):**
-
-Both 30-year and 10-year data demonstrate that **P/E ≈ 21 (precisely 20.8-21.2) serves as the decisive watershed for returns and win rates**:
-
-**37-Year Basis (Daily 9,003):**
-- **P/E < 20.8:** Average return +14~20%, Win rate 88~98%
-- **P/E ≥ 20.8:** Average return **-4.65%**, Win rate **40.4%**
-- **Gap:** Return -24.3pp, Win rate -57.2pp
-
-**10-Year Basis (Daily 2,452):**
-- **P/E < 21.2:** Average return +15~19%, Win rate 88~96%
-- **P/E ≥ 21.2:** Average return +2.44%, Win rate 60.0%
-- **Gap:** Return -17pp, Win rate -35pp
-
-**Destructive Power of the Threshold:**
-
-**All indicators deteriorate sharply beyond P/E ≈ 21:**
-- **Returns:** +14~20% → -4.7% to +2.4% (average -17~24pp decline)
-- **Win rates:** 93~98% → 40~60% (average -35~57pp decline)
-- **Time effect (High P/E zone):** Win rate declines over time (50% after 1Q → 40% after 4Q)
-
-**Decisive Evidence: 100-Investment Simulation**
-- P/E < 20.8: **93 wins, 7 losses**
-- P/E ≥ 20.8: **40 wins, 60 losses**
-- **Current P/E 22.72 exceeds threshold by 1.9pt → 60% loss probability zone**
-
-**Significance of This Discovery:**
-1. **Timeless threshold discovered:** 
-   - 37 years (1988-2025): P/E 20.8
-   - 10 years (2015-2025, New Normal): P/E 21.2
-   - **Converges to ~21** - consistent from high-rate to low-rate era
-2. **Absolute standard:** Not relative assessment, but specific values (20.8-21.2)
-3. **Critical importance of zone selection:** 
-   - Average across all P/E ranges: Win rate 61-63% (marginal edge)
-   - **Select only P/E < 21 zone:** Win rate 88~98% (overwhelming edge)
-   - → **+25~35pp improvement through zone selection**
-4. **Large-scale validation:** 9,003 daily samples, 60x increase vs quarterly (148), statistical confidence secured
-5. **New Normal validation:** Threshold ~21 remains valid despite structural changes (low rates, QE)
-6. **Current market diagnosis:** P/E 22.72 clearly exceeds threshold, in loss risk zone
-7. **Practical timing:** Provides timeless, objective action guideline "Wait below P/E 21"
-
-
-### 6.3.1 Why Only Forward Operating Shows Clear ~21 Threshold?
-
-We validated whether other Operating P/E definitions also exhibit the same threshold using daily data:
-
-**Table 11-1: Daily Data - Threshold (75%) Return Comparison Across 3 Operating P/E Definitions (37-Year, 9,003 samples)**
-
-| Variable | Composition | Correlation<br>(4Q) | < 75%<br>Avg Return | ≥ 75%<br>Avg Return | Spread | 75% Threshold | Samples |
-|----------|-------------|-------------------|-------------------|-------------------|--------|---------------|---------|
-| **Forward Operating** | Q'(1)+Q'(2)+Q'(3)+Q'(4) | **-0.623** | **+16.03%** | **-4.65%** | **+20.68%p** | **20.8** | 9,003 🏆 |
-| **Mixed Operating** | Q(0)+Q'(1)+Q'(2)+Q'(3) | -0.532 | +15.33% | -0.51% | +15.84%p | 21.1 | 9,003 |
-| **TTM Operating** | Q(-3)+Q(-2)+Q(-1)+Q(0) | -0.234 | +13.28% | +9.12% | +4.16%p | 18.9 | 9,003 |
-
-**Table 11-2: Daily Data - Threshold (75%) Return Comparison Across 3 Operating P/E Definitions (10-Year, 2,452 samples)**
-
-| Variable | Composition | < 75%<br>Avg Return | ≥ 75%<br>Avg Return | Spread | 75% Threshold | Samples |
-|----------|-------------|-------------------|-------------------|--------|---------------|---------|
-| **Forward Operating** | Q'(1)+Q'(2)+Q'(3)+Q'(4) | **+17.12%** | **+2.44%** | **+14.68%p** | **21.2** | 2,452 🏆 |
-| **Mixed Operating** | Q(0)+Q'(1)+Q'(2)+Q'(3) | +16.44% | +6.87% | +9.57%p | 21.8 | 2,452 |
-| **TTM Operating** | Q(-3)+Q(-2)+Q(-1)+Q(0) | +14.33% | +12.01% | +2.32%p | 20.3 | 2,452 |
-
-*Note: TTM As Reported shows spread of +0.05%p level in both 37yr/10yr, zero predictive power, thus excluded*
-
-**Key Findings (30-Year vs 10-Year Comparison):**
-
-**1. Forward Operating's Overwhelming Superiority (Consistent across both periods):**
-- **37yr: Threshold 20.8, Spread +20.68%p, Loss -4.65%**
-- **10yr: Threshold 21.2, Spread +14.68%p, Low return +2.44%**
-- Both periods provide clearest breakpoint
-
-**2. Mixed Operating (Moderate performance):**
-- 37yr: Spread +15.84%p (2nd place)
-- 10yr: Spread +9.57%p (2nd place)
-- Minimal loss even above threshold
-
-**3. TTM Operating (Very weak):**
-- 37yr: Spread +4.16%p
-- 10yr: Spread +2.32%p
-- Almost no predictive power
-
-**Why Only Forward Operating is Clear?**
-- **Purely forward-looking (Next 4Q only)**
-  - 37yr: Above threshold → **Loss -4.65%** (clear warning)
-  - 10yr: Above threshold → **+2.44%** (extreme low return)
-  - Spread **+20.68%p (37yr), +14.68%p (10yr)** - Overwhelmingly maximum
-  
-- Mixed Operating includes current quarter:
-  - Spread weaker (+9~16%p)
-  - Less dramatic signal
-
-- TTM Operating only historical results:
-  - Spread very weak (+2~4%p)
-
-**Practical Implications:**
-- **"Threshold 20.8~21.2" rule applies ONLY to Forward Operating**
-- **37yr (20.8) and 10yr (21.2) average = 21, can be simplified**
-- Forward Operating is only one providing practical timing signal
-
-### 6.4 Practical Investment Strategy
-
-#### 6.4.1 Signal Framework (Daily Data-Based)
-
-**Table 10: Forward Operating P/E Trading Signals (Daily 9,003 samples, 30-year validation)**
-
-| P/E Range | Percentile | Avg Return | Win Rate (4Q) | Samples | Signal | Allocation |
-|-----------|------------|------------|---------------|---------|--------|------------|
-| **< 13.1** | < 10% | **+19.65%** | **97.6%** | 901 | 🟢🟢 Ultra Buy | 120%+ (Leverage) |
-| **13.1 - 14.7** | 10-25% | **+14.40%** | **95.0%** | 1,350 | 🟢 Strong Buy | 100% (Full) |
-| **14.7 - 17.2** | 25-50% | +14.49% | 93.4% | 2,250 | 🟢 Buy | 80-100% (Add) |
-| **17.2 - 20.8** | 50-75% | +12.84% | 88.7% | 2,251 | 🟡 Neutral | 50-70% (Hold) |
-| **≥ 20.8** | ≥ 75% | **-4.65%** | **40.4%** | 2,251 | 🔴 Danger | 20-40% (Reduce) |
-
-**Signal Interpretation (Based on actual analysis results):**
-- 🟢🟢 Ultra Buy (< 10%): **98 wins out of 100**, average +19.65%
-- 🟢 Strong Buy (10-25%): **95 wins out of 100**, average +14.40%
-- 🟢 Buy (25-50%): **93 wins out of 100**, average +14.49%
-- 🟡 Neutral (50-75%): **89 wins out of 100**, average +12.84%
-- 🔴 Danger (≥ 75%): **40 wins, 60 losses out of 100**, average -4.65%
-
-**Current Market (P/E 22.72):**
-- Position: Danger Zone (top 25%, exceeds threshold 20.8)
-- Expected: Loss -4.65%, win rate 40.4% (worse than dice)
-
-#### 6.4.2 Current Market Assessment (As of November 2025)
-
-**Current Forward Operating P/E [Q'(1)+Q'(2)+Q'(3)+Q'(4)]: 22.72**
-
-**Why Use 10-Year Baseline?**
-- 37yr vs 10yr threshold difference: 20.8 vs 21.2 (0.4pt)
-- Spread: +20.68%p vs +14.68%p (consistent gap pattern)
-- **Core pattern identical:** Returns plunge beyond threshold
-- **Reflects recent environment:** Low-rate, new normal era → 10yr more realistic
-- **Conservative approach:** 37yr applicable but 10yr better suits current market
-
-**Assessment (Using 10-year baseline, 2,452 daily samples):**
-
-- **Zone:** 🔴 Danger Zone (top 25%, exceeds threshold 21.2)
-- **Above threshold:** +1.5pt (+7.1% premium)
-- **Expected return:** +2.44% (10yr baseline, extremely low)
-- **Win rate:** 60.0% (10yr baseline)
-- **Comparison (37yr baseline):** -4.65%, 40.4% (more pessimistic)
-
-**Risk Diagnosis:**
-- Current P/E exceeds threshold (21.2, 10yr) by 1.5pt
-- **By 37yr standard (20.8): +1.9pt excess → loss zone**
-- **By 10yr standard (21.2): Extremely low return +2.44% zone**
-- Both baselines signal high risk/low return
-
-**Investment Opportunity Analysis (Based on Table 10 actual data):**
-
-| Target P/E | Percentile | vs Current | Expected Return | Win Rate | Assessment |
-|------------|------------|------------|-----------------|----------|------------|
-| **< 13.1** | < 10% | -42% | **+19.65%** | **97.6%** | Extreme opportunity (very rare) |
-| **< 14.7** | < 25% | -35% | **+14.40%** | **95.0%** | Best opportunity |
-| **< 17.2** | < 50% | -24% | **+14.49%** | **93.4%** | Excellent opportunity |
-| **< 20.8** | < 75% | -8% | +12.84%+ | 88.7%+ | Threshold (neutral→buy transition)
-
----
-
-## 7. Research Limitations and Future Directions
-
-### 7.1 Data Limitations
-
-#### 7.1.1 Sample Size (Resolved!)
-
-**Quarterly Analysis Limitations (Initial Study):**
-- 37 years = 148 quarters, 10 years = 40 quarters
-- Some ranges (extremes) have n < 10, limiting statistical power
-- Particularly 10-year data's extreme ranges have only n = 4-6 observations
-
-**Resolved with Daily Data:**
-- ✅ **37 years = 9,003 samples (60x increase)**
-- ✅ **10 years = 2,452 samples (61x increase)**
-- ✅ **Each zone has 245~2,251 samples secured**
-- ✅ **Statistical power issue completely resolved**
-- **Result: Quarterly and daily results align, significantly enhanced reliability**
-
-#### 7.1.2 Survivorship Bias
-
-- S&P 500 composition changes over time
-- Failed companies exit, potentially overstating returns
-- However, impact limited as P/E signals are relative comparisons
-
-### 7.2 Model Limitations
-
-#### 7.2.1 Prediction Accuracy Limitations
-
-**Prediction Accuracy (Quarterly 148, Median-Based):**
-- Forward Operating: **61-63% accuracy** (average 61.2%, peak 63.4% at 3Q)
-- Meaning: "High P/E → below-median return" prediction is correct 61% of the time
-- **Limitation: Still 37-39% incorrect**
-
-**Win Rates (Daily 9,003, By P/E Zone):**
-- **P/E < 13.1:** 97.6% win rate (98 wins out of 100)
-- **P/E 13.1-17.2:** 93~95% win rate (nearly certain profit)
-- **P/E 17.2-20.8:** 88.7% win rate (still high)
-- **P/E ≥ 20.8:** **40.4% win rate (60 losses out of 100!)**
-
-**Difference: Accuracy 61% vs Win Rate 40~98%:**
-- **Accuracy:** Overall sample average (zone-independent)
-- **Win rate:** Zone-specific detailed analysis (dramatic variation by zone)
-- Both meaningful, but **win rate more practical**
-
-**Limitations:**
-- Individual timing involves uncertainty
-- Even P/E ≥ 20.8 has 40% profit chance (40 out of 100)
-- Not an absolute timing tool but a **probabilistic edge tool**
-- **However, P/E < 20.8 provides very strong edge with 93% win rate**
-
-#### 7.2.2 Black Swan Events
-
-- 2008 Financial Crisis, 2020 COVID-19: extreme events unpredictable by model
+**Black Swan Events:**
+- Extreme events like 2008 Financial Crisis, 2020 COVID-19 cannot be captured by models
 - During such periods, P/E may become meaningless (EPS drops sharply)
 
-#### 7.2.3 Structural Changes
-
+**Structural Changes:**
 - Future may differ from past
 - AI revolution, rate normalization could alter P/E structure
-- "This time is different" is dangerous, but possible
 
-### 7.3 Future Research Directions
+### 7.3 Risks of Simple P/E-based Judgment
 
-#### 7.3.1 Sector-Level Analysis
+#### 7.3.1 Academic Significance of This Research
 
-- P/E predictive power may vary by sector
-- Tech vs Financials vs Energy, etc.
+This research makes the following academic contributions:
 
-#### 7.3.2 Macro Variable Integration
+1. **Empirically demonstrates differences between backtesting and real-world investment environments**
+   - Proves that strong signals found in backtesting may weaken in real-world environments
+   - Quantifies the impact of estimate errors on predictive model performance
 
-- Incorporate interest rates, inflation, GDP growth
-- Conditional P/E models: "Does P/E meaning change with high rates?"
-- Ultra-low rate era (2009-2017, QE) separate analysis: Current 10yr (2015-2025) mixes rate-hike period, need validation whether threshold changes in pure zero-rate era
+2. **Clearly presents limitations of P/E indicators**
+   - Shows limitations when P/E is used alone
+   - Proves that estimates-based P/E has significantly lower predictive power than actuals-based
 
-#### 7.3.3 International Comparison
+3. **Warns about investment decision-making**
+   - Risks of relying on a single indicator for investment decisions
+   - Emphasizes not to blindly trust backtesting results
 
-- Does framework apply to Korea, Japan, European markets?
-- What about emerging markets?
+#### 7.3.2 Practical Significance of This Research
+
+This research provides the following important lessons for practical investors:
+
+1. **Recognizing limitations of backtesting results**
+   - Strategies showing good performance in backtesting may differ in real-world environments
+   - Backtesting that does not consider estimate errors may show overly optimistic results
+
+2. **Importance of multi-faceted analysis**
+   - Do not rely solely on a single indicator (P/E), but consider various indicators and information comprehensively
+   - Evaluate estimate accuracy and reliability together
+
+3. **Re-examination of investment philosophy**
+   - Limitations of simple dichotomous thinking of "overvalued/undervalued"
+   - Markets are complex, and a single indicator cannot explain everything
+
+### 7.4 Future Research Directions
+
+1. **Estimate accuracy analysis:** Quantify the impact of estimate errors on P/E predictive power
+2. **Estimate correction models:** Explore ways to improve predictive power by correcting systematic errors in estimates
+3. **Real-time validation:** Re-evaluate predictive power through long-term real-world validation using actual estimates
 
 ---
 
-## 8. Conclusion
+
+## 8. Conclusion: The True Significance of This Research
 
 ### 8.1 Research Summary
 
@@ -1253,232 +1175,31 @@ This study compared three Operating Earnings-based P/E definitions using quarter
    - 12-month correlation: -0.620 vs -0.590 (difference 0.03)
    - One-time items distort statistics (especially 2000 Dot-com Bubble, 2008 Financial Crisis, 2020 Pandemic)
 
-2. **Forward Operating [Q'(1)+Q'(2)+Q'(3)+Q'(4)] is superior:**
+2. **Backtesting shows Forward Operating [Q'(1)+Q'(2)+Q'(3)+Q'(4)] is superior:**
    - Quarterly: 63.4% prediction accuracy, Low P/E beats High P/E by 15.31%p
    - Daily: 62.3% prediction accuracy, Low P/E beats High P/E by 14.37%p
    - Consistent superiority confirmed across both methods
 
-3. **TTM Operating (Trailing) is useless:**
-   - Quarterly: 49.8% accuracy (random)
-   - Daily: -0.234 correlation (very weak)
-   - Both methods confirm almost no predictive power
+3. **Real-world estimates environment shows predictive power decreases dramatically:**
+   - Correlation: -0.623 → -0.132 (79% decrease)
+   - Spread: +20.68%p → +1.99%p (90% decrease)
+   - Mixed Operating and TTM Operating show negative spreads (reverse effects)
 
-4. **P/E ≈ 21 as decisive threshold:**
-   - 37yr basis: P/E 20.8 (reconfirmed with 9,003 daily samples)
-   - 10yr basis: P/E 21.2
-   - **Average: P/E ≈ 21 = Decisive watershed for both returns and win rates**
+### 8.2 The True Significance of This Research
 
-5. **All indicators deteriorate sharply beyond threshold:**
-   - **Returns:** P/E < 21 (+14~20%) → P/E ≥ 21 (-4.65%) = -24pp decline
-   - **Win rates:** P/E < 21 (88~98%) → P/E ≥ 21 (40.4%) = -53pp plunge
-   - **100 investments:** P/E < 21 wins 93 times, P/E ≥ 21 loses 60 times
+This research does not prove that **market timing using P/E is possible**, but rather demonstrates **the risks of simple P/E-based judgment**.
 
-6. **Current market in extreme danger zone:**
-   - P/E 22.72 exceeds threshold (20.8) by 1.9pt
-   - Expected return: -4.65% (37yr) / +2.44% (10yr)
-   - **Loss probability: 59.6% (60 losses out of 100)**
+**Key Discovery:**
 
-7. **New normal exists but threshold remains destructive:**
-   - Post-2015 median P/E elevated by 1.7pt (new normal)
-   - Yet threshold only moved 20.8→21.2 (+0.4pt, stable)
-   - **Threshold's destructive power intact (win rate 93%→40%)**
+The finding that P/E ratios showing strong predictive power in backtesting decrease to nearly meaningless levels when using actual estimates in a real-world environment suggests that investors should not rely on a single indicator but take a more cautious and comprehensive approach.
 
-8. **Unsuitable for directional trading, only for position sizing:**
-   - Return variance above threshold: -4.65% (37yr) ~ +2.44% (10yr)
-   - Not guaranteed loss, but "low return or loss" zone
-   - Simple directional strategies (short, put buying) inappropriate
-   - **Recommend only for relative position sizing (buy/hold/reduce)**
+**Important Warning:**
 
-### 8.2 Theoretical Contributions
+The backtesting results of this research are from an **ideal environment using past actuals**. Analysis using actual estimates shows correlations decreasing dramatically from -0.623 to -0.132, and spreads decreasing from +20.68%p to +1.99%p, becoming nearly meaningless.
 
-#### 8.2.1 Limits of Efficient Market Hypothesis
+Therefore, blindly trusting the backtesting results of this research and making investment decisions based on the simple logic that "high P/E means overvalued and risky, low P/E means undervalued opportunity" is dangerous. P/E is only a reference indicator, and estimate accuracy and reliability must be considered together, along with other indicators, for comprehensive judgment.
 
-If markets were fully efficient, P/E should not predict future returns. Our results suggest markets fail **semi-strong form efficiency**.
-
-However, rather than "market inefficiency," this may reflect **behavioral factors and gradual information incorporation:**
-- Investors chase momentum despite knowing valuations
-- Analyst forecasts adjust gradually
-- Market prices alternate between over- and under-reaction
-
-#### 8.2.2 New Perspective on Mean Reversion
-
-This study reinterprets traditional "P/E mean reversion" explanations:
-
-**Traditional Explanation:**
-- "High P/E means valuations themselves revert to historical mean, thus lower returns"
-- If this were true, Trailing P/E (historical earnings) should also have predictive power
-
-**Our Findings:**
-- Trailing P/E: correlation +0.07 (no predictive power)
-- Forward P/E: correlation -0.53 (strong predictive power)
-- **Difference = informational value of future EPS forecasts**
-
-**Reinterpretation:**
-- Forward P/E's negative correlation is not "P/E mean reversion" but rather
-- **"Price re-adjusting to align with Forward EPS consensus"**
-- Analysts forecast 3-4Q ahead EPS → Current high P/E = growth already priced in
-- When forecasts materialize 3-4Q later, no further upside → low returns
-
-**Evidence:**
-- If truly mean reversion: Trailing P/E should work too → Actually doesn't work
-- Only Forward P/E works = future forecast component is key → supports consensus realization mechanism
-
-### 8.3 Practical Implications
-
-#### 8.3.1 Investment Strategy Guide
-
-**Core Principle: P/E ≈ 21, The Critical Threshold**
-
-This research's most practical finding is that **P/E ≈ 21 is the decisive watershed for returns**. Daily analysis of 9,003 data points confirms returns diverge dramatically at this threshold.
-
-**Zone Selection as Game Changer:**
-- **Investing across all P/E ranges:** Win rate 61-63% (marginal edge, not very useful)
-- **Selecting only P/E < 21 zone:** Win rate 88~98% (overwhelming edge, 88-98 wins out of 100)
-- **Improvement effect:** +25~35pp win rate boost - this is the core value of this research
-
-**Ultra-Aggressive Buy Zone (P/E < 13.1):**
-- **Daily validated return: +19.65%** (1-year basis, bottom 10%)
-- **Win probability by period (9,003 samples):**
-  - After 1Q (3mo): 88.3% | After 2Q (6mo): 93.7%
-  - After 3Q (9mo): 93.1% | **After 4Q (12mo): 97.6%**
-- Percentile: Bottom 10% (extreme undervaluation)
-- Historical frequency: Very rare (market panic)
-- Action: Maximum buying opportunity, full position + leverage consideration
-- Examples: 2008 Financial Crisis, March 2020 COVID
-- Interpretation: **98 wins out of 100 after 1 year**, historically highest win rate
-
-**Aggressive Buy Zone (13.1 ≤ P/E < 14.7):**
-- **Daily validated return: +14.40%** (1-year basis, bottom 10-25%)
-- **Win probability by period:**
-  - After 1Q: 72.0% | After 2Q: 76.8% | After 3Q: 86.5% | **After 4Q: 95.0%**
-- Percentile: Bottom 10-25%
-- Action: Aggressive buying, full position recommended
-- Interpretation: **95 wins out of 100 after 1 year**, stable high-return zone
-
-**Cautious Buy Zone (14.7 ≤ P/E < 17.2):**
-- **Daily validated return: +14.49%** (1-year basis, bottom 25-50%)
-- **Win probability by period:**
-  - After 1Q: 76.7% | After 2Q: 88.0% | After 3Q: 90.2% | **After 4Q: 93.4%**
-- Percentile: Bottom 25-50%
-- Action: Add exposure, dollar-cost average
-- **Complete positioning before reaching 20.8**
-- Interpretation: **93 wins out of 100 after 1 year**, still high win rate
-
-**Border Zone (17.2 ≤ P/E < 20.8):**
-- **Daily validated return: +12.84%** (1-year basis, top 25-50%)
-- **Win probability by period:**
-  - After 1Q: 73.5% | After 2Q: 83.0% | After 3Q: 89.7% | **After 4Q: 88.7%**
-- Percentile: 50-75%
-- Action: Hold neutral, exercise caution on new purchases
-- Warning: Approaching threshold of 20.8
-- Interpretation: **89 wins out of 100 after 1 year**, win rate declining
-
-**Danger Zone - Above Threshold (P/E ≥ 20.8):**
-- **Daily validated return: -4.65%** (1-year basis, top 25%)
-- **Win probability by period:**
-  - After 1Q: 49.8% (coin flip) | After 2Q: 41.9%
-  - After 3Q: 42.1% | **After 4Q: 40.4% (worse than coin flip)**
-- **10yr basis: P/E ≥ 21.2 → +2.40%** (minimal return)
-- Percentile: Top 25%+
-- Action: Reduce exposure or sell, build cash
-- **Current market (P/E 22.72) is here → +1.9pt above threshold**
-- Interpretation: **60 losses out of 100 after 1 year**, worse than coin flip
-- **Critical finding: Win rate declines over time! 50% after 1Q → 40% after 4Q**
-
-**Critical Discovery (9,003 Daily Samples, 1-Year Returns):**
-- **P/E < 20.8: Average return +14~20%, Win rate 88~98%** (solid returns + high win rate)
-- **P/E ≥ 20.8: Average return -4.65%, Win rate 40.4%** (loss + worse than coin flip)
-- **Across threshold 20.8:**
-  - Return gap: ~19%p
-  - Win rate gap: ~53%p (93% → 40%)
-- **Out of 100 investments: P/E < 20.8 wins 93 times, P/E ≥ 20.8 loses 60 times!**
-- **Time amplifies the gap: Short-term (after 1Q) P/E ≥ 20.8 still ~50%, but decays to 40% at 1-year**
-
-**Timing Considerations:**
-- Highest accuracy at 2-3Q (6-9 month) forward
-- Unsuitable for short-term (1-month) timing
-- Use for medium-term strategic allocation adjustments
-
-#### 8.3.2 Current Application (November 2025)
-
-**Current Situation Analysis:**
-- **Forward P/E (Next 4Q EPS): 22.72**
-- **Assessment: Danger zone (above threshold 21)**
-- **Above threshold: +1.9pt (+8.7% premium)**
-- **Expected return: -4.5% to +2.4%** (loss or minimal return)
-- **Historical percentile: Top 25% (above 37yr basis 20.8)**
-
-**Detailed Risk Assessment:**
-- 37yr basis P/E > 20.8 → Average **-4.53% loss**
-- 10yr basis P/E > 21.2 → Average **+2.40%** (minimal return)
-- 8.7% above threshold → **Overvaluation premium burden**
-
-**Recommended Actions (Conservative Approach):**
-
-1. **Immediate Action: Reduce Exposure**
-   - Equity allocation: Reduce to 30-40%
-   - Cash allocation: Build to 60-70%
-   - Rationale: Loss or minimal return zone
-
-2. **Defer New Purchases**
-   - Waiting condition: P/E < 20.8 (below threshold)
-   - Target: ~11% decline from current required
-   - Rationale: Return recovery below threshold
-
-3. **1st Buy Timing: P/E < 19.5 (Median)**
-   - Target: ~14% decline from current
-   - Expected return: +13.15%
-   - Action: Begin dollar-cost averaging
-
-4. **2nd Buy Acceleration: P/E < 17.9 (Bottom 25%)**
-   - Target: ~21% decline from current
-   - Expected return: +16.84%
-   - Action: Aggressive buying, expand position
-
-5. **Final Buy: P/E < 16.5 (Bottom 10%)**
-   - Target: ~27% decline from current
-   - Expected return: +17.24%
-   - Action: Full position, leverage consideration
-   - Historical cases: 2008 Financial Crisis, 2020 COVID
-
-**Scenario-Based Responses:**
-
-**Optimistic Scenario (P/E maintains):**
-- Probability: Medium
-- Expected outcome: -4.5% to +2.4%
-- Response: Hold cash, wait for opportunity
-
-**Neutral Scenario (P/E 19-20):**
-- Probability: High
-- Expected outcome: +5~13%
-- Response: Begin gradual buying
-
-**Crisis Scenario (P/E < 17.9):**
-- Probability: Low
-- Expected outcome: +16.84% or higher
-- Response: Maximum buying opportunity
-
-### 8.4 Final Conclusions
-
-**"Which P/E should we use?"**
-
-Answer: **Forward Operating P/E [Q'(1)+Q'(2)+Q'(3)+Q'(4)]** - Superiority confirmed with both quarterly (148) and daily (9,003) data
-
-**"Which EPS standard should we use?"**
-
-Answer: **Operating Earnings (excluding one-time items)** - Superior predictive power vs As Reported across all periods (correlation difference 0.03~0.08)
-
-**"How is current market?"**
-
-Answer: **Strong overvaluation zone, caution required** - P/E 22.72 exceeds threshold (21) by 1.9pt
-
-**"When to buy?"**
-
-Answer: **Wait for P/E < 20.8 (threshold)** - Return inflection point reconfirmed with daily data (9,003 samples)
-
-This research does not claim to offer a perfect crystal ball for complex markets. Rather, it provides **statistically significant edge: 61-63% prediction accuracy (quarterly 148) and Low P/E outperforming High P/E by 14-15%p (quarterly 15.31%p, daily 14.37%p).**
-
-Investing is a probabilistic game. Tilting probabilities even slightly in your favor - that is this research's value.
+**The true value of this research is to demonstrate the differences between backtesting and real-world investment environments and to warn of the risks of relying on a single indicator for investment decisions.**
 
 ---
 
@@ -1491,6 +1212,7 @@ This research is based purely on empirical data analysis and does not directly r
 - **EPS Data:** S&P Global - S&P Dow Jones Indices
   - Source: [S&P 500 EPS Estimates](https://www.spglobal.com/spdji/en/documents/additional-material/sp-500-eps-est.xlsx)
   - Provider: S&P Dow Jones Indices LLC
+- **Estimates Data:** Actual estimates data extracted from FactSet PDFs (2016-2025)
 - **Analysis Period:** December 1988 - September 2025 (37 years, 148 quarters)
 
 **Analysis Tools:**
@@ -1553,6 +1275,11 @@ All analyses in this research were implemented in Python, organized into two gro
 
 1. `create_operating_vs_reported_chart.py`: Generate Figure 1 (37-year full comparison)
 
+### **Real-world Estimates Validation Scripts:**
+
+1. `create_true_daily_pe.py`: Calculate daily P/E based on actual estimates
+2. `recalculate_performance_daily.py`: Performance analysis based on actual estimates
+
 **Reproduction Environment:**
 - Python 3.11+
 - pandas, numpy, matplotlib, yfinance, openpyxl, Pillow, boto3
@@ -1560,6 +1287,7 @@ All analyses in this research were implemented in Python, organized into two gro
 **Data:**
 - Price data: Public (Yahoo Finance)
 - EPS data: Public (S&P Global - [sp-500-eps-est.xlsx](https://www.spglobal.com/spdji/en/documents/additional-material/sp-500-eps-est.xlsx))
+- Estimates data: Extracted from FactSet PDFs
 
 ### Key Code Examples
 
@@ -1604,7 +1332,7 @@ Complete script files are included in the research project directory and availab
 
 **This paper was prepared for academic and educational purposes. Always conduct your own due diligence before making investment decisions.**
 
-**Disclaimer:** Past performance does not guarantee future results. 61-63% prediction accuracy implies 37-39% error rate. Proper risk management and diversification are recommended.
+**Disclaimer:** Past performance does not guarantee future results. Backtesting results may differ from real-world investment environments, and predictive power decreases significantly when using actual estimates in analysis. Proper risk management and diversification are recommended.
 
 ---
 

@@ -86,6 +86,7 @@ charts/
 *.png
 *.jpg
 *.jpeg
+*.pdf
 
 # Exception: Keep README assets
 !readme-assets/*.png
