@@ -27,6 +27,7 @@ Key findings include:
 5. **P/E ≈ 21 as critical threshold:** 37yr basis 20.8, 10yr basis 21.2, reconfirmed with daily data
 6. **Returns drop sharply beyond threshold:** P/E < 21: +13~17%, P/E ≥ 21: -4.5%  (loss)
 7. Current market (P/E 22.72) exceeds threshold by 1.9pt, in loss risk zone
+8. **Trailing-like Operating P/E as market bottom indicator:** Trailing-like Operating [Q(-3)+Q(-2)+Q(-1)+Q(0)] P/E falling below -1.5σ effectively identifies major market bottoms (differs from backtesting's TTM Operating, as Q(0) may be an estimate)
 
 The true significance of this research is to empirically demonstrate that **P/E ratios that showed strong predictive power in backtesting decrease to nearly meaningless levels when using actual estimates in a real-world environment**. This suggests that the simple logic of "high P/E means overvalued and risky, low P/E means undervalued opportunity" may not work in actual investment environments, and warns of the risks of relying on a single indicator for investment decisions, which has both academic and practical significance (see Sections 6 and 7 for details).
 
@@ -64,6 +65,7 @@ The true significance of this research is to empirically demonstrate that **P/E 
 - 5.1 Methodology and Data
 - 5.2 Analysis Results
 - 5.3 Percentile Analysis
+- 5.4 Market Timing Signal Analysis: P/E Sigma Bands and Market Bottoms
 
 ### **6. Key Discovery: Backtesting vs Real-world Environment**
 - 6.1 Correlation Comparison
@@ -924,6 +926,103 @@ Where $nQ$ is the date $n$ quarters later (1Q = 63 days, 4Q = 252 days).
 - Mixed Operating: -0.16%p (negative, reversal phenomenon)
 - TTM Operating: +0.02%p (nearly meaningless)
 
+### 5.4 Market Timing Signal Analysis: P/E Sigma Bands and Market Bottoms
+
+#### 5.4.1 Methodology
+
+Using actual estimates-based daily data, we visualized the time series of three P/E definitions (Mixed Operating [Q(0)+Q'(1)+Q'(2)+Q'(3)], Trailing-like Operating [Q(-3)+Q(-2)+Q(-1)+Q(0)], Forward Operating [Q'(1)+Q'(2)+Q'(3)+Q'(4)]) alongside S&P 500 prices, highlighting periods where each P/E ratio falls outside ±1σ and ±1.5σ ranges based on their respective means and standard deviations.
+
+**Note:** The Trailing-like Operating [Q(-3)+Q(-2)+Q(-1)+Q(0)] used here differs from the TTM Operating used in backtesting. In backtesting, TTM Operating consisted entirely of actuals (Q(-3), Q(-2), Q(-1), Q(0) were all actuals), but in actual estimates-based analysis, Q(0) is the current quarter in progress and may be an estimate. Therefore, it is not completely backward-looking; it is a hybrid of actuals and estimates.
+
+**Analysis Period:** December 2016 - November 2025 (approximately 9 years)
+**Data Points:** Daily trading days (approximately 2,200-2,400 points)
+
+#### 5.4.2 Visual Analysis Results
+
+**Figure 5: S&P 500 Price with All P/E Ratios (Highlighting periods outside ±1σ range)**
+
+![Figure 5: S&P 500 Price with All P/E Ratios (±1σ)](output/sp500_price_with_all_pe_sigma.png)
+
+*Three P/E definitions (Mixed Operating [Q(0)+Q'(1)+Q'(2)+Q'(3)], Trailing-like Operating [Q(-3)+Q(-2)+Q(-1)+Q(0)], Forward Operating [Q'(1)+Q'(2)+Q'(3)+Q'(4)]) displayed in separate subplots. Each subplot shows S&P 500 Price (black line) and the corresponding P/E ratio (color-coded line), with periods where P/E falls outside ±1σ range highlighted in red (upper) and blue (lower) shading.*
+
+**Figure 6: S&P 500 Price with All P/E Ratios (Highlighting periods outside ±1.5σ range)**
+
+![Figure 6: S&P 500 Price with All P/E Ratios (±1.5σ)](output/sp500_price_with_all_pe_sigma_1_5.png)
+
+*Same structure highlighting periods outside ±1.5σ range. More stringent criteria for identifying extreme valuation periods.*
+
+#### 5.4.3 Key Finding: Trailing-like Operating P/E's Market Bottom Identification Capability
+
+**Core Discovery:**
+
+Comparing the three P/E definitions, **Trailing-like Operating [Q(-3)+Q(-2)+Q(-1)+Q(0)] P/E falling below -1.5σ effectively identifies major market bottoms**.
+
+**Observed Patterns:**
+
+1. **Late 2018 - Early 2019 Bottom:**
+   - Trailing-like Operating P/E fell below -1.5σ
+   - Coincided with major S&P 500 price bottom
+
+2. **Early 2020 COVID-19 Bottom:**
+   - Trailing-like Operating P/E fell below -1.5σ
+   - Coincided with market's sharp decline and subsequent rebound point
+
+3. **Mid-2022 Bottom:**
+   - Trailing-like Operating P/E fell below -1.5σ
+   - Coincided with market adjustment bottom due to inflation concerns
+
+**Characteristics of Trailing-like Operating P/E:**
+
+- **Composition:** Q(-3) + Q(-2) + Q(-1) + Q(0) = Past 3 quarters actuals + Current quarter estimate
+- **Difference from Backtesting's TTM Operating:**
+  - Backtesting's TTM Operating: Q(-3), Q(-2), Q(-1), Q(0) were all actuals (completely backward-looking)
+  - Actual estimates-based Trailing-like Operating: Q(-3), Q(-2), Q(-1) are actuals, but Q(0) is the current quarter in progress and may be an estimate
+- **Features:**
+  - Not completely backward-looking; it is a hybrid of actuals and estimates
+  - Relatively less affected by estimate errors compared to estimates-based P/E ratios (since past 3 quarters are actuals)
+- **Advantage:** Primarily reflects past performance while also incorporating current quarter estimates, favorable for capturing market's excessive pessimism
+
+**Comparison with Other P/E Definitions:**
+
+Quantitative analysis (based on MDD local minima in periods where MDD < -8% before next new high) shows that all three P/E definitions demonstrate alignment with MDD bottoms, but each has different characteristics:
+
+**Table 5-6: P/E -1.5σ Periods and MDD Local Minima Match Rate (±3-day window)**
+
+| P/E Definition | -1.5σ Periods | MDD Minima | Matching Periods | Match Rate |
+|----------------|---------------|------------|------------------|------------|
+| **Mixed Operating** | 28 | 7 | 6 | **21.4%** |
+| **Trailing-like Operating** | 21 | 7 | 7 | **33.3%** |
+| **Forward Operating** | 28 | 7 | 6 | **21.4%** |
+
+- **Mixed Operating [Q(0)+Q'(1)+Q'(2)+Q'(3)]:**
+  - Match rate: 21.4% (6 out of 28 -1.5σ periods match MDD minima)
+  - Composed of current quarter estimate + future 3 quarters estimates, captures bottoms relatively well but has more noise due to more -1.5σ periods
+
+- **Trailing-like Operating [Q(-3)+Q(-2)+Q(-1)+Q(0)]:**
+  - Match rate: **33.3%** (7 out of 21 -1.5σ periods match MDD minima, **best performance**)
+  - Has the fewest -1.5σ periods (21) and **all MDD minima (7) match with -1.5σ periods**
+  - Least noise, most clearly identifies important market bottoms
+  - Higher proportion of past actuals makes it relatively less affected by estimate errors
+
+- **Forward Operating [Q'(1)+Q'(2)+Q'(3)+Q'(4)]:**
+  - Match rate: 21.4% (6 out of 28 -1.5σ periods match MDD minima)
+  - Same match rate as Mixed Operating but has more noise due to more -1.5σ periods
+  - Uses only future 4 quarters estimates, making analysis impossible in some periods due to data availability issues
+
+**Practical Implications:**
+
+Periods where Trailing-like Operating P/E falls below -1.5σ represent extreme market pessimism and historically coincide with major bottoms. This suggests the following practical applications:
+
+1. **Market Bottom Identification:** Consider market bottom possibility when Trailing-like Operating P/E falls below -1.5σ
+2. **Buying Opportunities:** Explore buying opportunities during extreme undervaluation periods
+3. **Risk Management:** Comprehensively evaluate investment opportunities during excessive pessimism periods alongside other indicators
+
+**Caveats:**
+
+- Should not rely on a single indicator but make comprehensive judgments with other indicators
+- Falling below -1.5σ does not always mean immediate rebound
+- Patterns may break during structural market changes or black swan events
+
 ---
 
 ## 6. Key Discovery: Backtesting vs Real-world Environment
@@ -1155,6 +1254,12 @@ This research provides the following important lessons for practical investors:
    - Limitations of simple dichotomous thinking of "overvalued/undervalued"
    - Markets are complex, and a single indicator cannot explain everything
 
+4. **Exception: Trailing-like Operating P/E as market bottom indicator**
+   - Despite overall limitations, Trailing-like Operating [Q(-3)+Q(-2)+Q(-1)+Q(0)] P/E falling below -1.5σ effectively identifies market bottoms
+   - Trailing-like Operating is a hybrid of past 3 quarters actuals and current quarter estimate, not completely backward-looking while being relatively less affected by estimate errors compared to estimates-based P/E (differs from backtesting's TTM Operating)
+   - Useful as a reference indicator for capturing extreme market pessimism periods
+   - However, should not rely on a single indicator but make comprehensive judgments with other indicators
+
 ### 7.4 Future Research Directions
 
 1. **Estimate accuracy analysis:** Quantify the impact of estimate errors on P/E predictive power
@@ -1185,6 +1290,11 @@ This study compared three Operating Earnings-based P/E definitions using quarter
    - Spread: +20.68%p → +1.99%p (90% decrease)
    - Mixed Operating and TTM Operating show negative spreads (reverse effects)
 
+4. **Trailing-like Operating P/E shows potential as market bottom indicator:**
+   - When Trailing-like Operating [Q(-3)+Q(-2)+Q(-1)+Q(0)] P/E falls below -1.5σ, it effectively identifies major market bottoms
+   - Trailing-like Operating is a hybrid of past 3 quarters actuals and current quarter estimate, not completely backward-looking while being relatively less affected by estimate errors compared to estimates-based P/E (differs from backtesting's TTM Operating)
+   - Useful as a reference indicator for capturing extreme market pessimism periods
+
 ### 8.2 The True Significance of This Research
 
 This research does not prove that **market timing using P/E is possible**, but rather demonstrates **the risks of simple P/E-based judgment**.
@@ -1198,6 +1308,10 @@ The finding that P/E ratios showing strong predictive power in backtesting decre
 The backtesting results of this research are from an **ideal environment using past actuals**. Analysis using actual estimates shows correlations decreasing dramatically from -0.623 to -0.132, and spreads decreasing from +20.68%p to +1.99%p, becoming nearly meaningless.
 
 Therefore, blindly trusting the backtesting results of this research and making investment decisions based on the simple logic that "high P/E means overvalued and risky, low P/E means undervalued opportunity" is dangerous. P/E is only a reference indicator, and estimate accuracy and reliability must be considered together, along with other indicators, for comprehensive judgment.
+
+**Exception:**
+
+However, one notable exception is **Trailing-like Operating [Q(-3)+Q(-2)+Q(-1)+Q(0)] P/E's ability to identify market bottoms when falling below -1.5σ**. Trailing-like Operating is a hybrid of past 3 quarters actuals and current quarter estimate, not completely backward-looking while being relatively less affected by estimate errors compared to estimates-based P/E (differs from backtesting's TTM Operating). This suggests that despite overall limitations, specific P/E definitions may have specific use cases (market bottom identification). However, this should also not be relied upon as a single indicator but used comprehensively with other indicators.
 
 **The true value of this research is to demonstrate the differences between backtesting and real-world investment environments and to warn of the risks of relying on a single indicator for investment decisions.**
 
@@ -1224,7 +1338,7 @@ This research is based purely on empirical data analysis and does not directly r
 
 ## Appendix A: Chart Descriptions
 
-This paper includes 4 main charts:
+This paper includes 6 main charts:
 
 **Figure 1: Operating vs As Reported Earnings (1988-2025)**
 - 4 panels: Forward 4Q EPS, Forward P/E, EPS difference (M-N), P/E difference (M-N)
@@ -1248,6 +1362,17 @@ This paper includes 4 main charts:
 - P/E vs 1-year return correlation visualization
 - Purpose: Reconfirm strong negative correlation with 9,003 samples
 - Location: Section 4.3.5
+
+**Figure 5: S&P 500 Price with All P/E Ratios (Highlighting periods outside ±1σ range)**
+- 3 subplots: Each displays Mixed Operating [Q(0)+Q'(1)+Q'(2)+Q'(3)], Trailing-like Operating [Q(-3)+Q(-2)+Q(-1)+Q(0)], Forward Operating [Q'(1)+Q'(2)+Q'(3)+Q'(4)] P/E alongside S&P 500 Price
+- Each subplot highlights periods where P/E falls outside ±1σ range in red (upper) and blue (lower) shading
+- Purpose: Visualize time-series patterns of three P/E definitions and their relationship with market prices
+- Location: Section 5.4.2
+
+**Figure 6: S&P 500 Price with All P/E Ratios (Highlighting periods outside ±1.5σ range)**
+- Same structure as Figure 5 highlighting periods outside ±1.5σ range
+- Purpose: Identify extreme valuation periods with more stringent criteria, particularly confirming Trailing-like Operating P/E's market bottom identification capability
+- Location: Section 5.4.2
 
 ---
 
@@ -1279,10 +1404,16 @@ All analyses in this research were implemented in Python, organized into two gro
 
 1. `create_true_daily_pe.py`: Calculate daily P/E based on actual estimates
 2. `recalculate_performance_daily.py`: Performance analysis based on actual estimates
+3. `analyze_pe_flexible.py`: Flexible quarter range P/E calculation (Q[0:4], Q[1:5], Q[-3:1], etc., generates Section 5.4 data)
+
+### **Market Timing Signal Analysis Scripts (Section 5.4.3):**
+
+1. `calculate_pe_mdd_match_rate.py`: Calculate match rate between P/E -1.5σ periods and MDD local minima (±3-day window, generates Table 5-6 data)
+2. `visualize_pe_mdd_alignment.py`: Generate visualization charts for MDD bottoms and P/E -1.5σ periods
 
 **Reproduction Environment:**
 - Python 3.11+
-- pandas, numpy, matplotlib, yfinance, openpyxl, Pillow, boto3
+- pandas, numpy, matplotlib, yfinance, scipy, openpyxl, Pillow, boto3
 
 **Data:**
 - Price data: Public (Yahoo Finance)
