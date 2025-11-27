@@ -24,7 +24,7 @@ class MarketPEAgent(TrendAgent):
             ALL responses MUST be in {REPORT_LANGUAGE}.
             
             ANALYSIS WORKFLOW:
-            1. Call analyze_market_pe('trailing', '1y') and analyze_market_pe('forward', '1y')
+            1. Call analyze_market_pe('trailing', '10y') and analyze_market_pe('forward', '10y')
             2. Analyze trailing and forward both in the table format
             3. Call generate_market_pe_chart('trailing') and generate_market_pe_chart('forward')
             
