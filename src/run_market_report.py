@@ -1,6 +1,7 @@
 """Main entry point for market analysis"""
 
 import asyncio
+import logging
 from datetime import datetime
 from dotenv import load_dotenv
 from agents import trace
@@ -10,6 +11,11 @@ from src.agent.orchestrator.market_report_agent import MarketReportAgent
 from src.adapters.report_builder import upload_report_with_children
 
 load_dotenv(override=True)
+
+# Suppress httpx INFO logs
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpx._client").setLevel(logging.WARNING)
+logging.getLogger("httpx.client").setLevel(logging.WARNING)
 
 
 async def run_market_report():
@@ -36,7 +42,6 @@ async def run_market_report():
             child_pages=child_pages,
             uploaded_map=uploaded_map
         )
-
 
 
 async def main():

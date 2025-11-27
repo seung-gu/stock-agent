@@ -54,7 +54,8 @@ class MarketBreadthAgent(TrendAgent):
             Interpretation:
             - Rising %Above50DMA = Leading signal of market reversal
             - Weakening breadth = Internal exhaustion, early warning of top
-               
+            - This is a leading market indicator to catch top signals (emphasize this)
+        
             TOOL USAGE:
             - fetch_data: fetch data from Investing.com (investing)
             - analyze_market_breadth: analyze market breadth

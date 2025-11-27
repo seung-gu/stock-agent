@@ -105,25 +105,26 @@ src/
 │   │   └── trend_agent.py    # Base class for trend analysis (simplified, tool-agnostic)
 │   │
 │   ├── tools/                 # 🛠️ Modular function tools (v7.2 - HY Spread & VIX)
-│   │   └── agent_tools.py    # 17 independent @function_tool for agents
+│   │   └── agent_tools.py    # 19 independent @function_tool for agents
 │   │                         # • fetch_data
 │   │                         # • analyze_OHLCV, analyze_SMA, analyze_disparity, analyze_RSI
-│   │                         # • analyze_market_breadth, analyze_bull_bear_spread, analyze_put_call
+│   │                         # • analyze_market_breadth, analyze_market_pe, analyze_bull_bear_spread, analyze_put_call
 │   │                         # • analyze_NFCI, analyze_margin_debt, analyze_high_yield_spread, analyze_vix
 │   │                         # • generate_OHLCV_chart, generate_disparity_chart, generate_RSI_chart
-│   │                         # • generate_market_breadth_chart, generate_bull_bear_spread_chart, generate_put_call_chart
+│   │                         # • generate_market_breadth_chart, generate_market_pe_chart, generate_bull_bear_spread_chart, generate_put_call_chart
 │   │                         # • generate_NFCI_chart, generate_margin_debt_chart, generate_high_yield_spread_chart, generate_vix_chart
 │   │                         # • Dynamic overbought/oversold thresholds (80th/10th percentile)
 │   │                         # • Cache-based, complete layer separation
 │   │
 │   ├── trend/                 # 📈 Trend analysis agents
 │   │   ├── __init__.py       # Exports: TNXAgent, NFCIAgent, DXAgent, EquityTrendAgent, MarketBreadthAgent,
-│   │   │                     # BullBearSpreadAgent, PutCallAgent, MarginDebtAgent, HighYieldSpreadAgent, VIXAgent
+│   │   │                     # MarketPEAgent, BullBearSpreadAgent, PutCallAgent, MarginDebtAgent, HighYieldSpreadAgent, VIXAgent
 │   │   ├── tnx_agent.py      # Treasury yield (^TNX) analysis
 │   │   ├── nfci_agent.py     # NFCI (National Financial Conditions Index) analysis
 │   │   ├── dx_agent.py       # Dollar Index (DX=F) analysis
 │   │   ├── equity_trend_agent.py  # Stock price trend analysis
 │   │   ├── market_breadth_agent.py  # S&P 500 market breadth (50-day & 200-day MA)
+│   │   ├── market_pe_agent.py  # S&P 500 Market P/E ratio (trailing & forward via factset_report_analyzer)
 │   │   ├── bull_bear_spread_agent.py  # AAII Bull-Bear Spread (investor sentiment)
 │   │   ├── put_call_agent.py      # CBOE Equity Put/Call Ratio
 │   │   ├── margin_debt_agent.py   # FINRA Margin Debt (YoY %)
@@ -401,6 +402,7 @@ REPORT_LANGUAGE = "Korean"  # or "English"
 - `DXAgent`: Dollar Index (DX=F via yfinance)
 - `EquityTrendAgent`: Stock analysis (NVDA/SPY via yfinance)
 - `MarketBreadthAgent`: S&P 500 breadth (S5FI/S5TH via Investing.com)
+- `MarketPEAgent`: S&P 500 Market P/E ratio (trailing & forward via factset_report_analyzer)
 - `BullBearSpreadAgent`: Investor sentiment (AAII via web scraping)
 - `PutCallAgent`: Options sentiment (CBOE via YCharts)
 - `MarginDebtAgent`: Leverage indicator (FINRA via web scraping)
@@ -473,7 +475,7 @@ get_data_source("finra")      # → FINRASource
 **Chart Layer:**
 - **Price Charts**: `generate_OHLCV_chart` (candlestick/line)
 - **Technical Charts**: `generate_disparity_chart`, `generate_RSI_chart`
-- **Market Indicators**: `generate_market_breadth_chart`, `generate_bull_bear_spread_chart`, `generate_put_call_chart`
+- **Market Indicators**: `generate_market_breadth_chart`, `generate_market_pe_chart`, `generate_bull_bear_spread_chart`, `generate_put_call_chart`
 - **Risk Indicators**: `generate_NFCI_chart`, `generate_margin_debt_chart`, `generate_high_yield_spread_chart`, `generate_vix_chart`
 
 **Unified Charting (`charts.py`):**
@@ -525,6 +527,36 @@ get_data_source("finra")      # → FINRASource
 
 ## Recent Improvements
 
+### v8.1 - Market P/E Ratio Agent (November 27, 2025)
+
+**1. MarketPEAgent Added**
+- **New Agent**: `MarketPEAgent` for S&P 500 Market P/E ratio analysis
+- **Data Source**: Uses `factset_report_analyzer` package for trailing and forward P/E ratios
+- **Features**:
+  - Analyzes both trailing and forward P/E ratios with 10-year historical context
+  - Calculates percentile ranks and provides valuation assessment
+  - Generates time-series charts with sigma highlighting using `plot_time_series`
+  - Score calculation based on average rank of trailing and forward P/E ratios
+- **Tools Added**:
+  - `analyze_market_pe(pe_type, period)`: Analyze P/E ratio data with percentile rankings
+  - `generate_market_pe_chart(pe_type, period)`: Generate P/E ratio charts
+- **Dependencies Added**:
+  - `factset-report-analyzer>=0.4.3`: Package for S&P 500 P/E ratio data and chart generation
+- **Files Added**:
+  - `src/agent/trend/market_pe_agent.py`: Market P/E ratio analysis agent
+- **Files Modified**:
+  - `src/agent/tools/agent_tools.py`: Added analyze_market_pe and generate_market_pe_chart tools
+  - `src/agent/trend/__init__.py`: Added MarketPEAgent export
+  - `src/run_market_report.py`: Added httpx logging suppression
+  - `pyproject.toml`: Added factset-report-analyzer dependency
+
+**Impact:**
+- ✅ Comprehensive market valuation analysis using P/E ratios
+- ✅ Historical percentile-based scoring system
+- ✅ Integration with factset_report_analyzer for reliable data
+
+---
+
 ### v8.0 - Structured Score System (November 11, 2025) 🚀 MAJOR RELEASE
 
 **⚠️ BREAKING CHANGES:**
@@ -570,36 +602,6 @@ get_data_source("finra")      # → FINRASource
 
 ---
 
-### v7.4 - Score System Enhancement & Technical Improvements (November 11, 2025)
-
-**1. Score System Enhancement:**
-- **Score Type Change**: `AnalysisReport.score` changed from `float` to `str`
-  - Single indicator: `'3'`
-  - Multiple indicators: `'RSI(14):4, Disparity(200):3'`
-  - Supports complex agents with multiple scoring components
-
-**2. Score Logic Migration:**
-- Moved score calculation from agent instructions to function tools
-  - `analyze_bull_bear_spread`, `analyze_put_call`, `analyze_vix`, `analyze_high_yield_spread`, `analyze_margin_debt`
-  - Deterministic scoring logic now in code (not LLM)
-  - More accurate and consistent
-
-**3. Technical Indicator Enhancement:**
-- **Disparity Calculation**: Now reuses pre-calculated SMA from `yfinance_source`
-  - Full period disparity charts (1y chart shows full year, not just 3 months)
-  - Added `SMA_50` to yfinance calculations (5, 20, 50, 200)
-
-**4. BroadIndexAgent Composite Score:**
-- S&P 500 indicators (RSI14, Disparity200) + Market Breadth (S5FI, S5TH)
-- 4-indicator composite score calculation
-
-**Impact:**
-- ✅ Flexible score system for complex agents
-- ✅ Accurate score calculation (code-based, not LLM-based)
-- ✅ Full period technical indicator charts
-
----
-
 ## Usage Examples
 
 ### Import Agents
@@ -607,7 +609,7 @@ get_data_source("finra")      # → FINRASource
 ```python
 from src.agent.trend import (
     TNXAgent, NFCIAgent, DXAgent, EquityTrendAgent,
-    MarketBreadthAgent, BullBearSpreadAgent, PutCallAgent,
+    MarketBreadthAgent, MarketPEAgent, BullBearSpreadAgent, PutCallAgent,
     MarginDebtAgent, HighYieldSpreadAgent, VIXAgent
 )
 from src.agent.orchestrator import LiquidityAgent, BroadIndexAgent, MarketReportAgent

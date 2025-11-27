@@ -3,6 +3,7 @@ import asyncio
 from src.agent.base.orchestrator_agent import OrchestratorAgent
 from src.agent.trend.equity_agent import EquityTrendAgent
 from src.agent.trend.market_breadth_agent import MarketBreadthAgent
+from src.agent.trend.market_pe_agent import MarketPEAgent
 from src.config import REPORT_LANGUAGE
 
 
@@ -23,7 +24,8 @@ class BroadIndexAgent(OrchestratorAgent):
         self.add_sub_agent(EquityTrendAgent("^GSPC", label="S&P 500"))\
             .add_sub_agent(EquityTrendAgent("^IXIC", label="Nasdaq Composite"))\
             .add_sub_agent(EquityTrendAgent("^DJI", label="Dow Jones Industrial Average"))\
-            .add_sub_agent(MarketBreadthAgent())
+            .add_sub_agent(MarketBreadthAgent())\
+            .add_sub_agent(MarketPEAgent())
         
         # Create synthesis agent
         self.synthesis_agent = self._create_synthesis_agent(f"""
@@ -55,18 +57,19 @@ class BroadIndexAgent(OrchestratorAgent):
         - Score > 4.5: 🔴 STRONG_SELL (Extreme greed/bubble)
         
         SCORE FIELD:
-        Set AnalysisReport.score = [{{"agent": "BroadIndex", "indicator": "Composite", "value": (average of 4 sub-agent scores)}}]
+        Set AnalysisReport.score = [{{"agent": "BroadIndex", "indicator": "Composite", "value": (average of 5 sub-agent scores)}}]
         
         OUTPUT FORMAT (translate all headings to {REPORT_LANGUAGE}):
         
-        ## Composite Score (S&P 500)
-        Extract 4 scores: S&P 500 (RSI, Disparity) + MarketBreadth (S5FI, S5TH)
+        ## Composite Score (S&P 500 ONLY)
+        Extract 5 scores: S&P 500 (RSI, Disparity) + MarketBreadth (S5FI, S5TH) + P/E Ratio Rank
 
         | Indicator | Score | Interpretation |
         | S&P 500 RSI(14) | X | ... |
         | S&P 500 Disparity(200) | Y | ... |
         | MarketBreadth 50-day MA | A | ... |
         | MarketBreadth 200-day MA | B | ... |
+        | P/E Ratio Rank | C | ... |
         [Summary table with all indicator scores and interpretation with average score at the bottom and signal]
         
         ## 1. [Indicator Name]

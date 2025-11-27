@@ -1,7 +1,14 @@
 import asyncio
+import os
+import pandas as pd
+from datetime import datetime, timedelta
+from pathlib import Path
 from agents import function_tool
+from factset_report_analyzer import SP500
+from factset_report_analyzer.utils.plot import plot_time_series
 
 from src.data_sources import get_data_source
+from src.config import CHART_OUTPUT_DIR
 from src.utils.technical_indicators import calculate_rsi, calculate_disparity
 from src.utils.koyfin_chart_capture import KoyfinChartCapture
 
@@ -589,3 +596,109 @@ async def generate_PE_PEG_ratio_chart(ticker: str, period: str = '10Y') -> str:
         return f"Chart saved: {chart_path}\n\n{formatted_metrics}"
     else:
         return f"Failed to capture P/E and PEG chart for {ticker}. Try with headless=False for better reliability."
+
+
+@function_tool
+async def analyze_market_pe(pe_type: str = 'trailing', period: str = '10y') -> str:
+    """Analyze S&P 500 Market P/E ratio data from factset_report_analyzer.
+    
+    Args:
+        pe_type: Type of P/E ratio - 'trailing' (default) or 'forward'
+        period: Time period for analysis (1mo, 6mo, 1y, 2y, 5y, 10y)
+    
+    Returns:
+        Analysis text with current, start, end, high, low, and percentile information
+    """
+    try:
+        sp500 = SP500()
+        sp500.set_type(pe_type)
+        pe_df = sp500.pe_ratio.sort_values('Date')
+        
+        if pe_df.empty:
+            return f"S&P 500 {pe_type} P/E ratio data not available"
+        
+        # Convert Date column to datetime if needed
+        if not isinstance(pe_df['Date'].iloc[0], pd.Timestamp):
+            pe_df['Date'] = pd.to_datetime(pe_df['Date'])
+        
+        pe_df = pe_df.set_index('Date')
+        pe_series = pe_df['PE_Ratio']
+        
+        # Filter by period
+        period_days = {
+            '1mo': 30, '6mo': 180, '1y': 365, '2y': 730, '5y': 1825, '10y': 3650
+        }.get(period.lower(), 365)
+        
+        cutoff_date = datetime.now() - timedelta(days=period_days)
+        filtered_pe = pe_series[pe_series.index >= cutoff_date]
+        
+        if filtered_pe.empty:
+            filtered_pe = pe_series
+        
+        current_pe = float(filtered_pe.iloc[-1])
+        start_pe = float(filtered_pe.iloc[0])
+        end_pe = float(filtered_pe.iloc[-1])
+        high_pe = float(filtered_pe.max())
+        low_pe = float(filtered_pe.min())
+        change_pct = ((current_pe - start_pe) / start_pe) * 100
+        
+        # Calculate percentile rank
+        current_rank = float(filtered_pe.rank(pct=True).iloc[-1] * 100)
+        
+        # Calculate percentiles for thresholds
+        upper_threshold = float(filtered_pe.quantile(0.80))
+        lower_threshold = float(filtered_pe.quantile(0.20))
+        
+        period_name = {
+            '1mo': '1 Month', '6mo': '6 Months', '1y': '1 Year',
+            '2y': '2 Years', '5y': '5 Years', '10y': '10 Years'
+        }.get(period.lower(), period)
+        
+        return f"""{period_name} S&P 500 {pe_type.capitalize()} P/E Ratio Analysis:
+            - Current: {current_pe:.2f}
+            - Change: {change_pct:+.2f}%
+            - Start: {start_pe:.2f}
+            - End: {end_pe:.2f}
+            - High: {high_pe:.2f}
+            - Low: {low_pe:.2f}
+            - Current Rank: {current_rank:.1f}%
+            - Overvalued threshold (80th percentile): {upper_threshold:.2f}
+            - Undervalued threshold (20th percentile): {lower_threshold:.2f}"""
+    
+    except Exception as e:
+        return f"Error analyzing market P/E ratio: {str(e)}"
+
+
+@function_tool
+async def generate_market_pe_chart(pe_type: str = 'trailing') -> str:
+    """Generate S&P 500 Market P/E ratio chart from factset_report_analyzer.
+    
+    Args:
+        pe_type: Type of P/E ratio - 'trailing' (default) or 'forward'
+    
+    Returns:
+        Chart file path string
+    """
+    try:
+        filepath = os.path.join(CHART_OUTPUT_DIR, f"S&P500_{pe_type}_PE_chart.png")
+
+        # Get SP500 data
+        sp500 = SP500()
+        sp500.set_type(pe_type)
+        pe_df = sp500.pe_ratio.sort_values('Date')
+
+        # Plot single series with sigma highlighting
+        plot_time_series(
+            dates=pe_df['Date'],
+            values=[pe_df['Price'], pe_df['PE_Ratio']],
+            sigma=1.5,  # Highlight periods outside ±1.5σ
+            sigma_index=1, # Apply sigma to P/E ratio (second series)
+            labels=['S&P 500 Price', f'{pe_type.capitalize()} P/E Ratio'],
+            colors=['black', 'green' if pe_type == 'trailing' else 'red'],
+            output_path=filepath
+        )
+        
+        return f"Chart saved: {filepath}"
+    
+    except Exception as e:
+        return f"Error generating market P/E ratio chart: {str(e)}"

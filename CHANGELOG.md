@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## v7.4 - Score System Enhancement & Technical Improvements
+
+**Date: November 11, 2025**
+
+### Major Updates
+
+**1. Score System Enhancement:**
+- **Score Type Change**: `AnalysisReport.score` changed from `float` to `str`
+  - Single indicator: `'3'`
+  - Multiple indicators: `'RSI(14):4, Disparity(200):3'`
+  - Supports complex agents with multiple scoring components
+
+**2. Score Logic Migration:**
+- Moved score calculation from agent instructions to function tools
+  - `analyze_bull_bear_spread`, `analyze_put_call`, `analyze_vix`, `analyze_high_yield_spread`, `analyze_margin_debt`
+  - Deterministic scoring logic now in code (not LLM)
+  - More accurate and consistent
+
+**3. Technical Indicator Enhancement:**
+- **Disparity Calculation**: Now reuses pre-calculated SMA from `yfinance_source`
+  - Full period disparity charts (1y chart shows full year, not just 3 months)
+  - Added `SMA_50` to yfinance calculations (5, 20, 50, 200)
+
+**4. BroadIndexAgent Composite Score:**
+- S&P 500 indicators (RSI14, Disparity200) + Market Breadth (S5FI, S5TH)
+- 4-indicator composite score calculation
+
+### Impact
+- ✅ Flexible score system for complex agents
+- ✅ Accurate score calculation (code-based, not LLM-based)
+- ✅ Full period technical indicator charts
+
+---
+
 ## v7.3 - Market Health Monitor & Score System
 
 **Date: November 10, 2025**

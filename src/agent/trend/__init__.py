@@ -5,6 +5,7 @@ from .nfci_agent import NFCIAgent
 from .dx_agent import DXAgent
 from .equity_agent import EquityTrendAgent
 from .market_breadth_agent import MarketBreadthAgent
+from .market_pe_agent import MarketPEAgent
 from .bull_bear_spread_agent import BullBearSpreadAgent
 from .put_call_agent import PutCallAgent
 from .margin_debt_agent import MarginDebtAgent
@@ -17,6 +18,7 @@ __all__ = [
     "DXAgent",
     "EquityTrendAgent",
     "MarketBreadthAgent",
+    "MarketPEAgent",
     "BullBearSpreadAgent",
     "PutCallAgent",
     "MarginDebtAgent",

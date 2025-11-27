@@ -9,7 +9,7 @@ dependencies = [
     "finnhub-python>=2.4.24",
     "google-generativeai<=0.8.5",
     "langchain==0.3.13",
-    "langchain-chroma==0.1.4",
+    "langchain-chroma>=0.1.4",
     "langchain-community==0.3.13",
     "langchain-core>=0.3.56",
     "langchain-experimental==0.3.4",
@@ -43,6 +43,7 @@ dependencies = [
     "boto3>=1.40.55",
     "fredapi>=0.5.1",
     "beautifulsoup4>=4.12.0",
+    "factset-report-analyzer>=0.4.3",
     "selenium>=4.38.0",
 ]
 
