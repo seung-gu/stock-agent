@@ -670,19 +670,17 @@ async def analyze_market_pe(pe_type: str = 'trailing', period: str = '10y') -> s
 
 
 @function_tool
-async def generate_market_pe_chart(pe_type: str = 'trailing', period: str = '10y') -> str:
+async def generate_market_pe_chart(pe_type: str = 'trailing') -> str:
     """Generate S&P 500 Market P/E ratio chart from factset_report_analyzer.
     
     Args:
         pe_type: Type of P/E ratio - 'trailing' (default) or 'forward'
-        period: Time period for chart (1y, 2y, 5y, 10y)
-        label: Human-readable label for chart title (optional)
     
     Returns:
         Chart file path string
     """
     try:
-        filepath = os.path.join(CHART_OUTPUT_DIR, f"market_pe_{pe_type}_{period}_chart.png")
+        filepath = os.path.join(CHART_OUTPUT_DIR, f"S&P500_{pe_type}_PE_chart.png")
 
         # Get SP500 data
         sp500 = SP500()

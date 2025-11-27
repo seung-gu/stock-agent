@@ -57,11 +57,11 @@ class BroadIndexAgent(OrchestratorAgent):
         - Score > 4.5: 🔴 STRONG_SELL (Extreme greed/bubble)
         
         SCORE FIELD:
-        Set AnalysisReport.score = [{{"agent": "BroadIndex", "indicator": "Composite", "value": (average of 4 sub-agent scores)}}]
+        Set AnalysisReport.score = [{{"agent": "BroadIndex", "indicator": "Composite", "value": (average of 5 sub-agent scores)}}]
         
         OUTPUT FORMAT (translate all headings to {REPORT_LANGUAGE}):
         
-        ## Composite Score (S&P 500)
+        ## Composite Score (S&P 500 ONLY)
         Extract 5 scores: S&P 500 (RSI, Disparity) + MarketBreadth (S5FI, S5TH) + P/E Ratio Rank
 
         | Indicator | Score | Interpretation |
