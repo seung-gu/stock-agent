@@ -4,6 +4,7 @@ from src.agent.base.orchestrator_agent import OrchestratorAgent
 from src.agent.trend.equity_agent import EquityTrendAgent
 from src.agent.trend.market_breadth_agent import MarketBreadthAgent
 from src.agent.trend.market_pe_agent import MarketPEAgent
+from src.services.score_service import save_scores_to_csv
 from src.config import REPORT_LANGUAGE
 
 
@@ -16,7 +17,10 @@ class BroadIndexAgent(OrchestratorAgent):
     
     def __init__(self):
         """Initialize broad index agent with predefined broad index agents."""
-        super().__init__("broad_index_orchestrator")
+        super().__init__(
+            "broad_index_orchestrator",
+            hooks={'on_results_collected': [save_scores_to_csv]}
+        )
     
     def _setup(self):
         """Set up sub-agents and synthesis agent."""

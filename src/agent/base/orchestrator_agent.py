@@ -1,10 +1,13 @@
 """Base orchestrator agent for combining multiple sub-agents"""
 
+from datetime import datetime
+import pandas as pd
 from src.agent.base.async_agent import AsyncAgent
 from src.types.analysis_report import AnalysisReport
 from agents import Agent, Runner, ModelSettings
 import asyncio
 from src.config import REPORT_LANGUAGE
+from src.utils.cloudflare import write_csv_to_cloud, read_csv_from_cloud
         
 
 class OrchestratorAgent(AsyncAgent):
@@ -17,12 +20,21 @@ class OrchestratorAgent(AsyncAgent):
     - Synthesizing results
     """
     
-    def __init__(self, agent_name: str):
-        """Initialize orchestrator agent."""
+    def __init__(self, agent_name: str, hooks: dict = None):
+        """
+        Initialize orchestrator agent.
+        
+        Args:
+            agent_name: Name of the agent
+            hooks: Dictionary of hook functions {hook_name: [func1, func2, ...]}
+                   Available hooks:
+                   - 'on_results_collected': Called after sub-agents complete
+        """
         self.synthesis_agent: Agent = None
         self.sub_agents: list[AsyncAgent] = []
-        self.sub_agent_results: list[str] = []
+        self.sub_agent_results: list[AnalysisReport] = []
         self.output_type = AnalysisReport
+        self.hooks = hooks or {}
         super().__init__(agent_name)
     
     def _setup(self):
@@ -69,6 +81,9 @@ class OrchestratorAgent(AsyncAgent):
         task_prompt = prompt if prompt is not None else ""
         self.sub_agent_results = await asyncio.gather(*[agent.run(task_prompt) for agent in self.sub_agents])
         
+        # Execute hooks after results are collected
+        self._execute_hooks('on_results_collected', self.sub_agent_results)
+        
         # Create synthesis prompt
         synthesis_prompt = self._create_synthesis_prompt()
         result = await Runner.run(self.synthesis_agent, input=synthesis_prompt)
@@ -85,8 +100,8 @@ class OrchestratorAgent(AsyncAgent):
         
         # Use each agent's agent_name for labeling
         for agent, result in zip(self.sub_agents, self.sub_agent_results):
-            # Extract final_output if result is a RunResult object
-            result_text = result.final_output if hasattr(result, 'final_output') else str(result)
+            # Extract content from AnalysisReport
+            result_text = result.content if hasattr(result, 'content') else str(result)
             
             prompt_parts.append(f"--- {agent.agent_name} ---")
             prompt_parts.append(result_text)
@@ -101,3 +116,23 @@ class OrchestratorAgent(AsyncAgent):
         ])
         
         return "\n".join(prompt_parts)
+    
+    def _execute_hooks(self, hook_name: str, *args, **kwargs):
+        """
+        Execute registered hook functions.
+        
+        Args:
+            hook_name: Name of the hook to execute
+            *args, **kwargs: Arguments to pass to hook functions
+        """
+        if hook_name in self.hooks:
+            hook_funcs = self.hooks[hook_name]
+            # Support both single function and list of functions
+            if not isinstance(hook_funcs, list):
+                hook_funcs = [hook_funcs]
+            
+            for hook_func in hook_funcs:
+                try:
+                    hook_func(*args, **kwargs)
+                except Exception as e:
+                    print(f"⚠️ Hook '{hook_name}' failed: {e}")

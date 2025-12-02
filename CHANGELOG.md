@@ -4,6 +4,53 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## v8.0 - Structured Score System (November 11, 2025) 🚀 MAJOR RELEASE
+
+**⚠️ BREAKING CHANGES:**
+- Score type changed: `str` → `list[IndicatorScore]`
+- All agents now return structured format instead of string
+
+### Major Updates
+
+**1. Structured Score System**
+- **Before**: String-based score (`"RSI(14):4, Disparity(200):3"`) requiring manual parsing
+- **After**: Type-safe `list[IndicatorScore]` with Pydantic validation
+  ```python
+  [
+    {"agent": "S&P 500", "indicator": "RSI(14)", "value": 4},
+    {"agent": "S&P 500", "indicator": "Disparity(200)", "value": 3}
+  ]
+  ```
+- **Benefits**:
+  - Automatic type and range validation (1-5)
+  - Direct access without string parsing
+  - JSON-compatible structure
+
+**2. Multi-Agent Score Identification**
+- **Problem**: S&P 500, Nasdaq, Dow Jones all return RSI/Disparity scores, causing confusion
+- **Solution**: Added `agent` field to distinguish score sources
+- **Impact**: Orchestrator can now accurately filter and aggregate scores by agent
+
+**3. Score Policy Enforcement**
+- Scoring agents (7): EquityTrendAgent, MarketBreadthAgent, VIXAgent, HighYieldSpreadAgent, BullBearSpreadAgent, MarginDebtAgent, PutCallAgent
+- Non-scoring agents (3): DXAgent, TNXAgent, NFCIAgent - explicitly return empty list
+- Prevents LLM from generating arbitrary scores
+
+**Files Changed (10):**
+- `src/types/analysis_report.py`: Added IndicatorScore BaseModel
+- Scoring TrendAgents (7): Updated score format instructions
+- Non-scoring agents (3): Added "Do NOT set score" instructions
+- Orchestrator agents: Updated score extraction logic
+
+### Impact
+- ✅ Type-safe score system with automatic Pydantic validation
+- ✅ Clear agent identification for multi-agent scenarios
+- ✅ Prevents LLM score generation errors and format mistakes
+- ✅ Foundation for advanced score aggregation and analysis
+- ✅ Better maintainability and extensibility
+
+---
+
 ## v7.4 - Score System Enhancement & Technical Improvements
 
 **Date: November 11, 2025**

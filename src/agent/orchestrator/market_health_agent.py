@@ -6,6 +6,7 @@ from src.agent.trend.put_call_agent import PutCallAgent
 from src.agent.trend.margin_debt_agent import MarginDebtAgent
 from src.agent.trend.high_yield_spread_agent import HighYieldSpreadAgent
 from src.agent.trend.vix_agent import VIXAgent
+from src.services.score_service import save_scores_to_csv
 from src.config import REPORT_LANGUAGE
 
 
@@ -18,7 +19,10 @@ class MarketHealthAgent(OrchestratorAgent):
     
     def __init__(self):
         """Initialize market health agent with contrarian indicator agents."""
-        super().__init__("market_health_agent")
+        super().__init__(
+            "market_health_agent",
+            hooks={'on_results_collected': [save_scores_to_csv]}
+        )
     
     def _setup(self):
         """Set up sub-agents and synthesis agent."""

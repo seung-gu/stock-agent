@@ -3,6 +3,7 @@ from src.agent.trend.tnx_agent import TNXAgent
 from src.agent.trend.nfci_agent import NFCIAgent
 from src.agent.trend.dx_agent import DXAgent
 from src.agent.base.orchestrator_agent import OrchestratorAgent
+from src.services.score_service import save_scores_to_csv
 from src.config import REPORT_LANGUAGE
 
 
@@ -16,7 +17,10 @@ class LiquidityAgent(OrchestratorAgent):
     
     def __init__(self):
         """Initialize liquidity agent with predefined TNX, NFCI, and DX=F agents."""
-        super().__init__("liquidity_orchestrator")
+        super().__init__(
+            "liquidity_orchestrator",
+            hooks={'on_results_collected': [save_scores_to_csv]}
+        )
     
     def _setup(self):
         """Set up sub-agents and synthesis agent."""

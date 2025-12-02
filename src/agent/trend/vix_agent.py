@@ -7,7 +7,7 @@ from src.config import REPORT_LANGUAGE
 
 class VIXAgent(TrendAgent):
     """
-    VIX (Volatility Index) analysis agent.
+    VIX (Volatility Indicator) analysis agent.
     
     Analyzes the VIX as a fear gauge and contrarian sentiment indicator.
     """
@@ -17,11 +17,11 @@ class VIXAgent(TrendAgent):
         super().__init__(
             ticker="^VIX",
             agent_name="vix_agent",
-            label="VIX (Volatility Index)",
-            description="CBOE Volatility Index (Market Fear Gauge)",
+            label="VIX (Volatility Indicator)",
+            description="CBOE Volatility Indicator (Market Fear Gauge)",
             tools=[fetch_data, analyze_vix, generate_vix_chart],
             context_instructions=f"""
-            You are analyzing VIX (Volatility Index) as a fear gauge and contrarian indicator.
+            You are analyzing VIX (Volatility Indicator) as a fear gauge and contrarian indicator.
             ALL responses MUST be in {REPORT_LANGUAGE}.
             
             INTERPRETATION:

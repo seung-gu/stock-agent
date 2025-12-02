@@ -101,7 +101,10 @@ src/
 │   ├── base/                  # 🏗️ Base abstract classes
 │   │   ├── __init__.py       # Exports: AsyncAgent, OrchestratorAgent, TrendAgent
 │   │   ├── async_agent.py    # Base class for async agents (Template Method pattern)
-│   │   ├── orchestrator_agent.py  # Base class for orchestrators (parallel execution)
+│   │   ├── orchestrator_agent.py  # Base class for orchestrators (parallel execution + hook system v8.2)
+│   │   │                     # • Hook system: on_results_collected, on_synthesis_complete
+│   │   │                     # • _execute_hooks(hook_name, *args): Execute registered hook functions
+│   │   │                     # • Conditional execution: Only runs if hooks are registered
 │   │   └── trend_agent.py    # Base class for trend analysis (simplified, tool-agnostic)
 │   │
 │   ├── tools/                 # 🛠️ Modular function tools (v7.2 - HY Spread & VIX)
@@ -133,10 +136,10 @@ src/
 │   │
 │   ├── orchestrator/          # 🎭 Orchestrator agents (combine multiple agents)
 │   │   ├── __init__.py       # Exports: LiquidityAgent, BroadIndexAgent, MarketReportAgent, MarketHealthAgent
-│   │   ├── liquidity_agent.py     # Liquidity orchestrator (TNX + NFCI + DX)
-│   │   ├── broad_index_agent.py   # Broad index orchestrator (^GSPC + ^IXIC + ^DJI + MarketBreadth)
-│   │   ├── market_health_agent.py # Market health orchestrator (5 contrarian indicators)
-│   │   └── market_report_agent.py  # Main report agent (Liquidity + BroadIndex + Equity)
+│   │   ├── liquidity_agent.py     # Liquidity orchestrator (TNX + NFCI + DX) + score save hook (v8.2)
+│   │   ├── broad_index_agent.py   # Broad index orchestrator (^GSPC + ^IXIC + ^DJI + MarketBreadth + MarketPE) + score save hook (v8.2)
+│   │   ├── market_health_agent.py # Market health orchestrator (5 contrarian indicators) + score save hook (v8.2)
+│   │   └── market_report_agent.py  # Main report agent (Liquidity + BroadIndex + Equity) - no hook (prevents duplicate saves)
 │   │
 │   └── types/                 # 📋 Type definitions
 │       ├── __init__.py       # Package initialization
@@ -171,11 +174,22 @@ src/
 │   │                          # • calculate_sma, calculate_disparity, calculate_rsi
 │   │                          # • Used by agent_tools.py
 │   │                          # • No agent coupling (pure calculation)
+│   ├── indicator_heatmap.py   # Indicator score heatmap generator (v8.2)
+│   │                          # • generate_indicator_heatmap(cloud_path, figsize)
+│   │                          # • Reads scores from R2 CSV, generates heatmap with color gradient
+│   │                          # • Red (1) → Yellow (3) → Green (5) colormap
+│   │                          # • Uploads to R2 and returns cloud URL
+│   ├── cloudflare.py          # Cloudflare R2 storage utilities
+│   ├── csv_storage.py         # CSV read/write helpers
 │   └── charts_test.py         # Unit tests (7 tests, Mock API)
 │
 ├── services/                   # Business logic services
 │   ├── image_service.py       # Image processing & Cloudflare R2 upload
-│   └── image_service_test.py  # Unit tests
+│   ├── image_service_test.py  # Unit tests
+│   └── score_service.py       # Score collection & persistence (v8.2)
+│                              # • collect_scores(results): Extract scores from AnalysisReport
+│                              # • save_scores_to_csv(results, cloud_path): Save to R2 CSV
+│                              # • Used as hook in BroadIndexAgent, LiquidityAgent, MarketHealthAgent
 │
 ├── adapters/                   # External API integrations
 │   ├── notion_api.py          # Notion API client (page creation & upload)
@@ -527,6 +541,76 @@ get_data_source("finra")      # → FINRASource
 
 ## Recent Improvements
 
+### v8.2 - Hook System & Score Service Refactoring (December 2, 2025)
+
+**1. Hook System Implementation**
+- **Hook Pattern**: Added flexible hook system to `OrchestratorAgent` for extensible event handling
+- **Hook Types**:
+  - `on_results_collected`: Executed after sub-agents complete, before synthesis
+- **Benefits**:
+  - Conditional execution: Hooks only run in specific orchestrators
+  - Easy testing: Replace hooks with mocks for unit tests
+  - Extensibility: Add new hooks (e.g., `on_synthesis_complete`) without modifying base class
+  - Separation of concerns: Agent logic separated from side effects
+
+**2. Score Service Architecture**
+- **New Service**: `src/services/score_service.py` for score collection and persistence
+- **Functions**:
+  - `collect_scores(results)`: Extract scores from AnalysisReport objects
+  - `save_scores_to_csv(results, cloud_path)`: Save scores to Cloudflare R2 as CSV
+- **Hook Integration**: Score service used as hook in mid-level orchestrators
+  - `BroadIndexAgent`: Saves S&P 500, Nasdaq, Dow Jones, MarketBreadth, MarketPE scores
+  - `LiquidityAgent`: Saves TNX, NFCI, DX scores
+  - `MarketHealthAgent`: Saves BullBear, PutCall, MarginDebt, HYSpread, VIX scores
+  - `MarketReportAgent`: No hook (prevents duplicate saves)
+- **Data Flow**:
+  ```
+  Sub-agents execute → Hook: save_scores_to_csv() → CSV to R2 → Synthesis
+  ```
+
+**3. Indicator Heatmap Service**
+- **New Utility**: `src/utils/indicator_heatmap.py` for score visualization
+- **Function**: `generate_indicator_heatmap(cloud_path, figsize)`
+  - Reads aggregated scores from R2 CSV
+  - Generates heatmap with color gradient (Red=1 → Yellow=3 → Green=5)
+  - Uploads to R2 and returns cloud URL
+- **Features**:
+  - Automatic date filtering (latest date)
+  - Custom colormap for score visualization
+  - Cloud-first approach (no local file storage)
+
+**4. AnalysisReport Type Enhancement**
+- **Type Field Expansion**: `type` field now supports 5 categories
+  - `equity`: Individual stocks
+  - `index`: Market indices (^GSPC, ^IXIC, ^DJI)
+  - `ETF`: Exchange-traded funds
+  - `indicator`: Financial indicators (NFCI, VIX, MarketBreadth, MarketPE)
+  - `composite`: Orchestrator synthesis results
+- **Score Filtering**: CSV save excludes `equity` and `ETF` types (indicators only)
+
+**5. Architecture Improvements**
+- **Removed**: `src/agent/hooks/` folder (consolidated into services)
+- **Rationale**: Score saving is a service, not agent-specific logic
+- **Structure**:
+  ```
+  src/services/
+  ├── image_service.py      # Image processing
+  └── score_service.py      # Score collection & persistence (new)
+  ```
+- **Benefits**:
+  - Consistent service layer organization
+  - Reusable across different contexts (CLI, API, agents)
+  - Clear separation: agents (orchestration) vs services (business logic)
+
+**Impact:**
+- ✅ Flexible and testable hook system for orchestrators
+- ✅ Centralized score persistence with cloud storage
+- ✅ Visual score tracking via heatmap generation
+- ✅ Cleaner architecture with proper service layer separation
+- ✅ Foundation for future analytics and monitoring features
+
+---
+
 ### v8.1 - Market P/E Ratio Agent (November 27, 2025)
 
 **1. MarketPEAgent Added**
@@ -557,51 +641,6 @@ get_data_source("finra")      # → FINRASource
 
 ---
 
-### v8.0 - Structured Score System (November 11, 2025) 🚀 MAJOR RELEASE
-
-**⚠️ BREAKING CHANGES:**
-- Score type changed: `str` → `list[IndicatorScore]`
-- All agents now return structured format instead of string
-
-**1. Structured Score System**
-- **Before**: String-based score (`"RSI(14):4, Disparity(200):3"`) requiring manual parsing
-- **After**: Type-safe `list[IndicatorScore]` with Pydantic validation
-  ```python
-  [
-    {"agent": "S&P 500", "indicator": "RSI(14)", "value": 4},
-    {"agent": "S&P 500", "indicator": "Disparity(200)", "value": 3}
-  ]
-  ```
-- **Benefits**:
-  - Automatic type and range validation (1-5)
-  - Direct access without string parsing
-  - JSON-compatible structure
-
-**2. Multi-Agent Score Identification**
-- **Problem**: S&P 500, Nasdaq, Dow Jones all return RSI/Disparity scores, causing confusion
-- **Solution**: Added `agent` field to distinguish score sources
-- **Impact**: Orchestrator can now accurately filter and aggregate scores by agent
-
-**3. Score Policy Enforcement**
-- Scoring agents (7): EquityTrendAgent, MarketBreadthAgent, VIXAgent, HighYieldSpreadAgent, BullBearSpreadAgent, MarginDebtAgent, PutCallAgent
-- Non-scoring agents (3): DXAgent, TNXAgent, NFCIAgent - explicitly return empty list
-- Prevents LLM from generating arbitrary scores
-
-**Files Changed (10):**
-- `src/types/analysis_report.py`: Added IndicatorScore BaseModel
-- Scoring TrendAgents (7): Updated score format instructions
-- Non-scoring agents (3): Added "Do NOT set score" instructions
-- Orchestrator agents: Updated score extraction logic
-
-**Impact:**
-- ✅ Type-safe score system with automatic Pydantic validation
-- ✅ Clear agent identification for multi-agent scenarios
-- ✅ Prevents LLM score generation errors and format mistakes
-- ✅ Foundation for advanced score aggregation and analysis
-- ✅ Better maintainability and extensibility
-
----
-
 ## Usage Examples
 
 ### Import Agents
@@ -613,12 +652,18 @@ from src.agent.trend import (
     MarginDebtAgent, HighYieldSpreadAgent, VIXAgent
 )
 from src.agent.orchestrator import LiquidityAgent, BroadIndexAgent, MarketReportAgent
+from src.services.score_service import save_scores_to_csv, collect_scores
+from src.utils.indicator_heatmap import generate_indicator_heatmap
 
 # Initialize agents
 vix_agent = VIXAgent()                       # VIX volatility analysis
 margin_agent = MarginDebtAgent()             # FINRA margin debt analysis
 hy_spread_agent = HighYieldSpreadAgent()     # High yield spread analysis
-broad_index_agent = BroadIndexAgent()        # Full broad index orchestrator
+broad_index_agent = BroadIndexAgent()        # Full broad index orchestrator (with score save hook)
+
+# Generate indicator heatmap
+heatmap_url = generate_indicator_heatmap()   # Returns R2 cloud URL
+print(f"Heatmap: {heatmap_url}")
 ```
 
 ### Run Full Market Analysis
