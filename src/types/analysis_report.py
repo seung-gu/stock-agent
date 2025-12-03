@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field
-from typing import Literal
 
 
 class IndicatorScore(BaseModel):
@@ -19,10 +18,6 @@ class AnalysisReport(BaseModel):
     title: str = Field(description="Specific, descriptive title for the analysis report", default="")
     summary: str = Field(description="Executive summary of the analysis findings and key insights", default="")
     content: str = Field(description="Detailed analysis content including data, charts, and comprehensive insights", default="")
-    type: Literal['equity', 'index', 'ETF', 'indicator', 'composite', ''] = Field(
-        description="Type of analysis report. Must be one of: 'equity' (individual stocks), 'index' (market indices like ^GSPC, ^IXIC), 'ETF' (exchange-traded funds), 'indicator' (financial indicators like NFCI, VIX, MarketBreadth), 'composite' (orchestrator combining multiple agents), '' (unspecified)",
-        default=''
-    )
     
     # Optional scoring data
     score: list[IndicatorScore] = Field(

@@ -6,9 +6,8 @@ from datetime import datetime
 from dotenv import load_dotenv
 from agents import trace
 
-from src.services.image_service import find_local_images, upload_images_to_cloudflare
 from src.agent.orchestrator.market_report_agent import MarketReportAgent
-from src.adapters.report_builder import upload_report_with_children
+from src.adapters.notion_report_builder import NotionReportBuilder
 
 load_dotenv(override=True)
 
@@ -19,28 +18,35 @@ logging.getLogger("httpx.client").setLevel(logging.WARNING)
 
 
 async def run_market_report():
-    """
-    Run complete market report workflow.
-    """
+    """Run complete market report workflow."""
     print(f"📊 Starting market report")
     
     with trace("run_market_report"):
+        # Execute analysis
         market_report_agent = MarketReportAgent()
         final_report = await market_report_agent.run()
         
-        report_contents = market_report_agent.sub_agent_results + [final_report]
-
-        _, image_files, _ = find_local_images(" ".join([result.content for result in report_contents]))
-        uploaded_map = upload_images_to_cloudflare(image_files) if image_files else {}
+        # Extract individual results and agents
+        liquidity_result = market_report_agent.sub_agent_results[0]
+        health_result = market_report_agent.sub_agent_results[1]
+        index_result = market_report_agent.sub_agent_results[2]
+        portfolio_result = market_report_agent.sub_agent_results[3]
+        portfolio_agent = market_report_agent.sub_agents[3]
         
-        child_pages = [(result.title, result.content) for result in report_contents]
-  
-        return upload_report_with_children(
+        # Build hierarchical report structure
+        builder = NotionReportBuilder()
+        builder.add_page(liquidity_result)\
+            .add_page(health_result)\
+            .add_page(index_result)\
+            .add_page(portfolio_result)\
+                .add_children(portfolio_agent.sub_agent_results)\
+            .add_page(final_report)
+        
+        # Upload to Notion (images are automatically processed)
+        return builder.upload(
             title=final_report.title,
             date=datetime.now().strftime('%Y-%m-%d'),
-            summary=final_report.summary,
-            child_pages=child_pages,
-            uploaded_map=uploaded_map
+            summary=final_report.summary
         )
 
 

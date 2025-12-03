@@ -19,7 +19,7 @@ class TestNotionAPI(unittest.TestCase):
         
         self.assertGreater(len(blocks), 0)
         self.assertIn('paragraph', [block['type'] for block in blocks])
-        self.assertIn('embed', [block['type'] for block in blocks])  # image -> embed change
+        self.assertIn('image', [block['type'] for block in blocks])
         print("✅ create_notion_blocks test passed")
     
     def test_create_notion_blocks_long_content(self):

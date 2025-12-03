@@ -101,13 +101,13 @@ src/
 │   ├── base/                  # 🏗️ Base abstract classes
 │   │   ├── __init__.py       # Exports: AsyncAgent, OrchestratorAgent, TrendAgent
 │   │   ├── async_agent.py    # Base class for async agents (Template Method pattern)
-│   │   ├── orchestrator_agent.py  # Base class for orchestrators (parallel execution + hook system v8.2)
+│   │   ├── orchestrator_agent.py  # Base class for orchestrators (parallel execution + hook system v0.8.2)
 │   │   │                     # • Hook system: on_results_collected, on_synthesis_complete
 │   │   │                     # • _execute_hooks(hook_name, *args): Execute registered hook functions
 │   │   │                     # • Conditional execution: Only runs if hooks are registered
 │   │   └── trend_agent.py    # Base class for trend analysis (simplified, tool-agnostic)
 │   │
-│   ├── tools/                 # 🛠️ Modular function tools (v7.2 - HY Spread & VIX)
+│   ├── tools/                 # 🛠️ Modular function tools (v0.7.2 - HY Spread & VIX)
 │   │   └── agent_tools.py    # 19 independent @function_tool for agents
 │   │                         # • fetch_data
 │   │                         # • analyze_OHLCV, analyze_SMA, analyze_disparity, analyze_RSI
@@ -135,11 +135,12 @@ src/
 │   │   └── vix_agent.py           # VIX (Volatility Index, fear gauge)
 │   │
 │   ├── orchestrator/          # 🎭 Orchestrator agents (combine multiple agents)
-│   │   ├── __init__.py       # Exports: LiquidityAgent, BroadIndexAgent, MarketReportAgent, MarketHealthAgent
-│   │   ├── liquidity_agent.py     # Liquidity orchestrator (TNX + NFCI + DX) + score save hook (v8.2)
-│   │   ├── broad_index_agent.py   # Broad index orchestrator (^GSPC + ^IXIC + ^DJI + MarketBreadth + MarketPE) + score save hook (v8.2)
-│   │   ├── market_health_agent.py # Market health orchestrator (5 contrarian indicators) + score save hook (v8.2)
-│   │   └── market_report_agent.py  # Main report agent (Liquidity + BroadIndex + Equity) - no hook (prevents duplicate saves)
+│   │   ├── __init__.py       # Exports: LiquidityAgent, BroadIndexAgent, MarketReportAgent, MarketHealthAgent, PortfolioAgent
+│   │   ├── liquidity_agent.py     # Liquidity orchestrator (TNX + NFCI + DX) + score save hook (v0.8.2)
+│   │   ├── broad_index_agent.py   # Broad index orchestrator (^GSPC + ^IXIC + ^DJI + MarketBreadth + MarketPE) + score save hook (v0.8.2)
+│   │   ├── market_health_agent.py # Market health orchestrator (5 contrarian indicators) + score save hook (v0.8.2)
+│   │   ├── portfolio_agent.py     # Portfolio orchestrator (NVDA, MSFT, SBUX, JPM, PLTR, IAU, QLD, AHR, COPX) (v0.9.0)
+│   │   └── market_report_agent.py  # Main report agent (Liquidity + MarketHealth + BroadIndex + Portfolio) - no hook (prevents duplicate saves)
 │   │
 │   └── types/                 # 📋 Type definitions
 │       ├── __init__.py       # Package initialization
@@ -174,7 +175,7 @@ src/
 │   │                          # • calculate_sma, calculate_disparity, calculate_rsi
 │   │                          # • Used by agent_tools.py
 │   │                          # • No agent coupling (pure calculation)
-│   ├── indicator_heatmap.py   # Indicator score heatmap generator (v8.2)
+│   ├── indicator_heatmap.py   # Indicator score heatmap generator (v0.8.2)
 │   │                          # • generate_indicator_heatmap(cloud_path, figsize)
 │   │                          # • Reads scores from R2 CSV, generates heatmap with color gradient
 │   │                          # • Red (1) → Yellow (3) → Green (5) colormap
@@ -186,10 +187,11 @@ src/
 ├── services/                   # Business logic services
 │   ├── image_service.py       # Image processing & Cloudflare R2 upload
 │   ├── image_service_test.py  # Unit tests
-│   └── score_service.py       # Score collection & persistence (v8.2)
-│                              # • collect_scores(results): Extract scores from AnalysisReport
-│                              # • save_scores_to_csv(results, cloud_path): Save to R2 CSV
-│                              # • Used as hook in BroadIndexAgent, LiquidityAgent, MarketHealthAgent
+│   ├── score_service.py       # Score collection & persistence (v0.8.2)
+│   │                          # • collect_scores(results): Extract scores from AnalysisReport
+│   │                          # • save_scores_to_csv(results, cloud_path): Save to R2 CSV
+│   │                          # • Used as hook in BroadIndexAgent, LiquidityAgent, MarketHealthAgent
+│   └── score_service_test.py  # Unit tests (10 tests, all passing) (v0.9.0)
 │
 ├── adapters/                   # External API integrations
 │   ├── notion_api.py          # Notion API client (page creation & upload)
@@ -198,14 +200,18 @@ src/
 │   │                          # • Pythonic recursive parsing
 │   │                          # • Proper indentation handling
 │   │                          # • Notion API limitations handling (h4-h6, numbered lists)
-│   ├── report_builder.py      # Parent-child page structure builder
+│   ├── notion_report_builder.py  # Hierarchical report builder with method chaining API (v0.9.0)
+│   │                          # • Builder pattern for declarative report structures
+│   │                          # • Supports 2-level hierarchy (parent > orchestrator > sub-agents)
+│   │                          # • Automatic image processing and upload
 │   ├── notion_api_test.py     # Unit tests
-│   ├── markdown_to_notion_test.py  # Unit tests (18 tests, all passing)
-│   └── report_builder_test.py # Integration tests
+│   └── markdown_to_notion_test.py  # Unit tests (18 tests, all passing)
 │
 └── dep/                        # Deprecated/legacy code
     ├── agent.py
-    └── market_agent.py
+    ├── market_agent.py
+    ├── report_builder.py      # Legacy function-based report builder (moved in v0.9.0)
+    └── report_builder_test.py # Legacy tests (moved in v0.9.0)
 ```
 
 ---
@@ -316,7 +322,7 @@ AnalysisReport {
   title: str                      # Week-specific title
   summary: str                    # Executive summary
   content: str                    # Comprehensive analysis
-  score: list[IndicatorScore]     # List of scores with agent/indicator/value (v8.0+)
+  score: list[IndicatorScore]     # List of scores with agent/indicator/value (v0.8.0+)
 }
 ```
 
@@ -541,7 +547,52 @@ get_data_source("finra")      # → FINRASource
 
 ## Recent Improvements
 
-### v8.2 - Hook System & Score Service Refactoring (December 2, 2025)
+### v0.9.0 - Builder Pattern & Architecture Simplification (December 3, 2025)
+
+**1. NotionReportBuilder Class**
+- **Builder Pattern**: Declarative API for hierarchical Notion report structures
+- **Method Chaining**: Fluent interface for building report hierarchy
+  ```python
+  builder = NotionReportBuilder()
+  builder.add_page(liquidity_result)\
+      .add_page(portfolio_result).add_children([NVDA, MSFT, ...])\
+      .upload(title, date, summary)
+  ```
+- **Auto Image Processing**: Automatically collects and uploads images from all reports
+- **2-Level Hierarchy Support**: Parent pages with nested child pages
+
+**2. PortfolioAgent**
+- **New Orchestrator**: Groups individual equity/ETF agents for cleaner organization
+- **Portfolio Tracking**: Manages NVDA, MSFT, SBUX, JPM, PLTR, IAU, QLD, AHR, COPX
+- **Notion Structure**: Portfolio as parent page with individual stocks as nested children
+- **Benefits**: Cleaner `MarketReportAgent` structure, better Notion UI organization
+
+**3. AnalysisReport Simplification**
+- **Type Field Removed**: Eliminated unused `type` field from AnalysisReport model
+- **Score-Based Filtering**: Uses `score` field presence instead of type classification
+- **Rationale**: Only 3 orchestrators use hooks; type field was redundant
+
+**4. OrchestratorAgent Synthesis Enhancement**
+- **Full Context**: Synthesis prompt now includes complete `AnalysisReport` as JSON
+- **Score Visibility**: Sub-agent scores are explicitly available to synthesis LLM
+- **Method**: Uses `result.model_dump_json()` instead of `result.content`
+- **Impact**: More accurate composite score calculations
+
+**5. Architecture Cleanup**
+- **Deprecated Files**: Moved legacy `report_builder.py` to `src/dep/`
+- **Reduced Complexity**: `run_market_report.py` reduced from 107 to 66 lines (38% reduction)
+- **Service Layer**: Score service simplified, logging removed for cleaner operation
+
+**Impact:**
+- ✅ Declarative report structure with intuitive API
+- ✅ 40% reduction in main report generation code
+- ✅ Improved LLM synthesis accuracy with full report context
+- ✅ Better Notion UI with logical portfolio grouping
+- ✅ Simplified data model by removing unused fields
+
+---
+
+### v0.8.2 - Hook System & Score Service Refactoring (December 2, 2025)
 
 **1. Hook System Implementation**
 - **Hook Pattern**: Added flexible hook system to `OrchestratorAgent` for extensible event handling
@@ -579,16 +630,7 @@ get_data_source("finra")      # → FINRASource
   - Custom colormap for score visualization
   - Cloud-first approach (no local file storage)
 
-**4. AnalysisReport Type Enhancement**
-- **Type Field Expansion**: `type` field now supports 5 categories
-  - `equity`: Individual stocks
-  - `index`: Market indices (^GSPC, ^IXIC, ^DJI)
-  - `ETF`: Exchange-traded funds
-  - `indicator`: Financial indicators (NFCI, VIX, MarketBreadth, MarketPE)
-  - `composite`: Orchestrator synthesis results
-- **Score Filtering**: CSV save excludes `equity` and `ETF` types (indicators only)
-
-**5. Architecture Improvements**
+**4. Architecture Improvements**
 - **Removed**: `src/agent/hooks/` folder (consolidated into services)
 - **Rationale**: Score saving is a service, not agent-specific logic
 - **Structure**:
@@ -608,36 +650,6 @@ get_data_source("finra")      # → FINRASource
 - ✅ Visual score tracking via heatmap generation
 - ✅ Cleaner architecture with proper service layer separation
 - ✅ Foundation for future analytics and monitoring features
-
----
-
-### v8.1 - Market P/E Ratio Agent (November 27, 2025)
-
-**1. MarketPEAgent Added**
-- **New Agent**: `MarketPEAgent` for S&P 500 Market P/E ratio analysis
-- **Data Source**: Uses `factset_report_analyzer` package for trailing and forward P/E ratios
-- **Features**:
-  - Analyzes both trailing and forward P/E ratios with 10-year historical context
-  - Calculates percentile ranks and provides valuation assessment
-  - Generates time-series charts with sigma highlighting using `plot_time_series`
-  - Score calculation based on average rank of trailing and forward P/E ratios
-- **Tools Added**:
-  - `analyze_market_pe(pe_type, period)`: Analyze P/E ratio data with percentile rankings
-  - `generate_market_pe_chart(pe_type, period)`: Generate P/E ratio charts
-- **Dependencies Added**:
-  - `factset-report-analyzer>=0.4.3`: Package for S&P 500 P/E ratio data and chart generation
-- **Files Added**:
-  - `src/agent/trend/market_pe_agent.py`: Market P/E ratio analysis agent
-- **Files Modified**:
-  - `src/agent/tools/agent_tools.py`: Added analyze_market_pe and generate_market_pe_chart tools
-  - `src/agent/trend/__init__.py`: Added MarketPEAgent export
-  - `src/run_market_report.py`: Added httpx logging suppression
-  - `pyproject.toml`: Added factset-report-analyzer dependency
-
-**Impact:**
-- ✅ Comprehensive market valuation analysis using P/E ratios
-- ✅ Historical percentile-based scoring system
-- ✅ Integration with factset_report_analyzer for reliable data
 
 ---
 
@@ -729,4 +741,4 @@ uv run python -m unittest discover src -p "*_test.py"
 
 ## Version History
 
-For detailed changelog including v7.0 and earlier versions, see [CHANGELOG.md](CHANGELOG.md).
+For detailed changelog including v0.7.0 and earlier versions, see [CHANGELOG.md](CHANGELOG.md).

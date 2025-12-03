@@ -2,6 +2,7 @@
 
 from src.adapters.notion_api import upload_to_notion, create_child_page
 from src.services.image_service import find_local_images
+from src.types.analysis_report import AnalysisReport
 
 
 def upload_report_with_children(
@@ -22,7 +23,7 @@ def upload_report_with_children(
         uploaded_map: Map of local image paths to uploaded URLs
         
     Returns:
-        Dict with status and parent page info
+        Dict with status, parent page info, and child_page_ids mapping
     """
     try:
         # Create parent page - Agent-generated title and summary
@@ -43,14 +44,18 @@ def upload_report_with_children(
         parent_page_id = parent_result['page_id']
         print(f"✅ Parent page created: {parent_result['url']}")
         
-        # Create child pages
+        # Create child pages and store their IDs
+        child_page_ids = {}
         for child_title, child_content in child_pages:
             # Each child page content is processed independently
             # find_local_images processes images in-place and returns processed content
             child_processed, _, _ = find_local_images(child_content)
-            create_child_page(parent_page_id, child_title, child_processed, uploaded_map)
+            child_result = create_child_page(parent_page_id, child_title, child_processed, uploaded_map)
+            if child_result['status'] == 'success':
+                child_page_ids[child_title] = child_result['page_id']
         
         print("📝 Report upload complete!")
+        parent_result['child_page_ids'] = child_page_ids
         return parent_result
             
     except Exception as e:

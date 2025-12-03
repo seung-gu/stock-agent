@@ -18,9 +18,8 @@ def collect_scores(results: list[AnalysisReport]) -> dict[str, float]:
     """
     scores_data = {}
     for result in results:
-        # Extract score from AnalysisReport
-        # Exclude equity and ETF types (save all others including unspecified '')
-        if hasattr(result, 'score') and result.score and result.type not in ['equity', 'ETF']:
+        # Extract score from AnalysisReport (only if score exists and is not empty)
+        if hasattr(result, 'score') and result.score:
             for score_item in result.score:
                 # Create column name: agent_indicator
                 if score_item.agent == score_item.indicator:

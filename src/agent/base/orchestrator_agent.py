@@ -100,11 +100,9 @@ class OrchestratorAgent(AsyncAgent):
         
         # Use each agent's agent_name for labeling
         for agent, result in zip(self.sub_agents, self.sub_agent_results):
-            # Extract content from AnalysisReport
-            result_text = result.content if hasattr(result, 'content') else str(result)
-            
             prompt_parts.append(f"--- {agent.agent_name} ---")
-            prompt_parts.append(result_text)
+            # Send entire AnalysisReport as JSON (includes title, summary, content, score)
+            prompt_parts.append(result.model_dump_json(indent=2))
             prompt_parts.append("")
         
         prompt_parts.extend([

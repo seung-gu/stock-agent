@@ -166,11 +166,11 @@ class TestMarkdownToNotionParser(unittest.TestCase):
         
         blocks = parser.parse(content, uploaded_map)
         
-        embed_blocks = [b for b in blocks if b['type'] == 'embed']
-        self.assertGreater(len(embed_blocks), 0)
+        image_blocks = [b for b in blocks if b['type'] == 'image']
+        self.assertGreater(len(image_blocks), 0)
         
-        if embed_blocks:
-            self.assertEqual(embed_blocks[0]['embed']['url'], "https://example.com/image.jpg")
+        if image_blocks:
+            self.assertEqual(image_blocks[0]['image']['external']['url'], "https://example.com/image.jpg")
         
         print("✅ Image placeholder test passed")
     

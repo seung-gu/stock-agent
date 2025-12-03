@@ -4,7 +4,37 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## v8.0 - Structured Score System (November 11, 2025) 🚀 MAJOR RELEASE
+## v0.8.1 - Market P/E Ratio Agent (November 27, 2025)
+
+**1. MarketPEAgent Added**
+- **New Agent**: `MarketPEAgent` for S&P 500 Market P/E ratio analysis
+- **Data Source**: Uses `factset_report_analyzer` package for trailing and forward P/E ratios
+- **Features**:
+  - Analyzes both trailing and forward P/E ratios with 10-year historical context
+  - Calculates percentile ranks and provides valuation assessment
+  - Generates time-series charts with sigma highlighting using `plot_time_series`
+  - Score calculation based on average rank of trailing and forward P/E ratios
+- **Tools Added**:
+  - `analyze_market_pe(pe_type, period)`: Analyze P/E ratio data with percentile rankings
+  - `generate_market_pe_chart(pe_type, period)`: Generate P/E ratio charts
+- **Dependencies Added**:
+  - `factset-report-analyzer>=0.4.3`: Package for S&P 500 P/E ratio data and chart generation
+- **Files Added**:
+  - `src/agent/trend/market_pe_agent.py`: Market P/E ratio analysis agent
+- **Files Modified**:
+  - `src/agent/tools/agent_tools.py`: Added analyze_market_pe and generate_market_pe_chart tools
+  - `src/agent/trend/__init__.py`: Added MarketPEAgent export
+  - `src/run_market_report.py`: Added httpx logging suppression
+  - `pyproject.toml`: Added factset-report-analyzer dependency
+
+**Impact:**
+- ✅ Comprehensive market valuation analysis using P/E ratios
+- ✅ Historical percentile-based scoring system
+- ✅ Integration with factset_report_analyzer for reliable data
+
+---
+
+## v0.8.0 - Structured Score System (November 11, 2025) 🚀 MAJOR RELEASE
 
 **⚠️ BREAKING CHANGES:**
 - Score type changed: `str` → `list[IndicatorScore]`
@@ -51,7 +81,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## v7.4 - Score System Enhancement & Technical Improvements
+## v0.7.4 - Score System Enhancement & Technical Improvements
 
 **Date: November 11, 2025**
 
@@ -85,7 +115,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## v7.3 - Market Health Monitor & Score System
+## v0.7.3 - Market Health Monitor & Score System
 
 **Date: November 10, 2025**
 
@@ -118,7 +148,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## v7.2 - High Yield Spread & VIX Agents + Sentiment Refactoring
+## v0.7.2 - High Yield Spread & VIX Agents + Sentiment Refactoring
 
 **Date: November 9, 2025**
 
@@ -163,7 +193,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## v7.1 - FINRA Margin Debt Integration
+## v0.7.1 - FINRA Margin Debt Integration
 
 **Date: November 8, 2025**
 
@@ -212,7 +242,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## v7.0 - Put/Call Ratio & Unified Chart/Cache Systems
+## v0.7.0 - Put/Call Ratio & Unified Chart/Cache Systems
 
 **Date: November 8, 2025**
 
@@ -274,7 +304,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## v6.4 - Chart Period Accuracy & Data Consistency
+## v0.6.4 - Chart Period Accuracy & Data Consistency
 
 **Date: November 6, 2025**
 
@@ -304,7 +334,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## v6.3 - P/E & PEG (NTM) Chart Capture with Headless Fix
+## v0.6.3 - P/E & PEG (NTM) Chart Capture with Headless Fix
 
 **Date: November 5, 2025**
 
@@ -322,7 +352,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## v6.2 - Forward P/E (NTM) Analysis & FinnhubSource
+## v0.6.2 - Forward P/E (NTM) Analysis & FinnhubSource
 
 **Date: November 3, 2025**
 
@@ -341,7 +371,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## v6.1 - Markdown Link Parsing & Agent Instruction Refactoring
+## v0.6.1 - Markdown Link Parsing & Agent Instruction Refactoring
 
 **Date: November 3, 2025**
 
@@ -361,7 +391,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## v6.0 - Dynamic Thresholds & Agent Enhancements
+## v0.6.0 - Dynamic Thresholds & Agent Enhancements
 
 **Date: October 31, 2025**
 
@@ -383,7 +413,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## v5.0 - Modular Agent Tools Architecture
+## v0.5.0 - Modular Agent Tools Architecture
 
 **Revolutionary Refactor - Complete Layer Separation**
 
@@ -409,14 +439,14 @@ class TrendAgent:
 
 ---
 
-## v4.1 - SMA(200) Chart Fix
+## v0.4.1 - SMA(200) Chart Fix
 
 **Problem**: SMA_200 lines cut off at chart beginning
 **Solution**: Extended data fetching (220+ business days buffer)
 
 ---
 
-## v4.0 - Chart Separation & Disparity Features
+## v0.4.0 - Chart Separation & Disparity Features
 
 ### Chart System Refactor
 - Separated chart functions per data type
@@ -425,7 +455,7 @@ class TrendAgent:
 
 ---
 
-## v3.0 - SMA (Simple Moving Averages) Implementation
+## v0.3.0 - SMA (Simple Moving Averages) Implementation
 
 ### Technical Analysis Enhancement
 - 5-day, 20-day, 200-day SMAs
@@ -435,7 +465,7 @@ class TrendAgent:
 
 ---
 
-## v2.0 - Advanced Markdown Parsing
+## v0.2.0 - Advanced Markdown Parsing
 
 ### 3-Level Nested List Support
 - Smart hierarchy detection
@@ -447,5 +477,5 @@ class TrendAgent:
 
 ## Earlier Versions
 
-For version history before v2.0, see git commit history.
+For version history before v0.2.0, see git commit history.
 
