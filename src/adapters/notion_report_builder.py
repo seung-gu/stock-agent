@@ -63,7 +63,7 @@ class NotionReportBuilder:
         """
         try:
             uploaded_map = self._process_all_images(summary)
-            parent_result = self._create_parent_page(title, date, summary)
+            parent_result = self._create_parent_page(title, date, summary, uploaded_map)
             
             if parent_result['status'] != 'success':
                 return parent_result
@@ -89,7 +89,7 @@ class NotionReportBuilder:
         _, image_files, _ = find_local_images(" ".join(all_contents))
         return upload_images_to_cloudflare(image_files) if image_files else {}
     
-    def _create_parent_page(self, title: str, date: str, summary: str) -> dict:
+    def _create_parent_page(self, title: str, date: str, summary: str, uploaded_map: dict) -> dict:
         """Create parent page."""
         parent_content = f"""# {title}
 
@@ -97,7 +97,7 @@ class NotionReportBuilder:
 
 {summary}
 """
-        parent_result = upload_to_notion(title, parent_content, {})
+        parent_result = upload_to_notion(title, parent_content, uploaded_map)
         
         if parent_result['status'] == 'success':
             print(f"✅ Parent page created: {parent_result['url']}")
