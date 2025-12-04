@@ -249,6 +249,19 @@ src/
     ├── market_agent.py
     ├── report_builder.py      # Legacy function-based report builder (moved in v0.9.0)
     └── report_builder_test.py # Legacy tests (moved in v0.9.0)
+
+scripts/                        # 🤖 Automation scripts (v0.9.1+)
+├── __init__.py                 # Package initialization
+├── generate_indicator_heatmap.py  # Heatmap generation script (v0.9.2)
+│                               # • HeatmapGenerator class for encapsulated heatmap creation
+│                               # • Reads scores from R2, generates color-graded visualization
+│                               # • Uploads to R2 and returns cloud URL
+├── update_readme.py            # README auto-update script (v0.9.1, enhanced v0.9.2)
+│                               # • ReadmeUpdater class for README management
+│                               # • Updates Recent Reports section (max 10, replaces same-date)
+│                               # • Updates Latest Indicator Heatmap section (v0.9.2)
+│                               # • Integrates heatmap generation automatically
+└── update_readme_test.py       # Unit tests (6 tests, all passing) (v0.9.2)
 ```
 
 ---
@@ -584,37 +597,21 @@ get_data_source("finra")      # → FINRASource
 
 ## Recent Improvements
 
+### v0.9.2 - Heatmap Integration & Code Refactoring (December 5, 2025)
+
+- **Indicator Heatmap**: `scripts/generate_indicator_heatmap.py` with `HeatmapGenerator` class
+  - Color-graded visualization (Red=1 → Green=5) of last 5 reports
+  - Auto-uploads to R2 and updates README
+- **Code Refactoring**: Encapsulated `ReadmeUpdater` and `HeatmapGenerator` classes
+- **Test Coverage**: 6 unit tests for README updates (same-date replacement, heatmap section, etc.)
+
+---
+
 ### v0.9.1 - GitHub Actions Automation (December 4, 2025)
 
-**1. Weekly Report Automation**
-- **GitHub Actions Workflow**: Automated weekly market report generation
-- **Schedule**: Every Monday at 9:00 AM KST (00:00 UTC)
-- **Manual Trigger**: Supports workflow_dispatch for on-demand execution
-- **Features**:
-  - Automatic dependency installation with uv
-  - Environment variable injection via GitHub Secrets
-  - Report generation and Notion upload
-  - README auto-update with latest report link
-  - Git commit and push
-
-**2. README Auto-Update Script**
-- **Script**: `scripts/update_readme.py`
-- **Functionality**:
-  - Extracts Notion URL from report output
-  - Updates "Recent Reports" section in README
-  - Maintains last 10 reports
-  - Automatic date formatting
-
-**3. Configuration Updates**
-- **Workflow File**: `.github/workflows/weekly-report.yml`
-- **Required Secrets**: 11 API keys and credentials
-- **Permissions**: Read and write access for automated commits
-
-**Impact:**
-- ✅ Hands-free weekly market analysis
-- ✅ Automatic documentation updates
-- ✅ Historical report tracking in README
-- ✅ Zero manual intervention required
+- **Weekly Automation**: `.github/workflows/weekly-report.yml` runs every Monday at 9:00 AM KST
+- **Auto-Update**: `scripts/update_readme.py` maintains last 10 reports in README
+- **Zero Intervention**: Notion upload → README update → Git commit/push (fully automated)
 
 ---
 
@@ -660,67 +657,6 @@ get_data_source("finra")      # → FINRASource
 - ✅ Improved LLM synthesis accuracy with full report context
 - ✅ Better Notion UI with logical portfolio grouping
 - ✅ Simplified data model by removing unused fields
-
----
-
-### v0.8.2 - Hook System & Score Service Refactoring (December 2, 2025)
-
-**1. Hook System Implementation**
-- **Hook Pattern**: Added flexible hook system to `OrchestratorAgent` for extensible event handling
-- **Hook Types**:
-  - `on_results_collected`: Executed after sub-agents complete, before synthesis
-- **Benefits**:
-  - Conditional execution: Hooks only run in specific orchestrators
-  - Easy testing: Replace hooks with mocks for unit tests
-  - Extensibility: Add new hooks (e.g., `on_synthesis_complete`) without modifying base class
-  - Separation of concerns: Agent logic separated from side effects
-
-**2. Score Service Architecture**
-- **New Service**: `src/services/score_service.py` for score collection and persistence
-- **Functions**:
-  - `collect_scores(results)`: Extract scores from AnalysisReport objects
-  - `save_scores_to_csv(results, cloud_path)`: Save scores to Cloudflare R2 as CSV
-- **Hook Integration**: Score service used as hook in mid-level orchestrators
-  - `BroadIndexAgent`: Saves S&P 500, Nasdaq, Dow Jones, MarketBreadth, MarketPE scores
-  - `LiquidityAgent`: Saves TNX, NFCI, DX scores
-  - `MarketHealthAgent`: Saves BullBear, PutCall, MarginDebt, HYSpread, VIX scores
-  - `MarketReportAgent`: No hook (prevents duplicate saves)
-- **Data Flow**:
-  ```
-  Sub-agents execute → Hook: save_scores_to_csv() → CSV to R2 → Synthesis
-  ```
-
-**3. Indicator Heatmap Service**
-- **New Utility**: `src/utils/indicator_heatmap.py` for score visualization
-- **Function**: `generate_indicator_heatmap(cloud_path, figsize)`
-  - Reads aggregated scores from R2 CSV
-  - Generates heatmap with color gradient (Red=1 → Yellow=3 → Green=5)
-  - Uploads to R2 and returns cloud URL
-- **Features**:
-  - Automatic date filtering (latest date)
-  - Custom colormap for score visualization
-  - Cloud-first approach (no local file storage)
-
-**4. Architecture Improvements**
-- **Removed**: `src/agent/hooks/` folder (consolidated into services)
-- **Rationale**: Score saving is a service, not agent-specific logic
-- **Structure**:
-  ```
-  src/services/
-  ├── image_service.py      # Image processing
-  └── score_service.py      # Score collection & persistence (new)
-  ```
-- **Benefits**:
-  - Consistent service layer organization
-  - Reusable across different contexts (CLI, API, agents)
-  - Clear separation: agents (orchestration) vs services (business logic)
-
-**Impact:**
-- ✅ Flexible and testable hook system for orchestrators
-- ✅ Centralized score persistence with cloud storage
-- ✅ Visual score tracking via heatmap generation
-- ✅ Cleaner architecture with proper service layer separation
-- ✅ Foundation for future analytics and monitoring features
 
 ---
 

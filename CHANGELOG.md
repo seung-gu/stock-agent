@@ -4,6 +4,67 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## v0.8.2 - Hook System & Score Service Refactoring (December 2, 2025)
+
+**1. Hook System Implementation**
+- **Hook Pattern**: Added flexible hook system to `OrchestratorAgent` for extensible event handling
+- **Hook Types**:
+  - `on_results_collected`: Executed after sub-agents complete, before synthesis
+- **Benefits**:
+  - Conditional execution: Hooks only run in specific orchestrators
+  - Easy testing: Replace hooks with mocks for unit tests
+  - Extensibility: Add new hooks (e.g., `on_synthesis_complete`) without modifying base class
+  - Separation of concerns: Agent logic separated from side effects
+
+**2. Score Service Architecture**
+- **New Service**: `src/services/score_service.py` for score collection and persistence
+- **Functions**:
+  - `collect_scores(results)`: Extract scores from AnalysisReport objects
+  - `save_scores_to_csv(results, cloud_path)`: Save scores to Cloudflare R2 as CSV
+- **Hook Integration**: Score service used as hook in mid-level orchestrators
+  - `BroadIndexAgent`: Saves S&P 500, Nasdaq, Dow Jones, MarketBreadth, MarketPE scores
+  - `LiquidityAgent`: Saves TNX, NFCI, DX scores
+  - `MarketHealthAgent`: Saves BullBear, PutCall, MarginDebt, HYSpread, VIX scores
+  - `MarketReportAgent`: No hook (prevents duplicate saves)
+- **Data Flow**:
+  ```
+  Sub-agents execute → Hook: save_scores_to_csv() → CSV to R2 → Synthesis
+  ```
+
+**3. Indicator Heatmap Service**
+- **New Utility**: `src/utils/indicator_heatmap.py` for score visualization
+- **Function**: `generate_indicator_heatmap(cloud_path, figsize)`
+  - Reads aggregated scores from R2 CSV
+  - Generates heatmap with color gradient (Red=1 → Yellow=3 → Green=5)
+  - Uploads to R2 and returns cloud URL
+- **Features**:
+  - Automatic date filtering (latest date)
+  - Custom colormap for score visualization
+  - Cloud-first approach (no local file storage)
+
+**4. Architecture Improvements**
+- **Removed**: `src/agent/hooks/` folder (consolidated into services)
+- **Rationale**: Score saving is a service, not agent-specific logic
+- **Structure**:
+  ```
+  src/services/
+  ├── image_service.py      # Image processing
+  └── score_service.py      # Score collection & persistence (new)
+  ```
+- **Benefits**:
+  - Consistent service layer organization
+  - Reusable across different contexts (CLI, API, agents)
+  - Clear separation: agents (orchestration) vs services (business logic)
+
+**Impact:**
+- ✅ Flexible and testable hook system for orchestrators
+- ✅ Centralized score persistence with cloud storage
+- ✅ Visual score tracking via heatmap generation
+- ✅ Cleaner architecture with proper service layer separation
+- ✅ Foundation for future analytics and monitoring features
+
+---
+
 ## v0.8.1 - Market P/E Ratio Agent (November 27, 2025)
 
 **1. MarketPEAgent Added**
