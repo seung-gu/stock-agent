@@ -2,8 +2,8 @@ name: Weekly Market Report
 
 on:
   schedule:
-    # Run every Monday at 9:00 AM KST (00:00 UTC)
-    - cron: '0 0 * * 1'
+    # Run every Monday at 10:00 AM KST (01:00 UTC)
+    - cron: '0 1 * * 1'
   workflow_dispatch:  # Allow manual trigger
 
 permissions:
