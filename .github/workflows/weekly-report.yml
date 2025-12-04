@@ -1,0 +1,86 @@
+name: Weekly Market Report
+
+on:
+  schedule:
+    # Run every Monday at 9:00 AM KST (00:00 UTC)
+    - cron: '0 0 * * 1'
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: write  # Allow git push
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Install dependencies
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv sync
+      
+      - name: Create charts directory
+        run: mkdir -p charts
+      
+      - name: Generate market report
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+        run: |
+          set -e
+          export PATH="$HOME/.local/bin:$PATH"
+          cd ${{ github.workspace }}
+          uv run python -m src.run_market_report > report_output.txt 2>&1 || {
+            echo "❌ Report generation failed!"
+            cat report_output.txt
+            exit 1
+          }
+          echo "✅ Report generation successful"
+          cat report_output.txt
+      
+      - name: Extract Notion URL
+        id: extract_url
+        run: |
+          NOTION_URL=$(grep -oP 'https://www\.notion\.so/[a-zA-Z0-9-]+' report_output.txt | head -1)
+          echo "notion_url=${NOTION_URL}" >> $GITHUB_OUTPUT
+          echo "📊 Report URL: ${NOTION_URL}"
+      
+      - name: Update README
+        if: steps.extract_url.outputs.notion_url != ''
+        run: |
+          uv run python scripts/update_readme.py "${{ steps.extract_url.outputs.notion_url }}"
+      
+      - name: Commit and push changes
+        if: steps.extract_url.outputs.notion_url != ''
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add readme.md data/
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "📊 Weekly market report - $(date +'%Y-%m-%d')"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
+

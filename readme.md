@@ -18,6 +18,12 @@ AI-powered comprehensive market analysis with automated Notion reporting.
 
 **Korean**: [종합 시장 분석 리포트 - 2025년 10월](https://seunggu-kang.notion.site/2025-10-29d62b45fc808174aeb6f355f8eaab1d?pvs=74)
 
+### Recent Reports
+
+> Automatically updated by GitHub Actions every Monday
+
+*(Reports will be added here when GitHub Actions runs)*
+
 ---
 
 ## Quick Start
@@ -68,6 +74,46 @@ REPORT_LANGUAGE = "Korean"  # Options: "English" or "Korean"
 ```bash
 uv run python src/run_market_report.py
 ```
+
+---
+
+## Automation
+
+### GitHub Actions - Weekly Report
+
+The repository includes a GitHub Actions workflow that automatically:
+- **Runs every Monday at 9:00 AM KST**
+- Generates comprehensive market report
+- Uploads to Notion
+- Updates README with latest report link
+- Commits and pushes changes
+
+**Setup:**
+
+1. **Add GitHub Secrets** (Settings → Secrets → Actions):
+   ```
+   GOOGLE_API_KEY
+   OPENAI_API_KEY
+   FRED_API_KEY
+   FINNHUB_API_KEY
+   NOTION_API_KEY
+   NOTION_DATABASE_ID
+   R2_ACCESS_KEY_ID
+   R2_SECRET_ACCESS_KEY
+   R2_ACCOUNT_ID
+   R2_BUCKET_NAME
+   R2_PUBLIC_BUCKET_NAME
+   ```
+
+2. **Enable Workflow Permissions**:
+   - Settings → Actions → General → Workflow permissions
+   - Select "Read and write permissions"
+   - Check "Allow GitHub Actions to create and approve pull requests"
+
+3. **Manual Trigger** (optional):
+   - Actions tab → "Weekly Market Report" → Run workflow
+
+**Workflow File:** `.github/workflows/weekly-report.yml`
 
 ---
 
@@ -546,6 +592,40 @@ get_data_source("finra")      # → FINRASource
 ---
 
 ## Recent Improvements
+
+### v0.9.1 - GitHub Actions Automation (December 4, 2025)
+
+**1. Weekly Report Automation**
+- **GitHub Actions Workflow**: Automated weekly market report generation
+- **Schedule**: Every Monday at 9:00 AM KST (00:00 UTC)
+- **Manual Trigger**: Supports workflow_dispatch for on-demand execution
+- **Features**:
+  - Automatic dependency installation with uv
+  - Environment variable injection via GitHub Secrets
+  - Report generation and Notion upload
+  - README auto-update with latest report link
+  - Git commit and push
+
+**2. README Auto-Update Script**
+- **Script**: `scripts/update_readme.py`
+- **Functionality**:
+  - Extracts Notion URL from report output
+  - Updates "Recent Reports" section in README
+  - Maintains last 10 reports
+  - Automatic date formatting
+
+**3. Configuration Updates**
+- **Workflow File**: `.github/workflows/weekly-report.yml`
+- **Required Secrets**: 11 API keys and credentials
+- **Permissions**: Read and write access for automated commits
+
+**Impact:**
+- ✅ Hands-free weekly market analysis
+- ✅ Automatic documentation updates
+- ✅ Historical report tracking in README
+- ✅ Zero manual intervention required
+
+---
 
 ### v0.9.0 - Builder Pattern & Architecture Simplification (December 3, 2025)
 
