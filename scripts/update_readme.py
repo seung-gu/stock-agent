@@ -20,14 +20,12 @@ def update_readme(notion_url: str):
     
     # Generate date string
     date_str = datetime.now().strftime('%Y-%m-%d')
-    year_month = datetime.now().strftime('%Y년 %m월')
     
     # Create new link entry
     new_entry = f"- [{date_str}]({notion_url})"
     
     # Find the "Recent Reports" section and update
-    # Pattern: Look for "### Recent Reports" or "### Live Example Reports"
-    pattern = r'(### (?:Recent Reports|Live Example Reports|최근 보고서).*?\n)(.*?)(\n###|\n---|\Z)'
+    pattern = r'(### Recent Reports.*?\n)(.*?)(\n###|\n---|\Z)'
     
     def replace_section(match):
         header = match.group(1)
@@ -38,9 +36,11 @@ def update_readme(notion_url: str):
         lines = body.strip().split('\n')
         links = [line for line in lines if line.strip().startswith('-') or line.strip().startswith('**')]
         
+        # Remove existing entry with same date
+        links = [link for link in links if f"[{date_str}]" not in link]
+        
         # Add new entry at the top
-        if new_entry not in '\n'.join(links):
-            links.insert(0, new_entry)
+        links.insert(0, new_entry)
         
         # Keep only last 10 reports
         links = links[:10]
@@ -49,17 +49,6 @@ def update_readme(notion_url: str):
     
     # Update README
     updated_content = re.sub(pattern, replace_section, content, flags=re.DOTALL)
-    
-    # If no section found, add after "Live Example Reports"
-    if updated_content == content:
-        # Try alternative pattern
-        pattern2 = r'(\*\*Korean\*\*:.*?\n)'
-        if re.search(pattern2, content):
-            updated_content = re.sub(
-                pattern2,
-                rf'\1\n### Recent Reports\n\n{new_entry}\n',
-                content
-            )
     
     # Write back
     with open(readme_path, 'w', encoding='utf-8') as f:
@@ -75,4 +64,3 @@ if __name__ == "__main__":
     
     notion_url = sys.argv[1]
     update_readme(notion_url)
-

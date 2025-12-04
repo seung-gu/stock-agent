@@ -12,14 +12,10 @@ AI-powered comprehensive market analysis with automated Notion reporting.
 
 *Automated market analysis reports with charts, tables, and AI-generated insights published to Notion*
 
-### Live Example Reports
-- [2025-12-04](https://www.notion.so/2025-12-1-2bf62b45fc8081efaec7ed55b36b1422)
-**English**: [Comprehensive Market Insights - October 2025](https://seunggu-kang.notion.site/Comprehensive-Market-Insights-and-Synthesis-Report-October-2025-Week-5-Year-2025-29d62b45fc808134ae62e76a2dc06ccf?pvs=74)
-**Korean**: [종합 시장 분석 리포트 - 2025년 10월](https://seunggu-kang.notion.site/2025-10-29d62b45fc808174aeb6f355f8eaab1d?pvs=74)
-
 ### Recent Reports
 
 > Automatically updated by GitHub Actions every Monday
+- [2025-12-04](https://www.notion.so/2025-12-1-2bf62b45fc8081efaec7ed55b36b1422)
 
 *(Reports will be added here when GitHub Actions runs)*
 
