@@ -13,11 +13,7 @@ AI-powered comprehensive market analysis with automated Notion reporting.
 *Automated market analysis reports with charts, tables, and AI-generated insights published to Notion*
 
 ### Recent Reports
-
-> Automatically updated by GitHub Actions every Monday
-- [2025-12-04](https://www.notion.so/2025-12-1-2bf62b45fc8081efaec7ed55b36b1422)
-
-*(Reports will be added here when GitHub Actions runs)*
+- [2025-12-04](https://www.notion.so/2025-12-1-2bf62b45fc8081039025dd53eee5e006)
 
 ---
 
