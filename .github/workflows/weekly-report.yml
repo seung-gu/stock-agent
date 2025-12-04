@@ -68,7 +68,14 @@ jobs:
       
       - name: Update README
         if: steps.extract_url.outputs.notion_url != ''
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
         run: |
+          export PATH="$HOME/.local/bin:$PATH"
           uv run python scripts/update_readme.py "${{ steps.extract_url.outputs.notion_url }}"
       
       - name: Commit and push changes
