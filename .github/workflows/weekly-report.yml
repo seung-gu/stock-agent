@@ -32,7 +32,7 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           uv sync
       
-      - name: Install Firefox
+      - name: Install Firefox and geckodriver
         run: |
           sudo apt-get update -qq >/dev/null 2>&1
           sudo apt-get install -y firefox >/dev/null 2>&1 || true
@@ -43,7 +43,14 @@ jobs:
           else
             echo "⚠️ Firefox not found"
           fi
-      
+          # Install geckodriver
+          GECKODRIVER_VERSION="v0.36.0"
+          wget -q https://github.com/mozilla/geckodriver/releases/download/${GECKODRIVER_VERSION}/geckodriver-${GECKODRIVER_VERSION}-linux64.tar.gz
+          tar -xzf geckodriver-${GECKODRIVER_VERSION}-linux64.tar.gz
+          chmod +x geckodriver
+          sudo mv geckodriver /usr/local/bin/
+          echo "✅ geckodriver ${GECKODRIVER_VERSION} installed"
+
       - name: Create charts directory
         run: mkdir -p charts
       
