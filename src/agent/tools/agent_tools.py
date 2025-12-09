@@ -566,9 +566,21 @@ async def generate_PE_PEG_ratio_chart(ticker: str, period: str = '10Y') -> str:
     """
 
     # Run blocking Selenium code in thread pool to avoid blocking event loop
+    error_msg = None
     def _capture():
-        capturer = KoyfinChartCapture(headless=True, verbose=False)
-        return capturer.capture(ticker, period=period.upper())
+        nonlocal error_msg
+        try:
+            capturer = KoyfinChartCapture(headless=True, verbose=True)
+            result = capturer.capture(ticker, period=period.upper())
+            if result[0] is None or result[1] is None:
+                error_msg = f"capture() returned None - chart_path={result[0]}, metrics={result[1]}"
+                print(f"❌ Koyfin capture failed for {ticker}: {error_msg}")
+            return result
+        except Exception as e:
+            import traceback
+            error_msg = f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
+            print(f"❌ Koyfin capture error for {ticker}: {error_msg}")
+            return None, None
     
     chart_path, metrics = await asyncio.to_thread(_capture)
     
@@ -595,7 +607,9 @@ async def generate_PE_PEG_ratio_chart(ticker: str, period: str = '10Y') -> str:
         
         return f"Chart saved: {chart_path}\n\n{formatted_metrics}"
     else:
-        return f"Failed to capture P/E and PEG chart for {ticker}. Try with headless=False for better reliability."
+        failure_reason = f"Error: {error_msg}" if error_msg else f"chart_path={chart_path}, metrics={metrics}"
+        print(f"❌ Failed to capture P/E and PEG chart for {ticker}: {failure_reason}")
+        return f"Failed to capture P/E and PEG chart for {ticker}. {failure_reason}"
 
 
 @function_tool

@@ -32,6 +32,18 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           uv sync
       
+      - name: Install Firefox
+        run: |
+          sudo apt-get update -qq >/dev/null 2>&1
+          sudo apt-get install -y firefox >/dev/null 2>&1 || true
+          FIREFOX_PATH=$(find /snap/firefox -name firefox -type f -executable 2>/dev/null | head -1 || which firefox 2>/dev/null || echo "")
+          if [ -n "${FIREFOX_PATH}" ]; then
+            echo "FIREFOX_BINARY=${FIREFOX_PATH}" >> $GITHUB_ENV
+            echo "✅ Firefox: ${FIREFOX_PATH}"
+          else
+            echo "⚠️ Firefox not found"
+          fi
+      
       - name: Create charts directory
         run: mkdir -p charts
       
@@ -47,6 +59,7 @@ jobs:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+          DISPLAY: :99
         run: |
           set -e
           export PATH="$HOME/.local/bin:$PATH"

@@ -11,6 +11,8 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from src.config import CHART_OUTPUT_DIR
 
 try:
@@ -65,8 +67,24 @@ class KoyfinChartCapture:
         options.set_preference('dom.webdriver.enabled', False)
         options.set_preference('useAutomationExtension', False)
         
+        # Find Firefox binary path (for snap installations in CI)
+        firefox_binary = os.getenv('FIREFOX_BINARY')
+        if firefox_binary and os.path.exists(firefox_binary):
+            options.binary_location = firefox_binary
+            self._log(f"Using Firefox binary from env: {firefox_binary}")
+        
         self.driver = webdriver.Firefox(options=options)
-        self.driver.maximize_window()
+        
+        # Set window size explicitly (important for SHARE button visibility)
+        if self.headless:
+            # Headless mode: set explicit size
+            self.driver.set_window_size(1920, 1080)
+            self._log(f"Window size set to 1920x1080 (headless)")
+        else:
+            # Visible mode: maximize
+            self.driver.maximize_window()
+            size = self.driver.get_window_size()
+            self._log(f"Window maximized: {size['width']}x{size['height']}")
         
         # Headless maximize doesn't work reliably, set explicit size from screen
         if self.headless:
@@ -83,34 +101,55 @@ class KoyfinChartCapture:
         time.sleep(2)
         self._log("✅ Popup closed")
     
-    def _find_visible_input(self) -> Optional[any]:
-        """Find first visible input element."""
-        inputs = self.driver.find_elements(By.TAG_NAME, "input")
-        return next((inp for inp in inputs if inp.is_displayed()), None)
+    def _find_visible_input(self, timeout: int = 10) -> Optional[any]:
+        """Find first visible input element with wait."""
+        try:
+            wait = WebDriverWait(self.driver, timeout)
+            wait.until(EC.presence_of_element_located((By.TAG_NAME, "input")))
+            inputs = self.driver.find_elements(By.TAG_NAME, "input")
+            return next((inp for inp in inputs if inp.is_displayed()), None)
+        except:
+            return None
     
-    def _click_button_by_text(self, text: str, case_sensitive: bool = False) -> bool:
+    def _click_button_by_text(self, text: str, case_sensitive: bool = False, timeout: int = 10) -> bool:
         """
-        Click button containing specific text.
+        Click button containing specific text with wait.
         
         Args:
             text: Text to search for in button
             case_sensitive: Whether to match case (default: False)
+            timeout: Maximum wait time in seconds (default: 10)
             
         Returns:
             True if button found and clicked, False otherwise
         """
-        buttons = self.driver.find_elements(By.TAG_NAME, "button")
-        for btn in buttons:
-            try:
-                btn_text = btn.text if case_sensitive else btn.text.lower()
-                search_text = text if case_sensitive else text.lower()
+        try:
+            wait = WebDriverWait(self.driver, timeout)
+            # Wait for at least one button to be present
+            wait.until(EC.presence_of_element_located((By.TAG_NAME, "button")))
+            
+            # Try to find and click the button
+            for attempt in range(3):  # Retry up to 3 times
+                buttons = self.driver.find_elements(By.TAG_NAME, "button")
+                for btn in buttons:
+                    try:
+                        btn_text = btn.text if case_sensitive else btn.text.lower()
+                        search_text = text if case_sensitive else text.lower()
+                        
+                        if search_text in btn_text and btn.is_displayed():
+                            self.driver.execute_script("arguments[0].scrollIntoView(true);", btn)
+                            time.sleep(0.3)
+                            btn.click()
+                            return True
+                    except:
+                        continue
                 
-                if search_text in btn_text and btn.is_displayed():
-                    btn.click()
-                    return True
-            except:
-                continue
-        return False
+                if attempt < 2:
+                    time.sleep(1)  # Wait before retry
+            
+            return False
+        except:
+            return False
     
     def _search_and_select_chart(self, ticker: str):
         """
@@ -124,30 +163,35 @@ class KoyfinChartCapture:
         """
         self._log(f"Searching for '{ticker} Historical Price'...")
         
-        # Click search trigger
-        search_trigger = self.driver.find_element(
-            By.XPATH, 
-            "//*[contains(text(), 'Search for a name, ticker, or function')]"
-        )
-        self.driver.execute_script("arguments[0].click();", search_trigger)
-        time.sleep(1)
+        # Click search trigger with wait
+        try:
+            wait = WebDriverWait(self.driver, 10)
+            search_trigger = wait.until(
+                EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Search for a name, ticker, or function')]"))
+            )
+            self.driver.execute_script("arguments[0].click();", search_trigger)
+            time.sleep(1.5)
+        except Exception as e:
+            self._log(f"⚠️  Search trigger click failed: {e}")
+            raise Exception("Search trigger not found")
         
-        # Find and use search box
-        search_box = self._find_visible_input()
+        # Find and use search box with wait
+        search_box = self._find_visible_input(timeout=10)
         if not search_box:
             raise Exception("Search box not found")
         
         # Search for ticker
+        search_box.clear()
         search_box.send_keys(ticker)
-        time.sleep(0.5)
+        time.sleep(1)
         search_box.send_keys(Keys.RETURN)
-        time.sleep(0.3)
+        time.sleep(1)
         
-        # Search for GF.PE chart
+        # Search for Historical Price Graph
         search_box.send_keys(" Historical Price Graph")
-        time.sleep(0.5)
+        time.sleep(1.5)
         search_box.send_keys(Keys.RETURN)
-        time.sleep(2)
+        time.sleep(5)  # Wait for chart to load
         
         self._log(f"✅ Selected {ticker} Historical Price Graph")
         return search_box
@@ -160,15 +204,64 @@ class KoyfinChartCapture:
             search_box: Previously found search box element
         """
         self._log("Adding P/E metric...")
-        time.sleep(1)
+        time.sleep(3)
         
-        # Click 'Add Metric' button
-        if not self._click_button_by_text('Add Metric', case_sensitive=True):
-            raise Exception("Add Metric button not found")
+        # Wait for 'Add Metric' button with retry
+        self._log("Waiting for 'Add Metric' button...")
+        max_retries = 3
+        for retry in range(max_retries):
+            try:
+                # Close dialogs
+                try:
+                    close_btns = self.driver.find_elements(By.CSS_SELECTOR, ".rc-dialog-close, button[aria-label='Close']")
+                    for btn in close_btns:
+                        if btn.is_displayed():
+                            try:
+                                self.driver.execute_script("arguments[0].click();", btn)
+                            except:
+                                pass
+                            time.sleep(0.5)
+                except:
+                    pass
+                
+                # Find button (fresh each time)
+                wait = WebDriverWait(self.driver, 20)
+                add_metric_btn = wait.until(
+                    lambda driver: next(
+                        (btn for btn in driver.find_elements(By.TAG_NAME, "button")
+                         if "Add Metric" in btn.text and btn.is_displayed()),
+                        None
+                    )
+                )
+                if not add_metric_btn:
+                    raise Exception("Add Metric button not found")
+                
+                self.driver.execute_script("arguments[0].scrollIntoView(true);", add_metric_btn)
+                time.sleep(1)
+                self.driver.execute_script("arguments[0].click();", add_metric_btn)
+                self._log("✅ 'Add Metric' button clicked")
+                break  # Success
+                
+            except Exception as e:
+                if retry < max_retries - 1:
+                    self._log(f"⚠️  Retry {retry + 1}/{max_retries}: {type(e).__name__}")
+                    time.sleep(2)
+                    continue
+                else:
+                    buttons = self.driver.find_elements(By.TAG_NAME, "button")
+                    visible_buttons = [btn.text for btn in buttons if btn.is_displayed() and btn.text]
+                    self._log(f"❌ Failed after {max_retries} retries. Buttons: {visible_buttons[:10]}")
+                    raise Exception("Add Metric button not found")
         
-        time.sleep(2)
+        time.sleep(3)
         
-        # Find metric input (different from search box)
+        # Find metric input (different from search box) with wait
+        try:
+            wait = WebDriverWait(self.driver, 10)
+            wait.until(EC.presence_of_element_located((By.TAG_NAME, "input")))
+        except:
+            pass
+        
         inputs = self.driver.find_elements(By.TAG_NAME, "input")
         metric_input = next(
             (inp for i, inp in enumerate(inputs) 
@@ -180,18 +273,19 @@ class KoyfinChartCapture:
             raise Exception("Metric input not found")
         
         # Type and select PE
+        metric_input.clear()
         metric_input.send_keys("P/E")
-        time.sleep(1)
-        metric_input.send_keys(Keys.RETURN)
         time.sleep(2)
+        metric_input.send_keys(Keys.RETURN)
+        time.sleep(3)
         
         # Select NTM option (Arrow Down + Return)
         self._log("Selecting NTM option...")
         metric_input.send_keys(Keys.ARROW_DOWN)
-        time.sleep(0.5)
+        time.sleep(1)
         metric_input.send_keys(Keys.RETURN)
         
-        time.sleep(3 if self.headless else 2)
+        time.sleep(5)
         self._log("✅ P/E (NTM) added")
     
     def _add_peg(self, search_box):
@@ -202,15 +296,64 @@ class KoyfinChartCapture:
             search_box: Previously found search box element
         """
         self._log("Adding PEG metric...")
-        time.sleep(1)
+        time.sleep(3)
         
-        # Click 'Add Metric' button
-        if not self._click_button_by_text('Add Metric', case_sensitive=True):
-            raise Exception("Add Metric button not found")
+        # Wait for 'Add Metric' button with retry
+        self._log("Waiting for 'Add Metric' button...")
+        max_retries = 3
+        for retry in range(max_retries):
+            try:
+                # Close dialogs
+                try:
+                    close_btns = self.driver.find_elements(By.CSS_SELECTOR, ".rc-dialog-close, button[aria-label='Close']")
+                    for btn in close_btns:
+                        if btn.is_displayed():
+                            try:
+                                self.driver.execute_script("arguments[0].click();", btn)
+                            except:
+                                pass
+                            time.sleep(0.5)
+                except:
+                    pass
+                
+                # Find button (fresh each time)
+                wait = WebDriverWait(self.driver, 20)
+                add_metric_btn = wait.until(
+                    lambda driver: next(
+                        (btn for btn in driver.find_elements(By.TAG_NAME, "button")
+                         if "Add Metric" in btn.text and btn.is_displayed()),
+                        None
+                    )
+                )
+                if not add_metric_btn:
+                    raise Exception("Add Metric button not found")
+                
+                self.driver.execute_script("arguments[0].scrollIntoView(true);", add_metric_btn)
+                time.sleep(1)
+                self.driver.execute_script("arguments[0].click();", add_metric_btn)
+                self._log("✅ 'Add Metric' button clicked")
+                break  # Success
+                
+            except Exception as e:
+                if retry < max_retries - 1:
+                    self._log(f"⚠️  Retry {retry + 1}/{max_retries}: {type(e).__name__}")
+                    time.sleep(2)
+                    continue
+                else:
+                    buttons = self.driver.find_elements(By.TAG_NAME, "button")
+                    visible_buttons = [btn.text for btn in buttons if btn.is_displayed() and btn.text]
+                    self._log(f"❌ Failed after {max_retries} retries. Buttons: {visible_buttons[:10]}")
+                    raise Exception("Add Metric button not found")
         
-        time.sleep(2)
+        time.sleep(3)
         
-        # Find metric input
+        # Find metric input with wait
+        try:
+            wait = WebDriverWait(self.driver, 10)
+            wait.until(EC.presence_of_element_located((By.TAG_NAME, "input")))
+        except:
+            pass
+        
         inputs = self.driver.find_elements(By.TAG_NAME, "input")
         metric_input = next((inp for i, inp in enumerate(inputs) 
                            if inp.is_displayed() and (i > 0 or inp != search_box)), None)
@@ -219,11 +362,12 @@ class KoyfinChartCapture:
             raise Exception("Metric input not found")
         
         # Type and select PEG (NTM will be auto-selected)
+        metric_input.clear()
         metric_input.send_keys("PEG")
-        time.sleep(1)
+        time.sleep(2)
         metric_input.send_keys(Keys.RETURN)
         
-        time.sleep(3 if self.headless else 2)
+        time.sleep(5)
         self._log("✅ PEG (NTM) added")
     
     def _click_indicator_settings(self, indicator_name: str = "P/E (NTM)"):
@@ -433,36 +577,133 @@ class KoyfinChartCapture:
         """
         self._log("Saving chart image...")
         
-        # Click SHARE button
-        if not self._click_button_by_text('share'):
-            self._log("⚠️  SHARE button not found")
-            return False
+        # Ensure window is large enough for SHARE button to be visible
+        current_size = self.driver.get_window_size()
+        self._log(f"Current window size: {current_size['width']}x{current_size['height']}")
+        if current_size['width'] < 1200 or current_size['height'] < 800:
+            self._log("⚠️  Window too small, resizing to 1920x1080")
+            self.driver.set_window_size(1920, 1080)
+            time.sleep(1)
         
+        # Wait for page to fully load
         time.sleep(3)
         
+        # Click SHARE button with enhanced search
+        self._log("Looking for SHARE button...")
         try:
-            # Find chart image
+            wait = WebDriverWait(self.driver, 15)
+            wait.until(EC.presence_of_element_located((By.TAG_NAME, "button")))
+            
+            # Log all visible buttons for debugging
+            all_buttons = self.driver.find_elements(By.TAG_NAME, "button")
+            visible_button_texts = [btn.text.strip() for btn in all_buttons if btn.is_displayed() and btn.text.strip()]
+            self._log(f"Visible buttons: {visible_button_texts[:15]}")
+            
+            # Try multiple strategies to find SHARE button
+            share_btn = None
+            
+            # Strategy 1: Find by text (case-insensitive)
+            for btn in all_buttons:
+                if btn.is_displayed() and btn.text.strip().lower() == 'share':
+                    share_btn = btn
+                    self._log("Found SHARE button (strategy 1: exact text match)")
+                    break
+            
+            # Strategy 2: Find by partial text
+            if not share_btn:
+                for btn in all_buttons:
+                    if btn.is_displayed() and 'share' in btn.text.strip().lower():
+                        share_btn = btn
+                        self._log(f"Found SHARE button (strategy 2: partial match, text='{btn.text.strip()}')")
+                        break
+            
+            # Strategy 3: Find by aria-label or title
+            if not share_btn:
+                for btn in all_buttons:
+                    if btn.is_displayed():
+                        aria_label = btn.get_attribute('aria-label') or ''
+                        title = btn.get_attribute('title') or ''
+                        if 'share' in aria_label.lower() or 'share' in title.lower():
+                            share_btn = btn
+                            self._log(f"Found SHARE button (strategy 3: aria-label/title)")
+                            break
+            
+            if not share_btn:
+                self._log("❌ SHARE button not found with any strategy")
+                return False
+            
+            # Click the button
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", share_btn)
+            time.sleep(1)
+            self.driver.execute_script("arguments[0].click();", share_btn)
+            self._log("✅ SHARE button clicked")
+            time.sleep(3)
+            
+        except Exception as e:
+            self._log(f"❌ Error finding SHARE button: {e}")
+            return False
+        
+        # Click DOWNLOAD button
+        self._log("Looking for DOWNLOAD button...")
+        try:
+            wait = WebDriverWait(self.driver, 15)
+            wait.until(EC.presence_of_element_located((By.TAG_NAME, "button")))
+            
+            # Log all visible buttons after SHARE click
+            all_buttons = self.driver.find_elements(By.TAG_NAME, "button")
+            visible_button_texts = [btn.text.strip() for btn in all_buttons if btn.is_displayed() and btn.text.strip()]
+            self._log(f"Visible buttons after SHARE: {visible_button_texts[:15]}")
+            
+            download_btn = None
+            for btn in all_buttons:
+                if btn.is_displayed() and 'download' in btn.text.strip().lower():
+                    download_btn = btn
+                    break
+            
+            if not download_btn:
+                self._log("❌ DOWNLOAD button not found")
+                return False
+            
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", download_btn)
+            time.sleep(1)
+            self.driver.execute_script("arguments[0].click();", download_btn)
+            self._log("✅ DOWNLOAD button clicked")
+            time.sleep(3)
+            
+        except Exception as e:
+            self._log(f"❌ Error finding DOWNLOAD button: {e}")
+            return False
+        
+        # Get chart image
+        try:
+            self._log("Looking for chart image...")
             chart_img = self._find_chart_image()
             
             if chart_img:
+                self._log(f"✅ Chart image found: size={chart_img.size}")
                 img_src = chart_img.get_attribute('src')
+                self._log(f"Image src type: {img_src[:50] if img_src else 'None'}...")
+                
                 if img_src and self._save_image_from_src(img_src, output_path):
                     self._log(f"✅ Chart saved: {output_path}")
                     return True
+                else:
+                    self._log(f"❌ Failed to save image from src")
+            else:
+                self._log("❌ Chart image not found")
             
             # Fallback: screenshot
-            self._log("⚠️  Chart image not found, using screenshot")
+            self._log("⚠️  Using screenshot fallback")
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             self.driver.save_screenshot(output_path)
-            self._log(f"✅ Screenshot saved: {output_path}")
+            file_size = os.path.getsize(output_path) if os.path.exists(output_path) else 0
+            self._log(f"✅ Screenshot saved: {output_path} ({file_size} bytes)")
             return True
-            
         except Exception as e:
-            self._log(f"⚠️  Error: {e}, using screenshot")
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            self.driver.save_screenshot(output_path)
-            self._log(f"✅ Screenshot saved: {output_path}")
-            return True
+            import traceback
+            self._log(f"❌ Exception in _save_chart: {type(e).__name__}: {e}")
+            self._log(f"Traceback:\n{traceback.format_exc()}")
+            return False
     
     def capture(
         self, 
@@ -516,18 +757,23 @@ class KoyfinChartCapture:
             metrics = {'pe': pe_data, 'peg': peg_data}
             
             # Save chart
-            if self._save_chart(output_path):
+            self._log("Attempting to save chart...")
+            save_result = self._save_chart(output_path)
+            self._log(f"Save chart result: {save_result}")
+            
+            if save_result:
                 url = self.driver.current_url
                 self._log(f"URL: {url}")
+                self._log(f"✅ SUCCESS: Returning chart_path={output_path}, metrics={metrics}")
                 return output_path, metrics
-            
-            return None, None
+            else:
+                self._log(f"❌ FAILED: _save_chart returned False")
+                return None, None
         
         except Exception as e:
-            self._log(f"❌ Error for {ticker}: {e}")
-            if self.verbose:
-                import traceback
-                traceback.print_exc()
+            self._log(f"❌ EXCEPTION for {ticker}: {type(e).__name__}: {e}")
+            import traceback
+            self._log(f"Traceback:\n{traceback.format_exc()}")
             return None, None
         
         finally:
