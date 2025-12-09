@@ -86,10 +86,6 @@ class KoyfinChartCapture:
             size = self.driver.get_window_size()
             self._log(f"Window maximized: {size['width']}x{size['height']}")
         
-        # Headless maximize doesn't work reliably, set explicit size from screen
-        if self.headless:
-            self.driver.set_window_size(SCREEN_WIDTH, SCREEN_HEIGHT)
-        
         mode = "headless" if self.headless else "visible"
         self._log(f"✅ Firefox initialized ({mode}, maximized)")
     

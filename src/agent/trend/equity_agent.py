@@ -74,7 +74,7 @@ class EquityTrendAgent(TrendAgent):
             - analyze_disparity (200 window for 1y period) to analyze disparity data
             - generate_RSI_chart (14 window for 1y period) to generate RSI chart
             - analyze_RSI (14 window for 1y period) to analyze RSI data
-            - generate_PE_PEG_ratio_chart to generate P/E and PEG ratio charts for 5 years period (call only for stocks, not for indices or ETFs)
+            - generate_PE_PEG_ratio_chart to generate P/E and PEG ratio charts for 5 years period (call only for stock, not for index or ETF)
             
             SCORE CALCULATION:
             Based on Rank values from tool outputs:
