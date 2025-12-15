@@ -86,7 +86,7 @@ class OrchestratorAgent(AsyncAgent):
         
         # Create synthesis prompt
         synthesis_prompt = self._create_synthesis_prompt()
-        result = await Runner.run(self.synthesis_agent, input=synthesis_prompt)
+        result = await Runner.run(self.synthesis_agent, input=synthesis_prompt, max_turns=20)
         return result.final_output_as(self.output_type)
         
     

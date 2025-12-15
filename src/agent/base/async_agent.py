@@ -50,6 +50,6 @@ class AsyncAgent:
         Returns:
             Agent's response with analysis results
         """
-        result = await Runner.run(self.agent, input=message)
+        result = await Runner.run(self.agent, input=message, max_turns=20)
         return result.final_output_as(self.output_type)
 
