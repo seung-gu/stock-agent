@@ -10271,6 +10271,7 @@
     {
       "date": "2025-12-15",
       "value": 61.82
+<<<<<<< HEAD
     },
     {
       "date": "2025-12-16",
@@ -10283,6 +10284,8 @@
     {
       "date": "2025-12-18",
       "value": 59.44
+=======
+>>>>>>> 165e134 (fix: resolve OpenAI timeout errors and improve error handling (v0.9.3))
     }
   ],
   "S5FI": [

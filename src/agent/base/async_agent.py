@@ -1,4 +1,4 @@
-from agents import Agent, Runner
+from agents import Agent, Runner, ModelSettings
 
 
 class AsyncAgent:
@@ -37,6 +37,7 @@ class AsyncAgent:
             name=self.agent_name,
             instructions="",
             model="gpt-4.1-mini",
+            model_settings=ModelSettings(temperature=0.1),
             output_type=self.output_type
         )
     
@@ -50,6 +51,13 @@ class AsyncAgent:
         Returns:
             Agent's response with analysis results
         """
-        result = await Runner.run(self.agent, input=message, max_turns=20)
-        return result.final_output_as(self.output_type)
+        try:
+            result = await Runner.run(self.agent, input=message, max_turns=50)
+            return result.final_output_as(self.output_type)
+        except Exception as e:
+            print(f"❌ Agent '{self.agent_name}' failed: {type(e).__name__}: {str(e)}")
+            # Return default output based on output_type
+            if self.output_type:
+                return self.output_type()
+            return None
 

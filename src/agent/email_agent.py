@@ -1,7 +1,7 @@
 import os
 import sendgrid
 from sendgrid.helpers.mail import Email, Mail, Content, To
-from agents import Agent, function_tool
+from agents import Agent, function_tool, ModelSettings
 
 @function_tool
 def send_email(subject: str, html_body: str) -> dict[str, str]:
@@ -24,4 +24,5 @@ email_agent = Agent(
     instructions=INSTRUCTIONS,
     tools=[send_email],
     model="gpt-4.1-mini",
+    model_settings=ModelSettings(temperature=0.1),
 )

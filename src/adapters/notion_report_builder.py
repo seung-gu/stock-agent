@@ -84,9 +84,11 @@ class NotionReportBuilder:
         """Collect all content and process images."""
         all_contents = [summary]
         for page_item in self._pages:
-            all_contents.append(page_item['report'].content)
+            if page_item['report'] is not None:
+                all_contents.append(page_item['report'].content)
             for child_report in page_item['children']:
-                all_contents.append(child_report.content)
+                if child_report is not None:
+                    all_contents.append(child_report.content)
         
         _, image_files, _ = find_local_images(" ".join(all_contents))
         return upload_images_to_cloudflare(image_files) if image_files else {}
@@ -114,6 +116,8 @@ class NotionReportBuilder:
         
         for page_item in self._pages:
             report = page_item['report']
+            if report is None:
+                continue
             
             # Create 1st level page
             processed, _, _ = find_local_images(report.content)
@@ -130,9 +134,10 @@ class NotionReportBuilder:
     
     def _create_sub_pages(self, parent_page_id: str, children: list, uploaded_map: dict, parent_title: str):
         """Create 2nd level pages under a parent."""
-        print(f"📂 Creating {len(children)} sub-pages under '{parent_title}'...")
+        valid_children = [c for c in children if c is not None]
+        print(f"📂 Creating {len(valid_children)} sub-pages under '{parent_title}'...")
         
-        for sub_report in children:
+        for sub_report in valid_children:
             sub_processed, _, _ = find_local_images(sub_report.content)
             create_child_page(parent_page_id, sub_report.title, sub_processed, uploaded_map)
 
