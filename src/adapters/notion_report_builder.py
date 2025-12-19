@@ -18,37 +18,46 @@ class NotionReportBuilder:
     
     def __init__(self):
         self._pages = []
+        self._last_add_successful = False
     
     def add_page(self, report: AnalysisReport | None):
         """
         Add a 1st level page.
         
         Args:
-            report: AnalysisReport object
+            report: AnalysisReport object (None values are skipped)
             
         Returns:
             self (for method chaining)
         """
         if report is None:
+            self._last_add_successful = False
             return self
         self._pages.append({
             'report': report,
             'children': []
         })
+        self._last_add_successful = True
         return self
     
-    def add_children(self, children_reports: list[AnalysisReport]):
+    def add_children(self, children_reports: list[AnalysisReport] | None):
         """
         Add children pages (2nd level) to the last added page.
         
         Args:
-            children_reports: List of child AnalysisReport objects
+            children_reports: List of child AnalysisReport objects (None or empty list is ignored)
             
         Returns:
             self (for method chaining)
         """
-        if self._pages:
-            self._pages[-1]['children'] = children_reports
+        if not self._last_add_successful or not self._pages:
+            print("⚠️ Warning: add_children() called but no parent page was successfully added (previous add_page() returned None)")
+            return self
+        
+        if children_reports is None:
+            return self
+            
+        self._pages[-1]['children'] = children_reports
         return self
     
     def upload(self, title: str, date: str, summary: str) -> dict:
