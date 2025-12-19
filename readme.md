@@ -13,7 +13,7 @@ AI-powered comprehensive market analysis with automated Notion reporting.
 *Automated market analysis reports with charts, tables, and AI-generated insights published to Notion*
 
 ### Recent Reports
-- [2025-12-19](https://www.notion.so/2025-12-3-2ce62b45fc8081598200e991e7ac1742)
+- [2025-12-19](https://www.notion.so/2025-12-Week-3-2ce62b45fc80816ab167ef42b81a07b5)
 - [2025-12-16](https://www.notion.so/2025-12-3-2cb62b45fc80816594d5d46d857d94db)
 - [2025-12-15](https://www.notion.so/2025-12-3-Week-3-2025-2ca62b45fc808186a9e6d8669798a6fd)
 - [2025-12-08](https://www.notion.so/2025-12-2-2c362b45fc8081bc8c30dceb3d9684da)
