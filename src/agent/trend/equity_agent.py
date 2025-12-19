@@ -26,12 +26,15 @@ class EquityTrendAgent(TrendAgent):
         agent_name = f"equity_agent_{ticker.replace('^', '').replace('-', '_')}"
         agent_label = label or ticker  # Use label if provided, otherwise use ticker
         
+        # Pre-fetch data
+        fetch_data("yfinance", ticker, "5y")
+        
         super().__init__(
             ticker=ticker,
             agent_name=agent_name,
             label=label,
             description=description,
-            tools=[fetch_data, analyze_OHLCV, generate_OHLCV_chart, analyze_SMA, analyze_disparity, 
+            tools=[analyze_OHLCV, generate_OHLCV_chart, analyze_SMA, analyze_disparity, 
                    generate_disparity_chart, generate_RSI_chart, analyze_RSI, generate_PE_PEG_ratio_chart],
             context_instructions=f"""
             EQUITY ANALYSIS FOCUS:

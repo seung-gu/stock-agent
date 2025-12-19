@@ -68,7 +68,7 @@ class FREDSource(APIDataSource):
             return timedelta(days=180)
         return period_map[period_lower]
     
-    async def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
+    def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
         """Fetch data from FRED API with intelligent caching."""
         period_lower = (period or '').lower()
         cached = self._cache.get(symbol)
@@ -132,7 +132,7 @@ class FREDSource(APIDataSource):
             'symbol': symbol,
             'config': config
         }
-    
+          
     async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None, chart_type: str = 'line', **kwargs) -> str:
         """Create FRED indicator chart.
         

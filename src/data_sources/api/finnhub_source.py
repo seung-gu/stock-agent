@@ -34,7 +34,7 @@ class FinnhubSource(APIDataSource):
         """Not used for fundamentals data."""
         return timedelta(days=365)
     
-    async def fetch_data(self, symbol: str, period: str = None) -> dict[str, Any]:
+    def fetch_data(self, symbol: str, period: str = None) -> dict[str, Any]:
         """Fetch Forward P/E data from Finnhub."""
         try:
             quote = self.client.quote(symbol)

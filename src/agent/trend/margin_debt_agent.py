@@ -14,12 +14,15 @@ class MarginDebtAgent(TrendAgent):
     
     def __init__(self):
         """Initialize Margin Debt agent."""
+        # Pre-fetch data
+        fetch_data("finra", "MARGIN_DEBT_YOY", "10y")
+        
         super().__init__(
             ticker="MARGIN_DEBT_YOY",
             agent_name="margin_debt_agent",
             label="FINRA Margin Debt (YoY %)",
             description="FINRA Margin Debt YoY % (Contrarian Sentiment Indicator)",
-            tools=[fetch_data, analyze_margin_debt, generate_margin_debt_chart],
+            tools=[analyze_margin_debt, generate_margin_debt_chart],
             context_instructions=f"""
             You are analyzing FINRA Margin Debt as a contrarian sentiment indicator.
             ALL responses MUST be in {REPORT_LANGUAGE}.
@@ -44,7 +47,6 @@ class MarginDebtAgent(TrendAgent):
             - Margin debt leads market by ~1-3 months historically
 
             TOOL USAGE:
-            - fetch_data: fetch data from FINRA (finra) fetch first the longest period data
             - analyze_margin_debt: analyze margin debt
             - generate_margin_debt_chart: generate chart
             

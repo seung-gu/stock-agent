@@ -14,12 +14,15 @@ class BullBearSpreadAgent(TrendAgent):
     
     def __init__(self):
         """Initialize Bull-Bear Spread agent."""
+        # Pre-fetch data
+        fetch_data("aaii", "AAII_BULL_BEAR_SPREAD", "5y")
+        
         super().__init__(
             ticker="AAII_BULL_BEAR_SPREAD",
             agent_name="bull_bear_spread_agent",
             label="AAII Bull-Bear Spread",
             description="AAII Investor Sentiment Survey (Bull-Bear Spread)",
-            tools=[fetch_data, analyze_bull_bear_spread, generate_bull_bear_spread_chart],
+            tools=[analyze_bull_bear_spread, generate_bull_bear_spread_chart],
             context_instructions=f"""
             You are analyzing AAII Bull-Bear Spread as a contrarian sentiment indicator.
             ALL responses MUST be in {REPORT_LANGUAGE}.
@@ -40,7 +43,6 @@ class BullBearSpreadAgent(TrendAgent):
             - Market often bottoms when sentiment is extremely bearish
                
             TOOL USAGE:
-            - fetch_data: fetch data from AAII (aaii)
             - analyze_bull_bear_spread: analyze spread metrics
             - generate_bull_bear_spread_chart: generate chart
             

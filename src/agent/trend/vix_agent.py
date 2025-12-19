@@ -14,12 +14,15 @@ class VIXAgent(TrendAgent):
     
     def __init__(self):
         """Initialize VIX agent."""
+        # Pre-fetch data
+        fetch_data("yfinance", "^VIX", "1y")
+        
         super().__init__(
             ticker="^VIX",
             agent_name="vix_agent",
             label="VIX (Volatility Indicator)",
             description="CBOE Volatility Indicator (Market Fear Gauge)",
-            tools=[fetch_data, analyze_vix, generate_vix_chart],
+            tools=[analyze_vix, generate_vix_chart],
             context_instructions=f"""
             You are analyzing VIX (Volatility Indicator) as a fear gauge and contrarian indicator.
             ALL responses MUST be in {REPORT_LANGUAGE}.
@@ -32,7 +35,6 @@ class VIXAgent(TrendAgent):
             - VIX > 40:  Extreme fear (Panic, Shock readiness)
           
             TOOL USAGE:
-            - fetch_data: fetch data from yfinance (yfinance)
             - analyze_vix: analyze VIX metrics
             - generate_vix_chart: generate chart
             

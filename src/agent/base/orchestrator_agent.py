@@ -86,8 +86,15 @@ class OrchestratorAgent(AsyncAgent):
         
         # Create synthesis prompt
         synthesis_prompt = self._create_synthesis_prompt()
-        result = await Runner.run(self.synthesis_agent, input=synthesis_prompt, max_turns=20)
-        return result.final_output_as(self.output_type)
+        try:
+            result = await Runner.run(self.synthesis_agent, input=synthesis_prompt, max_turns=50)
+            return result.final_output_as(self.output_type)
+        except Exception as e:
+            print(f"❌ Synthesis agent failed: {type(e).__name__}: {str(e)}")
+            # Return default output based on output_type
+            if self.output_type:
+                return self.output_type()
+            return None
         
     
     def _create_synthesis_prompt(self) -> str:
@@ -100,6 +107,13 @@ class OrchestratorAgent(AsyncAgent):
         
         # Use each agent's agent_name for labeling
         for agent, result in zip(self.sub_agents, self.sub_agent_results):
+            # Skip None results (failed agents)
+            if result is None:
+                prompt_parts.append(f"--- {agent.agent_name} ---")
+                prompt_parts.append('{"title": "Failed", "summary": "Agent execution failed", "content": "No data available"}')
+                prompt_parts.append("")
+                continue
+            
             prompt_parts.append(f"--- {agent.agent_name} ---")
             # Send entire AnalysisReport as JSON (includes title, summary, content, score)
             prompt_parts.append(result.model_dump_json(indent=2))
