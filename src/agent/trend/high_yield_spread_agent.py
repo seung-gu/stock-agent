@@ -14,12 +14,15 @@ class HighYieldSpreadAgent(TrendAgent):
     
     def __init__(self):
         """Initialize High Yield Spread agent."""
+        # Pre-fetch data
+        fetch_data("fred", "BAMLH0A0HYM2", "10y")
+        
         super().__init__(
             ticker="BAMLH0A0HYM2",
             agent_name="high_yield_spread_agent",
             label="ICE BofA US High Yield Spread",
             description="ICE BofA US High Yield Index Effective Yield (Credit Risk Indicator)",
-            tools=[fetch_data, analyze_high_yield_spread, generate_high_yield_spread_chart],
+            tools=[analyze_high_yield_spread, generate_high_yield_spread_chart],
             context_instructions=f"""
             You are analyzing ICE BofA US High Yield Spread as a credit risk and contrarian sentiment indicator.
             ALL responses MUST be in {REPORT_LANGUAGE}.
@@ -40,7 +43,6 @@ class HighYieldSpreadAgent(TrendAgent):
             - Historical spikes (2008, 2020) marked equity bottoms
             
             TOOL USAGE:
-            - fetch_data: fetch data from FRED (fred)
             - analyze_high_yield_spread: analyze spread metrics
             - generate_high_yield_spread_chart: generate chart
             

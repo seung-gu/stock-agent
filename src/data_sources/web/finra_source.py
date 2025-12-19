@@ -98,7 +98,7 @@ class FINRASource(WebDataSource):
         print(f"[FINRA][SCRAPE] Scraped {len(series)} records for {symbol}, range: {series.index[0].date()} to {series.index[-1].date()}")
         return series
     
-    async def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
+    def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
         """Fetch FINRA margin statistics with local file caching.
         
         Args:

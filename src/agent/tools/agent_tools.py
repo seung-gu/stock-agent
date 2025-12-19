@@ -2,7 +2,6 @@ import asyncio
 import os
 import pandas as pd
 from datetime import datetime, timedelta
-from pathlib import Path
 from agents import function_tool
 from factset_report_analyzer import SP500
 from factset_report_analyzer.utils.plot import plot_time_series
@@ -21,11 +20,10 @@ def get_period_name(period: str) -> str:
     return period_names.get(period, f"{period}")
 
 
-@function_tool
-async def fetch_data(source: str, symbol: str, period: str) -> str:
-    """Populate cache by fetching the longest period first (unified for yf/FRED)."""
+def fetch_data(source: str, symbol: str, period: str) -> str:
+    """Populate cache by fetching data (NOT a tool - for internal workflow use only)."""
     src = get_data_source(source)
-    await src.fetch_data(symbol, period)
+    src.fetch_data(symbol, period)
     return f"Fetched OK for {source}:{symbol} {period}"
 
 
@@ -33,7 +31,7 @@ async def fetch_data(source: str, symbol: str, period: str) -> str:
 async def analyze_OHLCV(source: str, symbol: str, period: str) -> str:
     """Analyze cached data and return OHLCV(Open, High, Low, Close, Volatility) analysis."""
     src = get_data_source(source)
-    data = await src.fetch_data(symbol, period)
+    data = await src.load_data(symbol, period)
     actual_period = src.get_actual_period_approx(data)
     analysis = src.get_analysis(data, actual_period)
     period_name = get_period_name(actual_period)
@@ -59,7 +57,7 @@ async def generate_OHLCV_chart(source: str, symbol: str, period: str, label: str
         label: Human-readable label for chart title (optional, defaults to symbol)
     """
     src = get_data_source(source)
-    data = await src.fetch_data(symbol, period)
+    data = await src.load_data(symbol, period)
     actual_period = src.get_actual_period_approx(data)
     
     # Get chart config for yfinance
@@ -79,7 +77,7 @@ async def generate_OHLCV_chart(source: str, symbol: str, period: str, label: str
 async def analyze_SMA(symbol: str, period: str, windows: list[int] = [5, 50, 200]) -> str:
     """Build SMA indicators text using cached yfinance data."""
     src = get_data_source("yfinance")
-    data = await src.fetch_data(symbol, period)
+    data = await src.load_data(symbol, period)
     hist = data['data']
     parts = []
     for w in windows:
@@ -97,7 +95,7 @@ async def analyze_disparity(symbol: str, period: str, window: int = 200) -> str:
     Returns current disparity with 80th percentile (overbought) and 10th percentile (oversold) thresholds.
     """
     src = get_data_source("yfinance")
-    data = await src.fetch_data(symbol, period)
+    data = await src.load_data(symbol, period)
     hist = data['data']
     disp = calculate_disparity(hist, window=window)
     
@@ -119,7 +117,7 @@ async def analyze_disparity(symbol: str, period: str, window: int = 200) -> str:
 async def generate_disparity_chart(symbol: str, period: str = "5y", window: int = 200, label: str = None) -> str:
     """Generate disparity line chart with dynamic overbought/oversold threshold lines."""
     src = get_data_source("yfinance")
-    data = await src.fetch_data(symbol, period)
+    data = await src.load_data(symbol, period)
     hist = data['data']
     series = calculate_disparity(hist, window=window)
     if series.empty:
@@ -160,7 +158,7 @@ async def analyze_RSI(symbol: str, period: str, window: int = 14) -> str:
     Returns current RSI with 80th percentile (overbought) and 20th percentile (oversold) thresholds.
     """
     src = get_data_source("yfinance")
-    data = await src.fetch_data(symbol, period)
+    data = await src.load_data(symbol, period)
     hist = data['data']
     rsi = calculate_rsi(hist, window=window)
     
@@ -182,7 +180,7 @@ async def analyze_RSI(symbol: str, period: str, window: int = 14) -> str:
 async def generate_RSI_chart(symbol: str, period: str, window: int = 14, label: str = None) -> str:
     """Generate RSI line chart with dynamic overbought/oversold threshold lines."""
     src = get_data_source("yfinance")
-    data = await src.fetch_data(symbol, period)
+    data = await src.load_data(symbol, period)
     hist = data['data']
     series = calculate_rsi(hist, window=window)
     if series.empty:
@@ -224,7 +222,7 @@ async def analyze_NFCI(period: str) -> str:
         period: Time period (6mo, 1y, 2y, etc.)
     """
     src = get_data_source('fred')
-    data = await src.fetch_data('NFCI', period)
+    data = await src.load_data('NFCI', period)
     actual_period = src.get_actual_period_approx(data)
     analysis = src.get_analysis(data, actual_period)
     period_name = get_period_name(actual_period)
@@ -245,7 +243,7 @@ async def generate_NFCI_chart(period: str) -> str:
         period: Time period (6mo, 1y, 2y, etc.)
     """
     src = get_data_source('fred')
-    data = await src.fetch_data('NFCI', period)
+    data = await src.load_data('NFCI', period)
     actual_period = src.get_actual_period_approx(data)
     
     chart_info = await src.create_chart(
@@ -267,7 +265,7 @@ async def analyze_market_breadth(symbol: str, period: str) -> str:
         period: Time period (5d, 1mo, 6mo, 1y, etc.)
     """
     src = get_data_source('investing')
-    data = await src.fetch_data(symbol, period)
+    data = await src.load_data(symbol, period)
     actual_period = src.get_actual_period_approx(data)
     analysis = src.get_analysis(data, actual_period)
     period_name = get_period_name(actual_period)
@@ -291,7 +289,7 @@ async def generate_market_breadth_chart(symbol: str, period: str) -> str:
         period: Time period (5d, 1mo, 6mo, 1y, etc.)
     """
     src = get_data_source('investing')
-    data = await src.fetch_data(symbol, period)
+    data = await src.load_data(symbol, period)
     actual_period = src.get_actual_period_approx(data)
     
     # Determine label based on symbol
@@ -319,7 +317,7 @@ async def analyze_bull_bear_spread(period: str) -> str:
         period: Time period (5d, 1mo, 6mo, 1y, etc.)
     """
     src = get_data_source('aaii')
-    data = await src.fetch_data('AAII_BULL_BEAR_SPREAD', period)
+    data = await src.load_data('AAII_BULL_BEAR_SPREAD', period)
     actual_period = src.get_actual_period_approx(data)
     analysis = src.get_analysis(data, actual_period)
     period_name = get_period_name(actual_period)
@@ -341,7 +339,7 @@ async def generate_bull_bear_spread_chart(period: str) -> str:
         period: Time period (5d, 1mo, 6mo, 1y, etc.)
     """
     src = get_data_source('aaii')
-    data = await src.fetch_data('AAII_BULL_BEAR_SPREAD', period)
+    data = await src.load_data('AAII_BULL_BEAR_SPREAD', period)
     actual_period = src.get_actual_period_approx(data)
     chart_info = await src.create_chart(
         data, 'AAII_BULL_BEAR_SPREAD', actual_period,
@@ -364,7 +362,7 @@ async def analyze_put_call(period: str) -> str:
         period: Time period (5d, 1mo, 3mo, etc.)
     """
     src = get_data_source('ycharts')
-    data = await src.fetch_data('CBOE_PUT_CALL_EQUITY', period)
+    data = await src.load_data('CBOE_PUT_CALL_EQUITY', period)
     actual_period = src.get_actual_period_approx(data)
     analysis = src.get_analysis(data, actual_period)
     period_name = get_period_name(actual_period)
@@ -386,7 +384,7 @@ async def generate_put_call_chart(period: str) -> str:
         period: Time period (5d, 1mo, 3mo, etc.)
     """
     src = get_data_source('ycharts')
-    data = await src.fetch_data('CBOE_PUT_CALL_EQUITY', period)
+    data = await src.load_data('CBOE_PUT_CALL_EQUITY', period)
     actual_period = src.get_actual_period_approx(data)
     chart_info = await src.create_chart(
         data, 'CBOE_PUT_CALL_EQUITY', actual_period,
@@ -409,7 +407,7 @@ async def analyze_vix(period: str) -> str:
         period: Time period (5d, 1mo, 6mo, 1y, etc.)
     """
     src = get_data_source('yfinance')
-    data = await src.fetch_data('^VIX', period)
+    data = await src.load_data('^VIX', period)
     actual_period = src.get_actual_period_approx(data)
     analysis = src.get_analysis(data, actual_period)
     period_name = get_period_name(actual_period)
@@ -430,7 +428,7 @@ async def generate_vix_chart(period: str) -> str:
         period: Time period (5d, 1mo, 6mo, 1y, etc.)
     """
     src = get_data_source('yfinance')
-    data = await src.fetch_data('^VIX', period)
+    data = await src.load_data('^VIX', period)
     actual_period = src.get_actual_period_approx(data)
     
     chart_info = await src.create_chart(
@@ -456,7 +454,7 @@ async def analyze_high_yield_spread(period: str) -> str:
         period: Time period (6mo, 1y, 5y, 10y, etc.)
     """
     src = get_data_source('fred')
-    data = await src.fetch_data('BAMLH0A0HYM2', period)
+    data = await src.load_data('BAMLH0A0HYM2', period)
     actual_period = src.get_actual_period_approx(data)
     analysis = src.get_analysis(data, actual_period)
     period_name = get_period_name(actual_period)
@@ -477,7 +475,7 @@ async def generate_high_yield_spread_chart(period: str) -> str:
         period: Time period (6mo, 1y, 5y, 10y, etc.)
     """
     src = get_data_source('fred')
-    data = await src.fetch_data('BAMLH0A0HYM2', period)
+    data = await src.load_data('BAMLH0A0HYM2', period)
     actual_period = src.get_actual_period_approx(data)
     
     chart_info = await src.create_chart(
@@ -501,7 +499,7 @@ async def analyze_margin_debt(symbol: str, period: str) -> str:
         period: Time period (6mo, 1y, 5y, max, etc.)
     """
     src = get_data_source('finra')
-    data = await src.fetch_data(symbol, period)
+    data = await src.load_data(symbol, period)
     actual_period = src.get_actual_period_approx(data)
     analysis = src.get_analysis(data, actual_period)
     period_name = get_period_name(actual_period)
@@ -525,7 +523,7 @@ async def generate_margin_debt_chart(symbol: str, period: str) -> str:
         period: Time period (6mo, 1y, 5y, max, etc.)
     """
     src = get_data_source('finra')
-    data = await src.fetch_data(symbol, period)
+    data = await src.load_data(symbol, period)
     actual_period = src.get_actual_period_approx(data)
     
     label = data.get('label', symbol)

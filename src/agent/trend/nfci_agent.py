@@ -10,12 +10,15 @@ class NFCIAgent(TrendAgent):
     """Specialized agent for NFCI (National Financial Condition Index) analysis"""
     
     def __init__(self):
+        # Pre-fetch data
+        fetch_data("fred", "NFCI", "2y")
+        
         super().__init__(
             ticker="NFCI",
             agent_name="nfci_agent",
             label="National Financial Conditions Index",
             description="NFCI (National Financial Condition Index) analysis (금융 상황 종합 지수)",
-            tools=[fetch_data, analyze_NFCI, generate_NFCI_chart],
+            tools=[analyze_NFCI, generate_NFCI_chart],
             context_instructions="""
             NFCI (National Financial Condition Index) Analysis:
             - NFCI = 0: Historical average financial conditions
@@ -25,7 +28,7 @@ class NFCIAgent(TrendAgent):
             - Falling NFCI = Financial conditions easing (liquidity improvement)
             
             DATA SOURCE:
-            - MUST use source="fred" for fetch_data only
+            - Data is pre-fetched from FRED
             - Use analyze_NFCI and generate_NFCI_chart (no source parameter needed)
             
             PERIOD REQUIREMENTS:

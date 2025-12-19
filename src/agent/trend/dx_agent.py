@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """DX=F (Dollar Index) Trend Analysis Agent"""
 
+import asyncio
 from src.agent.base.trend_agent import TrendAgent
 from src.agent.tools.agent_tools import fetch_data, analyze_OHLCV, generate_OHLCV_chart, analyze_SMA
 
@@ -8,11 +9,14 @@ class DXAgent(TrendAgent):
     """Specialized agent for DX=F (Dollar Indicator) analysis"""
     
     def __init__(self):
+        # Pre-fetch data
+        fetch_data("yfinance", "DX=F", "1y")
+        
         super().__init__(
             ticker="DX=F",
             agent_name="dx_agent",
             label="US Dollar Indicator",
-            tools=[fetch_data, analyze_OHLCV, generate_OHLCV_chart, analyze_SMA],
+            tools=[analyze_OHLCV, generate_OHLCV_chart, analyze_SMA],
             context_instructions="""
             DX=F (Dollar Indicator) Analysis:
             - DX=F measures the value of the US dollar against a basket of foreign currencies

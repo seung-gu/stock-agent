@@ -5,11 +5,12 @@ Provides abstract base classes for API and Web scraping data sources.
 """
 
 import pandas as pd
+import json
+import asyncio
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Any
 from pathlib import Path
-import json
 
 
 class DataSource(ABC):
@@ -38,9 +39,9 @@ class DataSource(ABC):
         return False
     
     @abstractmethod
-    async def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
+    def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
         """
-        Fetch raw data from the source.
+        Fetch raw data from the source (synchronous).
         
         Args:
             symbol: Symbol or indicator code
@@ -50,6 +51,19 @@ class DataSource(ABC):
             Dictionary with data and metadata
         """
         pass
+    
+    async def load_data(self, symbol: str, period: str) -> dict[str, Any]:
+        """
+        Async wrapper for fetch_data - runs sync fetch_data in thread pool.
+        
+        Args:
+            symbol: Symbol or indicator code
+            period: Time period (5d, 1mo, 6mo, etc.)
+            
+        Returns:
+            Dictionary with data and metadata
+        """
+        return await asyncio.to_thread(self.fetch_data, symbol, period)
     
     @abstractmethod
     async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None) -> str:

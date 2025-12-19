@@ -81,7 +81,7 @@ class AAIISource(WebDataSource):
         print(f"[AAII][SCRAPE] Scraped {len(series)} records, range: {series.index[0].date()} to {series.index[-1].date()}")
         return series
     
-    async def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:   
+    def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:   
         return self._fetch_with_cache_and_scrape(
             symbol=symbol,
             period=period,

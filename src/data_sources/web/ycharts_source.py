@@ -78,7 +78,7 @@ class YChartsSource(WebDataSource):
         print(f"[YCHARTS][SCRAPE] Scraped {len(series)} records, range: {series.index[0].date()} to {series.index[-1].date()}")
         return series
     
-    async def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
+    def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
         """Fetch Put-Call Ratio data with local file caching and web scraping."""
         if symbol not in self.SYMBOL_URLS:
             raise ValueError(f"YChartsSource only supports: {list(self.SYMBOL_URLS.keys())}, got: {symbol}")

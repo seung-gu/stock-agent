@@ -14,20 +14,24 @@ class MarketBreadthAgent(TrendAgent):
     
     def __init__(self):
         """Initialize market breadth agent."""
+        # Pre-fetch data
+        fetch_data("investing", "S5TH", "5y")
+        fetch_data("investing", "S5FI", "1y")
+        
         super().__init__(
             ticker="S5TH",
             agent_name="market_breadth_agent",
             label="S&P 500 Market Breadth",
             description="S&P 500 stocks above 50-day and 200-day MA (이동 평균선 상회 종목 비중)",
-            tools=[fetch_data, analyze_market_breadth, generate_market_breadth_chart],
+            tools=[analyze_market_breadth, generate_market_breadth_chart],
             context_instructions=f"""
             You are a market breadth analyst specializing in S&P 500 participation metrics.
             ALL responses MUST be in {REPORT_LANGUAGE}.
             
             ANALYSIS WORKFLOW:
-            1. Fetch and analyze BOTH timeframes:
-               - S5FI (50-day MA): fetch_data + analyze_market_breadth('S5FI', '1mo') + generate_market_breadth_chart('S5FI', '1y')
-               - S5TH (200-day MA): fetch_data + analyze_market_breadth('S5TH', '1mo') + generate_market_breadth_chart('S5TH', '5y')
+            1. Analyze BOTH timeframes:
+               - S5FI (50-day MA): analyze_market_breadth('S5FI', '1mo') + generate_market_breadth_chart('S5FI', '1y')
+               - S5TH (200-day MA): analyze_market_breadth('S5TH', '1mo') + generate_market_breadth_chart('S5TH', '5y')
             
             2. Market Breadth Framework
             
@@ -57,7 +61,6 @@ class MarketBreadthAgent(TrendAgent):
             - This is a leading market indicator to catch top signals (emphasize this)
         
             TOOL USAGE:
-            - fetch_data: fetch data from Investing.com (investing)
             - analyze_market_breadth: analyze market breadth
             - generate_market_breadth_chart: generate market breadth chart
             

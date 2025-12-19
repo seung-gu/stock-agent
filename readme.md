@@ -603,6 +603,68 @@ get_data_source("finra")      # → FINRASource
 
 ## Recent Improvements
 
+### v0.10.0 - Data Source Architecture Refactoring (November 2025)
+
+**1. Data Source Layer Simplification**
+- **Sync fetch_data()**: Changed from async to synchronous across all data sources
+  - All 8 data sources (yfinance, FRED, Finnhub, Investing, AAII, FINRA, YCharts) now use sync `fetch_data()`
+  - Eliminates unnecessary async overhead for blocking I/O operations
+- **Async load_data() Wrapper**: Added `async def load_data()` in base `DataSource` class
+  - Uses `asyncio.to_thread()` to run sync `fetch_data()` in thread pool
+  - Maintains async interface for agent tools while simplifying implementation
+- **Benefits**: Cleaner code, easier to maintain, better separation of sync/async concerns
+
+**2. Trend Agents Pre-fetch Pattern**
+- **Data Pre-fetching**: All trend agents now fetch data in `__init__` instead of during agent execution
+  - Agents fetch data for maximum required period upfront (e.g., 5y for EquityTrendAgent)
+  - Data is cached and available immediately when agent runs
+- **Tool Simplification**: Removed `fetch_data` from `@function_tool` decorators
+  - `fetch_data()` is now a regular function, not exposed to agents
+  - Agent tools (`analyze_OHLCV`, `generate_OHLCV_chart`, etc.) use `load_data()` (Async) internally
+
+**Impact:**
+- ✅ Simpler data source implementation (sync is natural for blocking I/O)
+- ✅ Better performance (pre-fetching eliminates redundant API calls)
+- ✅ Cleaner agent code (no fetch_data in tools, clearer instructions)
+
+---
+
+### v0.9.3 - OpenAI Timeout Error Fixes (December 16, 2025)
+
+**Issue:**
+- Koyfin chart capture operations were taking too long, frequently exceeding the default 10-minute OpenAI API timeout
+- Error handling was not properly implemented, causing the entire process to fail when individual agents timed out
+- The `gpt-4.1-mini` model was slow, causing frequent 10-minute timeout errors
+- Default `max_turns` (20) was insufficient for complex agent workflows
+
+**Fixes:**
+- Increased `max_turns` from default 20 to 50 for all agent runs to accommodate complex tool usage
+- Added comprehensive exception handling in `AsyncAgent.run()` and `OrchestratorAgent.run()` to prevent cascading failures
+- Improved error handling in `NotionReportBuilder` to gracefully handle `None` results from failed agents
+- Optimized Koyfin chart capture delays:
+  - Reduced `WebDriverWait` timeouts from 20s to 10s
+  - Removed unnecessary retry loops
+  - Streamlined sleep durations
+
+**Known Limitations:**
+- Even with these improvements, timeout errors may still occur occasionally, especially with:
+  - Multiple parallel agent executions
+  - Complex Koyfin chart capture operations
+  - High API load periods
+- **Future improvements needed:**
+  - Consider upgrading to a faster model (e.g., `gpt-4o-mini` or newer)
+  - Increase OpenAI API timeout setting to 20 minutes if issues persist
+  - Implement exponential backoff for rate limit errors
+
+**Related Files:**
+- `src/agent/base/async_agent.py`: Added exception handling and increased max_turns
+- `src/agent/base/orchestrator_agent.py`: Added synthesis agent error handling
+- `src/utils/koyfin_chart_capture.py`: Optimized timeouts and removed retry loops
+- `src/adapters/notion_report_builder.py`: Added None checks for failed agents
+- `src/run_market_report.py`: Added None checks for final report
+
+---
+
 ### v0.9.2 - Heatmap Integration & Code Refactoring (December 5, 2025)
 
 - **Indicator Heatmap**: `scripts/generate_indicator_heatmap.py` with `HeatmapGenerator` class

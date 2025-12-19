@@ -19,7 +19,7 @@ class NotionReportBuilder:
     def __init__(self):
         self._pages = []
     
-    def add_page(self, report: AnalysisReport):
+    def add_page(self, report: AnalysisReport | None):
         """
         Add a 1st level page.
         
@@ -29,6 +29,8 @@ class NotionReportBuilder:
         Returns:
             self (for method chaining)
         """
+        if report is None:
+            return self
         self._pages.append({
             'report': report,
             'children': []

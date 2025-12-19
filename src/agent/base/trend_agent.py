@@ -56,12 +56,11 @@ class TrendAgent(AsyncAgent):
         - When calling chart generation functions, you MUST pass label="{self.label}" exactly without adding period information or translating it
         
         WORKFLOW:
-        1. FIRST STEP - MANDATORY: Call fetch_data ONCE with the longest period you will need (NEVER use "max")
-        2. Then analyze {self.label} (ticker: {self.ticker}) for all requested periods{f' - {self.description}' if self.description else ''}
-        3. DO NOT call fetch_data again for shorter periods - all shorter period data is already cached
-        4. Call analysis and chart tools for each period (they will use cached data automatically)
-        5. FORMAT OUTPUT AS MARKDOWN TABLE
-        6. Include ALL chart links from tool responses in the order of the periods
+        1. Data has been PRE-FETCHED for {self.label} (ticker: {self.ticker}){f' - {self.description}' if self.description else ''}
+        2. All data is already cached - directly use analysis and chart tools
+        3. Call analysis and chart tools for each requested period
+        4. FORMAT OUTPUT AS MARKDOWN TABLE
+        5. Include ALL chart links from tool responses in the order of the periods
         
         TOOL USAGE (for OHLCV data):
         - Use analyze_OHLCV for table rows (no chart link returned)

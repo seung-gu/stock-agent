@@ -58,7 +58,7 @@ class InvestingSource(WebDataSource):
         period_lower = (period or '1y').lower()
         return period_map.get(period_lower, timedelta(days=365))
     
-    async def fetch_data(self, symbol: str, period: str = None) -> dict[str, Any]:
+    def fetch_data(self, symbol: str, period: str = None) -> dict[str, Any]:
         """Fetch market breadth data with local file caching and validation."""
         if symbol not in self.SYMBOL_URLS:
             raise ValueError(f"Unsupported symbol: {symbol}. Available: {list(self.SYMBOL_URLS.keys())}")
