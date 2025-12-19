@@ -13,8 +13,10 @@ class AsyncAgent:
     def __init__(self, agent_name: str):
         self.agent_name = agent_name
         self._setup()  # Hook: subclass initializes attributes here
+        # Only set output_type to None if not already set by subclass
+        if not hasattr(self, 'output_type'):
+            self.output_type = None
         self.agent = self._create_agent()
-        self.output_type = None
     
     def _setup(self):
         """
