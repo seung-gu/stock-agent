@@ -18,37 +18,46 @@ class NotionReportBuilder:
     
     def __init__(self):
         self._pages = []
+        self._last_add_successful = False
     
     def add_page(self, report: AnalysisReport | None):
         """
         Add a 1st level page.
         
         Args:
-            report: AnalysisReport object
+            report: AnalysisReport object (None values are skipped)
             
         Returns:
             self (for method chaining)
         """
         if report is None:
+            self._last_add_successful = False
             return self
         self._pages.append({
             'report': report,
             'children': []
         })
+        self._last_add_successful = True
         return self
     
-    def add_children(self, children_reports: list[AnalysisReport]):
+    def add_children(self, children_reports: list[AnalysisReport] | None):
         """
         Add children pages (2nd level) to the last added page.
         
         Args:
-            children_reports: List of child AnalysisReport objects
+            children_reports: List of child AnalysisReport objects (None or empty list is ignored)
             
         Returns:
             self (for method chaining)
         """
-        if self._pages:
-            self._pages[-1]['children'] = children_reports
+        if not self._last_add_successful or not self._pages:
+            print("⚠️ Warning: add_children() called but no parent page was successfully added (previous add_page() returned None)")
+            return self
+        
+        if children_reports is None:
+            return self
+            
+        self._pages[-1]['children'] = children_reports
         return self
     
     def upload(self, title: str, date: str, summary: str) -> dict:
@@ -84,9 +93,11 @@ class NotionReportBuilder:
         """Collect all content and process images."""
         all_contents = [summary]
         for page_item in self._pages:
-            all_contents.append(page_item['report'].content)
+            if page_item['report'] is not None:
+                all_contents.append(page_item['report'].content)
             for child_report in page_item['children']:
-                all_contents.append(child_report.content)
+                if child_report is not None:
+                    all_contents.append(child_report.content)
         
         _, image_files, _ = find_local_images(" ".join(all_contents))
         return upload_images_to_cloudflare(image_files) if image_files else {}
@@ -114,6 +125,8 @@ class NotionReportBuilder:
         
         for page_item in self._pages:
             report = page_item['report']
+            if report is None:
+                continue
             
             # Create 1st level page
             processed, _, _ = find_local_images(report.content)
@@ -130,9 +143,10 @@ class NotionReportBuilder:
     
     def _create_sub_pages(self, parent_page_id: str, children: list, uploaded_map: dict, parent_title: str):
         """Create 2nd level pages under a parent."""
-        print(f"📂 Creating {len(children)} sub-pages under '{parent_title}'...")
+        valid_children = [c for c in children if c is not None]
+        print(f"📂 Creating {len(valid_children)} sub-pages under '{parent_title}'...")
         
-        for sub_report in children:
+        for sub_report in valid_children:
             sub_processed, _, _ = find_local_images(sub_report.content)
             create_child_page(parent_page_id, sub_report.title, sub_processed, uploaded_map)
 

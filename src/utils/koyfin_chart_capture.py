@@ -92,18 +92,24 @@ class KoyfinChartCapture:
     def _close_popup(self):
         """Close initial Koyfin popup with ESC key."""
         self._log("Closing popup...")
-        time.sleep(5)
+        time.sleep(2)  # Reduced from 5
         self.driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.ESCAPE)
-        time.sleep(2)
+        time.sleep(1)  # Reduced from 2
         self._log("✅ Popup closed")
     
     def _find_visible_input(self, timeout: int = 10) -> Optional[any]:
         """Find first visible input element with wait."""
         try:
             wait = WebDriverWait(self.driver, timeout)
-            wait.until(EC.presence_of_element_located((By.TAG_NAME, "input")))
+            wait.until(EC.visibility_of_element_located((By.TAG_NAME, "input")))
             inputs = self.driver.find_elements(By.TAG_NAME, "input")
-            return next((inp for inp in inputs if inp.is_displayed()), None)
+            visible_input = next((inp for inp in inputs if inp.is_displayed()), None)
+            
+            if not visible_input:
+                # Try alternative: find by placeholder or type attribute
+                visible_input = next((inp for inp in inputs if inp.is_displayed() and (inp.get_attribute("placeholder") or inp.get_attribute("type") == "text")), None)
+            
+            return visible_input
         except:
             return None
     
@@ -166,7 +172,7 @@ class KoyfinChartCapture:
                 EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Search for a name, ticker, or function')]"))
             )
             self.driver.execute_script("arguments[0].click();", search_trigger)
-            time.sleep(1.5)
+            time.sleep(1)  # Wait for search box to appear
         except Exception as e:
             self._log(f"⚠️  Search trigger click failed: {e}")
             raise Exception("Search trigger not found")
@@ -174,20 +180,27 @@ class KoyfinChartCapture:
         # Find and use search box with wait
         search_box = self._find_visible_input(timeout=10)
         if not search_box:
+            self._log("❌ Search box not found. Available inputs:")
+            all_inputs = self.driver.find_elements(By.TAG_NAME, "input")
+            for i, inp in enumerate(all_inputs[:5]):
+                try:
+                    self._log(f"  Input {i}: displayed={inp.is_displayed()}, type={inp.get_attribute('type')}, placeholder={inp.get_attribute('placeholder')}")
+                except:
+                    pass
             raise Exception("Search box not found")
         
         # Search for ticker
         search_box.clear()
         search_box.send_keys(ticker)
-        time.sleep(1)
+        time.sleep(0.5)  # Reduced from 1
         search_box.send_keys(Keys.RETURN)
-        time.sleep(1)
+        time.sleep(0.5)  # Reduced from 1
         
         # Search for Historical Price Graph
         search_box.send_keys(" Historical Price Graph")
-        time.sleep(1.5)
+        time.sleep(0.5)  # Reduced from 1.5
         search_box.send_keys(Keys.RETURN)
-        time.sleep(5)  # Wait for chart to load
+        time.sleep(2)  # Reduced from 5 - Wait for chart to load
         
         self._log(f"✅ Selected {ticker} Historical Price Graph")
         return search_box
@@ -200,56 +213,40 @@ class KoyfinChartCapture:
             search_box: Previously found search box element
         """
         self._log("Adding P/E metric...")
-        time.sleep(3)
+        time.sleep(1)
         
-        # Wait for 'Add Metric' button with retry
+        # Wait for 'Add Metric' button
         self._log("Waiting for 'Add Metric' button...")
-        max_retries = 3
-        for retry in range(max_retries):
-            try:
-                # Close dialogs
-                try:
-                    close_btns = self.driver.find_elements(By.CSS_SELECTOR, ".rc-dialog-close, button[aria-label='Close']")
-                    for btn in close_btns:
-                        if btn.is_displayed():
-                            try:
-                                self.driver.execute_script("arguments[0].click();", btn)
-                            except:
-                                pass
-                            time.sleep(0.5)
-                except:
-                    pass
-                
-                # Find button (fresh each time)
-                wait = WebDriverWait(self.driver, 20)
-                add_metric_btn = wait.until(
-                    lambda driver: next(
-                        (btn for btn in driver.find_elements(By.TAG_NAME, "button")
-                         if "Add Metric" in btn.text and btn.is_displayed()),
-                        None
-                    )
-                )
-                if not add_metric_btn:
-                    raise Exception("Add Metric button not found")
-                
-                self.driver.execute_script("arguments[0].scrollIntoView(true);", add_metric_btn)
-                time.sleep(1)
-                self.driver.execute_script("arguments[0].click();", add_metric_btn)
-                self._log("✅ 'Add Metric' button clicked")
-                break  # Success
-                
-            except Exception as e:
-                if retry < max_retries - 1:
-                    self._log(f"⚠️  Retry {retry + 1}/{max_retries}: {type(e).__name__}")
-                    time.sleep(2)
-                    continue
-                else:
-                    buttons = self.driver.find_elements(By.TAG_NAME, "button")
-                    visible_buttons = [btn.text for btn in buttons if btn.is_displayed() and btn.text]
-                    self._log(f"❌ Failed after {max_retries} retries. Buttons: {visible_buttons[:10]}")
-                    raise Exception("Add Metric button not found")
+        # Close dialogs
+        try:
+            close_btns = self.driver.find_elements(By.CSS_SELECTOR, ".rc-dialog-close, button[aria-label='Close']")
+            for btn in close_btns:
+                if btn.is_displayed():
+                    try:
+                        self.driver.execute_script("arguments[0].click();", btn)
+                    except:
+                        pass
+        except:
+            pass
         
-        time.sleep(3)
+        # Find button
+        wait = WebDriverWait(self.driver, 10)  # Reduced from 20
+        add_metric_btn = wait.until(
+            lambda driver: next(
+                (btn for btn in driver.find_elements(By.TAG_NAME, "button")
+                 if "Add Metric" in btn.text and btn.is_displayed()),
+                None
+            )
+        )
+        if not add_metric_btn:
+            raise Exception("Add Metric button not found")
+        
+        self.driver.execute_script("arguments[0].scrollIntoView(true);", add_metric_btn)
+        time.sleep(0.5)
+        self.driver.execute_script("arguments[0].click();", add_metric_btn)
+        self._log("✅ 'Add Metric' button clicked")
+        
+        time.sleep(1)
         
         # Find metric input (different from search box) with wait
         try:
@@ -271,17 +268,17 @@ class KoyfinChartCapture:
         # Type and select PE
         metric_input.clear()
         metric_input.send_keys("P/E")
-        time.sleep(2)
+        time.sleep(1)  # Reduced from 2
         metric_input.send_keys(Keys.RETURN)
-        time.sleep(3)
+        time.sleep(1.5)  # Reduced from 3
         
         # Select NTM option (Arrow Down + Return)
         self._log("Selecting NTM option...")
         metric_input.send_keys(Keys.ARROW_DOWN)
-        time.sleep(1)
+        time.sleep(0.5)  # Reduced from 1
         metric_input.send_keys(Keys.RETURN)
         
-        time.sleep(5)
+        time.sleep(2)  # Reduced from 5
         self._log("✅ P/E (NTM) added")
     
     def _add_peg(self, search_box):
@@ -292,56 +289,40 @@ class KoyfinChartCapture:
             search_box: Previously found search box element
         """
         self._log("Adding PEG metric...")
-        time.sleep(3)
+        time.sleep(1)  # Reduced from 3
         
-        # Wait for 'Add Metric' button with retry
+        # Wait for 'Add Metric' button
         self._log("Waiting for 'Add Metric' button...")
-        max_retries = 3
-        for retry in range(max_retries):
-            try:
-                # Close dialogs
-                try:
-                    close_btns = self.driver.find_elements(By.CSS_SELECTOR, ".rc-dialog-close, button[aria-label='Close']")
-                    for btn in close_btns:
-                        if btn.is_displayed():
-                            try:
-                                self.driver.execute_script("arguments[0].click();", btn)
-                            except:
-                                pass
-                            time.sleep(0.5)
-                except:
-                    pass
-                
-                # Find button (fresh each time)
-                wait = WebDriverWait(self.driver, 20)
-                add_metric_btn = wait.until(
-                    lambda driver: next(
-                        (btn for btn in driver.find_elements(By.TAG_NAME, "button")
-                         if "Add Metric" in btn.text and btn.is_displayed()),
-                        None
-                    )
-                )
-                if not add_metric_btn:
-                    raise Exception("Add Metric button not found")
-                
-                self.driver.execute_script("arguments[0].scrollIntoView(true);", add_metric_btn)
-                time.sleep(1)
-                self.driver.execute_script("arguments[0].click();", add_metric_btn)
-                self._log("✅ 'Add Metric' button clicked")
-                break  # Success
-                
-            except Exception as e:
-                if retry < max_retries - 1:
-                    self._log(f"⚠️  Retry {retry + 1}/{max_retries}: {type(e).__name__}")
-                    time.sleep(2)
-                    continue
-                else:
-                    buttons = self.driver.find_elements(By.TAG_NAME, "button")
-                    visible_buttons = [btn.text for btn in buttons if btn.is_displayed() and btn.text]
-                    self._log(f"❌ Failed after {max_retries} retries. Buttons: {visible_buttons[:10]}")
-                    raise Exception("Add Metric button not found")
+        # Close dialogs
+        try:
+            close_btns = self.driver.find_elements(By.CSS_SELECTOR, ".rc-dialog-close, button[aria-label='Close']")
+            for btn in close_btns:
+                if btn.is_displayed():
+                    try:
+                        self.driver.execute_script("arguments[0].click();", btn)
+                    except:
+                        pass
+        except:
+            pass
         
-        time.sleep(3)
+        # Find button
+        wait = WebDriverWait(self.driver, 10)  # Reduced from 20
+        add_metric_btn = wait.until(
+            lambda driver: next(
+                (btn for btn in driver.find_elements(By.TAG_NAME, "button")
+                 if "Add Metric" in btn.text and btn.is_displayed()),
+                None
+            )
+        )
+        if not add_metric_btn:
+            raise Exception("Add Metric button not found")
+        
+        self.driver.execute_script("arguments[0].scrollIntoView(true);", add_metric_btn)
+        time.sleep(0.5)
+        self.driver.execute_script("arguments[0].click();", add_metric_btn)
+        self._log("✅ 'Add Metric' button clicked")
+        
+        time.sleep(1)  # Reduced from 3
         
         # Find metric input with wait
         try:
@@ -360,10 +341,10 @@ class KoyfinChartCapture:
         # Type and select PEG (NTM will be auto-selected)
         metric_input.clear()
         metric_input.send_keys("PEG")
-        time.sleep(2)
+        time.sleep(1)  # Reduced from 2
         metric_input.send_keys(Keys.RETURN)
         
-        time.sleep(5)
+        time.sleep(2)  # Reduced from 5
         self._log("✅ PEG (NTM) added")
     
     def _click_indicator_settings(self, indicator_name: str = "P/E (NTM)"):
@@ -385,7 +366,7 @@ class KoyfinChartCapture:
                 if cog:
                     settings_btn = cog.find_element(By.XPATH, '..')
                     settings_btn.click()
-                    time.sleep(2)
+                    time.sleep(1)  # Reduced from 2
                     break
             else:
                 return False
@@ -455,7 +436,7 @@ class KoyfinChartCapture:
             try:
                 if elem.is_displayed():
                     self.driver.execute_script("arguments[0].click();", elem)
-                    time.sleep(2)
+                    time.sleep(1)  # Reduced from 2
                     
                     # Find period in dropdown
                     all_elems = self.driver.find_elements(By.XPATH, "//*")
@@ -582,12 +563,12 @@ class KoyfinChartCapture:
             time.sleep(1)
         
         # Wait for page to fully load
-        time.sleep(3)
+        time.sleep(1)  # Reduced from 3
         
         # Click SHARE button with enhanced search
         self._log("Looking for SHARE button...")
         try:
-            wait = WebDriverWait(self.driver, 15)
+            wait = WebDriverWait(self.driver, 10)  # Reduced from 15
             wait.until(EC.presence_of_element_located((By.TAG_NAME, "button")))
             
             # Log all visible buttons for debugging
@@ -633,7 +614,7 @@ class KoyfinChartCapture:
             time.sleep(1)
             self.driver.execute_script("arguments[0].click();", share_btn)
             self._log("✅ SHARE button clicked")
-            time.sleep(3)
+            time.sleep(1)  # Reduced from 3
             
         except Exception as e:
             self._log(f"❌ Error finding SHARE button: {e}")
@@ -642,7 +623,7 @@ class KoyfinChartCapture:
         # Click DOWNLOAD button
         self._log("Looking for DOWNLOAD button...")
         try:
-            wait = WebDriverWait(self.driver, 15)
+            wait = WebDriverWait(self.driver, 10)  # Reduced from 15
             wait.until(EC.presence_of_element_located((By.TAG_NAME, "button")))
             
             # Log all visible buttons after SHARE click
@@ -664,7 +645,7 @@ class KoyfinChartCapture:
             time.sleep(1)
             self.driver.execute_script("arguments[0].click();", download_btn)
             self._log("✅ DOWNLOAD button clicked")
-            time.sleep(3)
+            time.sleep(1)  # Reduced from 3
             
         except Exception as e:
             self._log(f"❌ Error finding DOWNLOAD button: {e}")
