@@ -605,6 +605,25 @@ get_data_source("finra")      # → FINRASource
 
 ## Recent Improvements
 
+### v0.10.2 - Notion URL Extraction & API Updates (November 2025)
+
+**1. Public URL Support**
+- **Notion API Update**: Updated to use `public_url` field (fallback to `url` for compatibility)
+  - Supports both `https://workspace.notion.site/...` and `https://www.notion.so/...` formats
+  - Ensures correct URL format for workspace-specific Notion pages
+
+**2. Improved URL Extraction**
+- **Direct Dict Extraction**: GitHub Actions workflow now extracts URL directly from dict output
+  - Extracts `'url': 'https://...'` value from `Market Report Result` output
+  - More reliable than pattern matching across entire output
+  - Handles both `notion.site` and `notion.so` URL formats
+
+**Impact:**
+- ✅ Reliable Notion URL extraction for README updates
+- ✅ Support for workspace-specific Notion URLs
+
+---
+
 ### v0.10.1 - Code Optimization & Image Processing Improvements (November 2025)
 
 **1. Tool Usage Optimization**
@@ -620,6 +639,7 @@ get_data_source("finra")      # → FINRASource
 - **Enhanced Chart Detection**: Added `Chart saved:` pattern parsing to catch images from tool responses
   - Handles cases where agents return `Chart saved: /path/to/file.png` format
   - Ensures all chart images are properly identified and uploaded to R2
+- **Fixed Image Placeholder Replacement**: Non-existent chart files now properly replaced with placeholders (prevents broken references in output)
 
 **3. OpenAI API Timeout Increase**
 - **Extended Timeout**: Increased OpenAI API timeout from default 10 minutes (600s) to 20 minutes (1200s)

@@ -36,7 +36,7 @@ def _create_page(title: str, blocks: list, database_id: str, headers: dict[str, 
         return {"status": "error", "message": f"Upload failed: {error_data.get('message', 'Unknown')}"}
     
     page_id = response.json()['id']
-    page_url = response.json()['url']
+    page_url = response.json()['public_url'] if response.json().get('public_url') else response.json()['url']
     
     # Add remaining blocks if more than 100 (Notion API limit)
     if len(blocks) > 100:

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Update README with latest report link and indicator heatmap"""
+"""Update README with latest report link and indicator heatmap
+This runs only when github actions is triggered
+"""
 
 import sys
 import os

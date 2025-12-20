@@ -82,7 +82,8 @@ jobs:
       - name: Extract Notion URL
         id: extract_url
         run: |
-          NOTION_URL=$(grep -oP 'https://www\.notion\.so/[a-zA-Z0-9-]+' report_output.txt | head -1)
+          # Extract URL from dict: {'status': 'success', 'url': 'https://...', ...}
+          NOTION_URL=$(grep -oP "'url':\s*'([^']+)'" report_output.txt | grep -oP "https://[^']+" | head -1)
           echo "notion_url=${NOTION_URL}" >> $GITHUB_OUTPUT
           echo "📊 Report URL: ${NOTION_URL}"
       
