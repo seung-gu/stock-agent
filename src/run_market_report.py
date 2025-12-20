@@ -4,7 +4,8 @@ import asyncio
 import logging
 from datetime import datetime
 from dotenv import load_dotenv
-from agents import trace
+from agents import trace, set_default_openai_client
+from openai import AsyncOpenAI
 
 from src.agent.orchestrator.market_report_agent import MarketReportAgent
 from src.adapters.notion_report_builder import NotionReportBuilder
@@ -52,6 +53,12 @@ async def run_market_report():
 
 async def main():
     """Main entry point"""
+    # Set OpenAI client with extended timeout (20 minutes)
+    # Default timeout is 10 minutes (600 seconds), increasing to 20 minutes (1200 seconds)
+    client = AsyncOpenAI(timeout=1200.0)
+    set_default_openai_client(client)
+    print("⏱️  OpenAI API timeout set to 20 minutes (1200 seconds)")
+    
     print("=" * 80)
     print("Market Report System")
     print("=" * 80)

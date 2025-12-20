@@ -26,7 +26,9 @@ class TNXAgent(TrendAgent):
             
             PERIOD REQUIREMENTS:
             - Tables: "5d", "1mo", "6mo", "1y"
-            - Charts: "1mo","1y"
+              * Call analyze_OHLCV ONCE with periods=["5d", "1mo", "6mo", "1y"] as a list
+            - Charts: "1mo", "1y"
+              * Call generate_OHLCV_chart separately for each period (one call per period)
             
             ADDITIONAL TOOLS:
             - analyze_SMA to analyze SMA data (window: 5, 50, 200)

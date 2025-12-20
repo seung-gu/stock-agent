@@ -29,7 +29,7 @@ class PutCallAgent(TrendAgent):
             
             ANALYSIS WORKFLOW:
             1. Analyze Put/Call Ratio:
-               - analyze_put_call('1mo') + generate_put_call_chart('6mo')
+               - analyze_put_call(periods=['5d', '1mo', '3mo']) + generate_put_call_chart('6mo')
             
             INTERPRETATION (Contrarian Indicator):
             ┌──────────────────────────────────────────────────────────────────┐

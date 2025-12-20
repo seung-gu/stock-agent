@@ -62,7 +62,9 @@ class HighYieldSpreadAgent(TrendAgent):
             
             PERIOD REQUIREMENTS:
             - Tables: "6mo", "1y"
+              * Call analyze_high_yield_spread ONCE with periods=["6mo", "1y"] as a list
             - Charts: "10y"
+              * Call generate_high_yield_spread_chart only 10y period
             """
         )
         

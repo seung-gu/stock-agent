@@ -28,21 +28,28 @@ def fetch_data(source: str, symbol: str, period: str) -> str:
 
 
 @function_tool
-async def analyze_OHLCV(source: str, symbol: str, period: str) -> str:
+async def analyze_OHLCV(source: str, symbol: str, periods: list[str]|str) -> str:
     """Analyze cached data and return OHLCV(Open, High, Low, Close, Volatility) analysis."""
     src = get_data_source(source)
-    data = await src.load_data(symbol, period)
-    actual_period = src.get_actual_period_approx(data)
-    analysis = src.get_analysis(data, actual_period)
-    period_name = get_period_name(actual_period)
-    # Indicators are source-specific; keep outside (e.g., TrendAgent.indicators_yf)
-    return f"""{period_name} Analysis ({symbol}):
+    
+    periods = [periods] if isinstance(periods, str) else periods
+    tasks = [src.load_data(symbol, period) for period in periods]
+    data_list = await asyncio.gather(*tasks)
+    
+    results = []
+    for data in data_list:
+        actual_period = src.get_actual_period_approx(data)
+        analysis = src.get_analysis(data, actual_period)
+        period_name = get_period_name(actual_period)
+        results.append(f"""{period_name} Analysis ({symbol}):
             - Start: {analysis['start']:.3f}
             - End: {analysis['end']:.3f}
             - Change: {analysis['change_pct']:+.2f}%
             - High: {analysis['high']:.3f}
             - Low: {analysis['low']:.3f}
-            - Volatility: {analysis['volatility']:.3f}"""
+            - Volatility: {analysis['volatility']:.3f}""")
+    
+    return "\n\n".join(results)
             
 
 @function_tool
@@ -215,24 +222,31 @@ async def generate_RSI_chart(symbol: str, period: str, window: int = 14, label: 
 
 
 @function_tool
-async def analyze_NFCI(period: str) -> str:
+async def analyze_NFCI(periods: list[str]|str) -> str:
     """Analyze NFCI (National Financial Conditions Index).
     
     Args:
-        period: Time period (6mo, 1y, 2y, etc.)
+        periods: Time period(s) - can be a single period string (e.g., "1y") or a list of periods (e.g., ["6mo", "1y", "2y"])
     """
     src = get_data_source('fred')
-    data = await src.load_data('NFCI', period)
-    actual_period = src.get_actual_period_approx(data)
-    analysis = src.get_analysis(data, actual_period)
-    period_name = get_period_name(actual_period)
     
-    return f"""{period_name} NFCI (National Financial Conditions Index):
+    periods = [periods] if isinstance(periods, str) else periods
+    tasks = [src.load_data('NFCI', period) for period in periods]
+    data_list = await asyncio.gather(*tasks)
+    
+    results = []
+    for data in data_list:
+        actual_period = src.get_actual_period_approx(data)
+        analysis = src.get_analysis(data, actual_period)
+        period_name = get_period_name(actual_period)
+        results.append(f"""{period_name} NFCI (National Financial Conditions Index):
             - Start: {analysis['start']:.3f}
             - End: {analysis['end']:.3f}
             - Change: {analysis['change_pct']:+.2f}%
             - High: {analysis['high']:.3f}
-            - Low: {analysis['low']:.3f}"""
+            - Low: {analysis['low']:.3f}""")
+    
+    return "\n\n".join(results)
 
 
 @function_tool
@@ -257,27 +271,33 @@ async def generate_NFCI_chart(period: str) -> str:
 
 
 @function_tool
-async def analyze_market_breadth(symbol: str, period: str) -> str:
+async def analyze_market_breadth(symbol: str, periods: list[str]|str) -> str:
     """Analyze S&P 500 market breadth data (% stocks above MA).
     
     Args:
         symbol: 'S5FI' (50-day MA) or 'S5TH' (200-day MA)
-        period: Time period (5d, 1mo, 6mo, 1y, etc.)
+        periods: Time period(s) - can be a single period string (e.g., "1mo") or a list of periods (e.g., ["1mo", "6mo", "1y"])
     """
     src = get_data_source('investing')
-    data = await src.load_data(symbol, period)
-    actual_period = src.get_actual_period_approx(data)
-    analysis = src.get_analysis(data, actual_period)
-    period_name = get_period_name(actual_period)
     
-    ma_period = analysis['ma_period']
+    periods = [periods] if isinstance(periods, str) else periods
+    tasks = [src.load_data(symbol, period) for period in periods]
+    data_list = await asyncio.gather(*tasks)
     
-    return f"""{period_name} Market Breadth ({symbol} - {ma_period}day MA):
+    results = []
+    for data in data_list:
+        actual_period = src.get_actual_period_approx(data)
+        analysis = src.get_analysis(data, actual_period)
+        period_name = get_period_name(actual_period)
+        ma_period = analysis['ma_period']
+        results.append(f"""{period_name} Market Breadth ({symbol} - {ma_period}day MA):
             - Start: {analysis['start']:.2f}%
             - End: {analysis['end']:.2f}%
             - Change: {analysis['change']:+.2f}%
             - High: {analysis['high']:.2f}%
-            - Low: {analysis['low']:.2f}%"""
+            - Low: {analysis['low']:.2f}%""")
+    
+    return "\n\n".join(results)
 
 
 @function_tool
@@ -310,25 +330,32 @@ async def generate_market_breadth_chart(symbol: str, period: str) -> str:
 
 
 @function_tool
-async def analyze_bull_bear_spread(period: str) -> str:
+async def analyze_bull_bear_spread(periods: list[str]|str) -> str:
     """Analyze AAII Bull-Bear Spread (investor sentiment indicator).
     
     Args:
-        period: Time period (5d, 1mo, 6mo, 1y, etc.)
+        periods: Time period(s) - can be a single period string (e.g., "1mo") or a list of periods (e.g., ["1mo", "6mo", "1y"])
     """
     src = get_data_source('aaii')
-    data = await src.load_data('AAII_BULL_BEAR_SPREAD', period)
-    actual_period = src.get_actual_period_approx(data)
-    analysis = src.get_analysis(data, actual_period)
-    period_name = get_period_name(actual_period)
     
-    return f"""{period_name} AAII Bull-Bear Spread:
+    periods = [periods] if isinstance(periods, str) else periods
+    tasks = [src.load_data('AAII_BULL_BEAR_SPREAD', period) for period in periods]
+    data_list = await asyncio.gather(*tasks)
+    
+    results = []
+    for data in data_list:
+        actual_period = src.get_actual_period_approx(data)
+        analysis = src.get_analysis(data, actual_period)
+        period_name = get_period_name(actual_period)
+        results.append(f"""{period_name} AAII Bull-Bear Spread:
             - Start: {analysis['start']:+.2f}
             - End: {analysis['end']:+.2f}
             - Change: {analysis['change']:+.2f}
             - High: {analysis['high']:+.2f}
             - Low: {analysis['low']:+.2f}
-            - Mean: {analysis['mean']:+.2f}"""
+            - Mean: {analysis['mean']:+.2f}""")
+    
+    return "\n\n".join(results)
 
 
 @function_tool
@@ -355,25 +382,32 @@ async def generate_bull_bear_spread_chart(period: str) -> str:
 
 
 @function_tool
-async def analyze_put_call(period: str) -> str:
+async def analyze_put_call(periods: list[str]|str) -> str:
     """Analyze CBOE Equity Put/Call Ratio.
     
     Args:
-        period: Time period (5d, 1mo, 3mo, etc.)
+        periods: Time period(s) - can be a single period string (e.g., "1mo") or a list of periods (e.g., ["1mo", "3mo", "6mo"])
     """
     src = get_data_source('ycharts')
-    data = await src.load_data('CBOE_PUT_CALL_EQUITY', period)
-    actual_period = src.get_actual_period_approx(data)
-    analysis = src.get_analysis(data, actual_period)
-    period_name = get_period_name(actual_period)
     
-    return f"""{period_name} CBOE Equity Put/Call Ratio:
+    periods = [periods] if isinstance(periods, str) else periods
+    tasks = [src.load_data('CBOE_PUT_CALL_EQUITY', period) for period in periods]
+    data_list = await asyncio.gather(*tasks)
+    
+    results = []
+    for data in data_list:
+        actual_period = src.get_actual_period_approx(data)
+        analysis = src.get_analysis(data, actual_period)
+        period_name = get_period_name(actual_period)
+        results.append(f"""{period_name} CBOE Equity Put/Call Ratio:
             - Start: {analysis['start']:.2f}
             - End: {analysis['end']:.2f}
             - Change: {analysis['change']:+.2f}
             - High: {analysis['high']:.2f}
             - Low: {analysis['low']:.2f}
-            - Mean: {analysis['mean']:.2f}"""
+            - Mean: {analysis['mean']:.2f}""")
+    
+    return "\n\n".join(results)
 
 
 @function_tool
@@ -400,24 +434,31 @@ async def generate_put_call_chart(period: str) -> str:
 
 
 @function_tool
-async def analyze_vix(period: str) -> str:
+async def analyze_vix(periods: list[str]|str) -> str:
     """Analyze VIX (Volatility Index) - market fear gauge.
     
     Args:
-        period: Time period (5d, 1mo, 6mo, 1y, etc.)
+        periods: Time period(s) - can be a single period string (e.g., "1mo") or a list of periods (e.g., ["5d", "1mo", "6mo"])
     """
     src = get_data_source('yfinance')
-    data = await src.load_data('^VIX', period)
-    actual_period = src.get_actual_period_approx(data)
-    analysis = src.get_analysis(data, actual_period)
-    period_name = get_period_name(actual_period)
     
-    return f"""{period_name} VIX (Volatility Index):
+    periods = [periods] if isinstance(periods, str) else periods
+    tasks = [src.load_data('^VIX', period) for period in periods]
+    data_list = await asyncio.gather(*tasks)
+    
+    results = []
+    for data in data_list:
+        actual_period = src.get_actual_period_approx(data)
+        analysis = src.get_analysis(data, actual_period)
+        period_name = get_period_name(actual_period)
+        results.append(f"""{period_name} VIX (Volatility Index):
             - Start: {analysis['start']:.2f}
             - End: {analysis['end']:.2f}
             - Change: {analysis['change_pct']:+.2f}%
             - High: {analysis['high']:.2f}
-            - Low: {analysis['low']:.2f}"""
+            - Low: {analysis['low']:.2f}""")
+    
+    return "\n\n".join(results)
 
 
 @function_tool
@@ -447,24 +488,31 @@ async def generate_vix_chart(period: str) -> str:
 
 
 @function_tool
-async def analyze_high_yield_spread(period: str) -> str:
+async def analyze_high_yield_spread(periods: list[str]|str) -> str:
     """Analyze ICE BofA US High Yield Spread (credit risk indicator).
     
     Args:
-        period: Time period (6mo, 1y, 5y, 10y, etc.)
+        periods: Time period(s) - can be a single period string (e.g., "1y") or a list of periods (e.g., ["6mo", "1y", "5y"])
     """
     src = get_data_source('fred')
-    data = await src.load_data('BAMLH0A0HYM2', period)
-    actual_period = src.get_actual_period_approx(data)
-    analysis = src.get_analysis(data, actual_period)
-    period_name = get_period_name(actual_period)
     
-    return f"""{period_name} ICE BofA US High Yield Spread:
+    periods = [periods] if isinstance(periods, str) else periods
+    tasks = [src.load_data('BAMLH0A0HYM2', period) for period in periods]
+    data_list = await asyncio.gather(*tasks)
+    
+    results = []
+    for data in data_list:
+        actual_period = src.get_actual_period_approx(data)
+        analysis = src.get_analysis(data, actual_period)
+        period_name = get_period_name(actual_period)
+        results.append(f"""{period_name} ICE BofA US High Yield Spread:
             - Start: {analysis['start']:.2f}%
             - End: {analysis['end']:.2f}%
             - Change: {analysis['change_pct']:+.2f}%
             - High: {analysis['high']:.2f}%
-            - Low: {analysis['low']:.2f}%"""
+            - Low: {analysis['low']:.2f}%""")
+    
+    return "\n\n".join(results)
 
 
 @function_tool
@@ -491,27 +539,34 @@ async def generate_high_yield_spread_chart(period: str) -> str:
 
 
 @function_tool
-async def analyze_margin_debt(symbol: str, period: str) -> str:
+async def analyze_margin_debt(symbol: str, periods: list[str]|str) -> str:
     """Analyze FINRA Margin Statistics (YoY change).
     
     Args:
         symbol: 'MARGIN_DEBT_YOY'
-        period: Time period (6mo, 1y, 5y, max, etc.)
+        periods: Time period(s) - can be a single period string (e.g., "1y") or a list of periods (e.g., ["6mo", "1y", "5y"])
     """
     src = get_data_source('finra')
-    data = await src.load_data(symbol, period)
-    actual_period = src.get_actual_period_approx(data)
-    analysis = src.get_analysis(data, actual_period)
-    period_name = get_period_name(actual_period)
-    label = data.get('label', symbol)
     
-    return f"""{period_name} {label}:
+    periods = [periods] if isinstance(periods, str) else periods
+    tasks = [src.load_data(symbol, period) for period in periods]
+    data_list = await asyncio.gather(*tasks)
+    
+    results = []
+    for data in data_list:
+        actual_period = src.get_actual_period_approx(data)
+        analysis = src.get_analysis(data, actual_period)
+        period_name = get_period_name(actual_period)
+        label = data.get('label', symbol)
+        results.append(f"""{period_name} {label}:
             - Start: {analysis['start']:.2f}
             - End: {analysis['end']:.2f}
             - Change: {analysis['change']:+.2f}
             - High: {analysis['high']:.2f}
             - Low: {analysis['low']:.2f}
-            - Mean: {analysis['mean']:.2f}"""
+            - Mean: {analysis['mean']:.2f}""")
+    
+    return "\n\n".join(results)
 
 
 @function_tool

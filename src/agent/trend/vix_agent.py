@@ -50,7 +50,9 @@ class VIXAgent(TrendAgent):
             
             PERIOD REQUIREMENTS:
             - Tables: "5d", "1mo"
+              * Call analyze_vix ONCE with periods=["5d", "1mo"] as a list
             - Charts: "1y"
+              * Call generate_vix_chart only 1y period
             """
         )
         

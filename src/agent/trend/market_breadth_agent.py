@@ -30,8 +30,9 @@ class MarketBreadthAgent(TrendAgent):
             
             ANALYSIS WORKFLOW:
             1. Analyze BOTH timeframes:
-               - S5FI (50-day MA): analyze_market_breadth('S5FI', '1mo') + generate_market_breadth_chart('S5FI', '1y')
-               - S5TH (200-day MA): analyze_market_breadth('S5TH', '1mo') + generate_market_breadth_chart('S5TH', '5y')
+               - S5FI (50-day MA): analyze_market_breadth('S5FI', periods=['5d', '1mo', '3mo']) + generate_market_breadth_chart('S5FI', '1y')
+               - S5TH (200-day MA): analyze_market_breadth('S5TH', periods=['5d', '1mo', '3mo']) + generate_market_breadth_chart('S5TH', '5y')
+               * Note: analyze_market_breadth can accept multiple periods as a list if needed
             
             2. Market Breadth Framework
             

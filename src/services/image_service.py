@@ -24,43 +24,44 @@ def find_local_images(content: str) -> tuple[str, list[str], dict[str, str]]:
     image_map = {}  # {file_path: alt_text} mapping
     processed_paths = set()  # Track which paths we've already replaced
 
-    # 1. Parse image links: ![alt](sandbox:/path)
-    image_matches = re.findall(r'!\[([^\]]*)\]\(sandbox:([^)]+)\)', content)
+    # Parse all image patterns: sandbox links and Chart saved: patterns
+    patterns = [
+        (r'!\[([^\]]*)\]\(sandbox:([^)]+)\)', lambda m: (m.group(2), m.group(1), f'![{m.group(1)}](sandbox:{m.group(2)})')),  # Image links
+        (r'\[([^\]]+)\]\(sandbox:([^)]+)\)', lambda m: (m.group(2), m.group(1), f'[{m.group(1)}](sandbox:{m.group(2)})')),  # Normal links
+        (r'Chart saved:\s+([^\s\n]+\.(?:png|jpg|jpeg))', lambda m: (m.group(1).strip(), None, f'Chart saved: {m.group(1).strip()}'))  # Chart saved pattern
+    ]
     
-    for alt_text, file_path in image_matches:
-        if file_path not in image_files:
-            image_files.append(file_path)
-        if file_path not in image_map:
-            image_map[file_path] = alt_text
-        
-        # Only replace if not already replaced
-        if file_path not in processed_paths:
-            processed_content = processed_content.replace(
-                f'![{alt_text}](sandbox:{file_path})', 
-                f'{{{{IMAGE_PLACEHOLDER:{file_path}}}}}',
-                1  # Only replace first occurrence
-            )
-            processed_paths.add(file_path)
-    
-    # 2. Parse normal links: [text](sandbox:/path)
-    link_matches = re.findall(r'\[([^\]]+)\]\(sandbox:([^)]+)\)', content)
-    
-    for link_text, file_path in link_matches:
-        if file_path not in image_files:
-            image_files.append(file_path)
-        if file_path not in image_map:
-            image_map[file_path] = link_text
-        
-        # Only replace if not already replaced
-        if file_path not in processed_paths:
-            processed_content = processed_content.replace(
-                f'[{link_text}](sandbox:{file_path})', 
-                f'{{{{IMAGE_PLACEHOLDER:{file_path}}}}}',
-                1  # Only replace first occurrence
-            )
-            processed_paths.add(file_path)
+    for pattern, extractor in patterns:
+        matches = re.finditer(pattern, content, re.IGNORECASE)
+        for match in matches:
+            file_path, alt_text, original_text = extractor(match)
+            
+            # For Chart saved pattern, check if file exists before adding to image_files
+            # But always replace placeholder regardless of file existence
+            is_chart_saved = 'Chart saved' in pattern
+            file_exists = os.path.exists(file_path) if is_chart_saved else True
+            
+            if file_path not in image_files and file_exists:
+                image_files.append(file_path)
+            
+            if file_path not in image_map:
+                if alt_text:
+                    image_map[file_path] = alt_text
+                else:
+                    # Use filename as alt text for Chart saved pattern
+                    filename = os.path.basename(file_path)
+                    image_map[file_path] = filename.replace('_', ' ').replace('.png', '').replace('.jpg', '').replace('.jpeg', '')
+            
+            # Replace in content if not already replaced (always replace, even if file doesn't exist)
+            if file_path not in processed_paths:
+                processed_content = processed_content.replace(
+                    original_text,
+                    f'{{{{IMAGE_PLACEHOLDER:{file_path}}}}}',
+                    1
+                )
+                processed_paths.add(file_path)
 
-    # 3. Additionally, search common temp directories for chart images that weren't in the content
+    # 4. Additionally, search common temp directories for chart images that weren't in the content
     # NOTE: The following patterns cover both Linux (/tmp/market_charts_*) and macOS (/var/folders/*/T/market_charts_*)
     # This ensures chart images are found regardless of OS, since tempfile.mkdtemp(prefix="market_charts_")
     # creates different paths depending on the environment.
@@ -72,13 +73,14 @@ def find_local_images(content: str) -> tuple[str, list[str], dict[str, str]]:
             # Get the most recent directory
             latest_dir = max(dirs, key=os.path.getmtime)
             chart_files = glob.glob(f'{latest_dir}/*.png')
-            for chart_file in chart_files:
-                if chart_file not in image_files:
-                    image_files.append(chart_file)
-                    # Add to image_map with filename as alt text
-                    filename = os.path.basename(chart_file)
-                    image_map[chart_file] = filename.replace('_', ' ').replace('.png', '')
-            break
+            if chart_files:  # Only process and break if PNG files were actually found
+                for chart_file in chart_files:
+                    if chart_file not in image_files:
+                        image_files.append(chart_file)
+                        # Add to image_map with filename as alt text
+                        filename = os.path.basename(chart_file)
+                        image_map[chart_file] = filename.replace('_', ' ').replace('.png', '')
+                break  # Only break if files were found, otherwise check next pattern
 
     return processed_content, image_files, image_map
 

@@ -13,7 +13,6 @@ AI-powered comprehensive market analysis with automated Notion reporting.
 *Automated market analysis reports with charts, tables, and AI-generated insights published to Notion*
 
 ### Recent Reports
-- [2025-12-19](https://www.notion.so/2025-12-Week-3-2ce62b45fc80816ab167ef42b81a07b5)
 - [2025-12-16](https://www.notion.so/2025-12-3-2cb62b45fc80816594d5d46d857d94db)
 - [2025-12-15](https://www.notion.so/2025-12-3-Week-3-2025-2ca62b45fc808186a9e6d8669798a6fd)
 - [2025-12-08](https://www.notion.so/2025-12-2-2c362b45fc8081bc8c30dceb3d9684da)
@@ -606,6 +605,36 @@ get_data_source("finra")      # → FINRASource
 
 ## Recent Improvements
 
+### v0.10.1 - Code Optimization & Image Processing Improvements (November 2025)
+
+**1. Tool Usage Optimization**
+- **Multi-period Analysis**: All analyze functions now accept multiple periods in a single call
+  - `analyze_OHLCV`, `analyze_NFCI`, `analyze_market_breadth`, `analyze_bull_bear_spread`, `analyze_put_call`, `analyze_vix`, `analyze_high_yield_spread`, `analyze_margin_debt` now accept `periods: list[str]|str`
+  - Agents can call `analyze_OHLCV(source, symbol, periods=["5d", "1mo", "6mo", "1y"])` once instead of 4 separate calls
+  - Reduces tool call overhead and improves execution efficiency
+
+**2. Image Link Algorithm Improvements**
+- **Unified Pattern Matching**: Consolidated image link parsing logic (sandbox links + Chart saved: patterns)
+  - Single unified loop handles all image pattern matching
+  - Reduced code duplication and improved maintainability
+- **Enhanced Chart Detection**: Added `Chart saved:` pattern parsing to catch images from tool responses
+  - Handles cases where agents return `Chart saved: /path/to/file.png` format
+  - Ensures all chart images are properly identified and uploaded to R2
+
+**3. OpenAI API Timeout Increase**
+- **Extended Timeout**: Increased OpenAI API timeout from default 10 minutes (600s) to 20 minutes (1200s)
+  - Configured in `src/run_market_report.py` via `AsyncOpenAI(timeout=1200.0)`
+  - Mitigates timeout errors during complex agent workflows with multiple parallel executions
+  - Addresses issues with long-running Koyfin chart capture operations
+
+**Impact:**
+- ✅ Reduced tool calls (4 calls → 1 call for multi-period analysis)
+- ✅ Faster execution and lower API costs
+- ✅ More robust image detection (catches all chart formats)
+- ✅ Reduced timeout errors with extended API timeout window
+
+---
+
 ### v0.10.0 - Data Source Architecture Refactoring (November 2025)
 
 **1. Data Source Layer Simplification**
@@ -629,105 +658,6 @@ get_data_source("finra")      # → FINRASource
 - ✅ Simpler data source implementation (sync is natural for blocking I/O)
 - ✅ Better performance (pre-fetching eliminates redundant API calls)
 - ✅ Cleaner agent code (no fetch_data in tools, clearer instructions)
-
----
-
-### v0.9.3 - OpenAI Timeout Error Fixes (December 16, 2025)
-
-**Issue:**
-- Koyfin chart capture operations were taking too long, frequently exceeding the default 10-minute OpenAI API timeout
-- Error handling was not properly implemented, causing the entire process to fail when individual agents timed out
-- The `gpt-4.1-mini` model was slow, causing frequent 10-minute timeout errors
-- Default `max_turns` (20) was insufficient for complex agent workflows
-
-**Fixes:**
-- Increased `max_turns` from default 20 to 50 for all agent runs to accommodate complex tool usage
-- Added comprehensive exception handling in `AsyncAgent.run()` and `OrchestratorAgent.run()` to prevent cascading failures
-- Improved error handling in `NotionReportBuilder` to gracefully handle `None` results from failed agents
-- Optimized Koyfin chart capture delays:
-  - Reduced `WebDriverWait` timeouts from 20s to 10s
-  - Removed unnecessary retry loops
-  - Streamlined sleep durations
-
-**Known Limitations:**
-- Even with these improvements, timeout errors may still occur occasionally, especially with:
-  - Multiple parallel agent executions
-  - Complex Koyfin chart capture operations
-  - High API load periods
-- **Future improvements needed:**
-  - Consider upgrading to a faster model (e.g., `gpt-4o-mini` or newer)
-  - Increase OpenAI API timeout setting to 20 minutes if issues persist
-  - Implement exponential backoff for rate limit errors
-
-**Related Files:**
-- `src/agent/base/async_agent.py`: Added exception handling and increased max_turns
-- `src/agent/base/orchestrator_agent.py`: Added synthesis agent error handling
-- `src/utils/koyfin_chart_capture.py`: Optimized timeouts and removed retry loops
-- `src/adapters/notion_report_builder.py`: Added None checks for failed agents
-- `src/run_market_report.py`: Added None checks for final report
-
----
-
-### v0.9.2 - Heatmap Integration & Code Refactoring (December 5, 2025)
-
-- **Indicator Heatmap**: `scripts/generate_indicator_heatmap.py` with `HeatmapGenerator` class
-  - Color-graded visualization (Red=1 → Green=5) of last 5 reports
-  - Auto-uploads to R2 and updates README
-- **Code Refactoring**: Encapsulated `ReadmeUpdater` and `HeatmapGenerator` classes
-- **Test Coverage**: 6 unit tests for README updates (same-date replacement, heatmap section, etc.)
-
----
-
-### v0.9.1 - GitHub Actions Automation (December 4, 2025)
-
-- **Weekly Automation**: `.github/workflows/weekly-report.yml` runs every Monday at 9:00 AM KST
-- **Auto-Update**: `scripts/update_readme.py` maintains last 10 reports in README
-- **Zero Intervention**: Notion upload → README update → Git commit/push (fully automated)
-
----
-
-### v0.9.0 - Builder Pattern & Architecture Simplification (December 3, 2025)
-
-**1. NotionReportBuilder Class**
-- **Builder Pattern**: Declarative API for hierarchical Notion report structures
-- **Method Chaining**: Fluent interface for building report hierarchy
-  ```python
-  builder = NotionReportBuilder()
-  builder.add_page(liquidity_result)\
-      .add_page(portfolio_result).add_children([NVDA, MSFT, ...])\
-      .upload(title, date, summary)
-  ```
-- **Auto Image Processing**: Automatically collects and uploads images from all reports
-- **2-Level Hierarchy Support**: Parent pages with nested child pages
-
-**2. PortfolioAgent**
-- **New Orchestrator**: Groups individual equity/ETF agents for cleaner organization
-- **Portfolio Tracking**: Manages NVDA, MSFT, SBUX, JPM, PLTR, IAU, QLD, AHR, COPX
-- **Notion Structure**: Portfolio as parent page with individual stocks as nested children
-- **Benefits**: Cleaner `MarketReportAgent` structure, better Notion UI organization
-
-**3. AnalysisReport Simplification**
-- **Type Field Removed**: Eliminated unused `type` field from AnalysisReport model
-- **Score-Based Filtering**: Uses `score` field presence instead of type classification
-- **Rationale**: Only 3 orchestrators use hooks; type field was redundant
-
-**4. OrchestratorAgent Synthesis Enhancement**
-- **Full Context**: Synthesis prompt now includes complete `AnalysisReport` as JSON
-- **Score Visibility**: Sub-agent scores are explicitly available to synthesis LLM
-- **Method**: Uses `result.model_dump_json()` instead of `result.content`
-- **Impact**: More accurate composite score calculations
-
-**5. Architecture Cleanup**
-- **Deprecated Files**: Moved legacy `report_builder.py` to `src/dep/`
-- **Reduced Complexity**: `run_market_report.py` reduced from 107 to 66 lines (38% reduction)
-- **Service Layer**: Score service simplified, logging removed for cleaner operation
-
-**Impact:**
-- ✅ Declarative report structure with intuitive API
-- ✅ 40% reduction in main report generation code
-- ✅ Improved LLM synthesis accuracy with full report context
-- ✅ Better Notion UI with logical portfolio grouping
-- ✅ Simplified data model by removing unused fields
 
 ---
 

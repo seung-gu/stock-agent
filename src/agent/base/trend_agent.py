@@ -58,14 +58,16 @@ class TrendAgent(AsyncAgent):
         WORKFLOW:
         1. Data has been PRE-FETCHED for {self.label} (ticker: {self.ticker}){f' - {self.description}' if self.description else ''}
         2. All data is already cached - directly use analysis and chart tools
-        3. Call analysis and chart tools for each requested period
-        4. FORMAT OUTPUT AS MARKDOWN TABLE
-        5. Include ALL chart links from tool responses in the order of the periods
+        3. Call analyze_OHLCV ONCE with all table periods as a list (e.g., ["5d", "1mo", "6mo", "1y"])
+        4. Call generate_OHLCV_chart for each chart period separately (one call per period)
+        5. FORMAT OUTPUT AS MARKDOWN TABLE
+        6. Include ALL chart links from tool responses in the order of the periods
         
         TOOL USAGE (for OHLCV data):
-        - Use analyze_OHLCV for table rows (no chart link returned)
-        - Use generate_OHLCV_chart to generate charts (returns "Chart saved: ...")
-        - Tables and charts may require different period sets; call analyze_OHLCV and generate_OHLCV_chart independently
+        - Use analyze_OHLCV(source, symbol, periods) ONCE with all table periods as a list (e.g., periods=["5d", "1mo", "6mo", "1y"])
+          * This returns analysis for all periods in one call, which is more efficient
+        - Use generate_OHLCV_chart(source, symbol, period) for each chart period separately (one call per period)
+          * Charts must be generated individually as each returns a separate file path
       
         OUTPUT FORMAT (REQUIRED):
         Start with a brief introduction.

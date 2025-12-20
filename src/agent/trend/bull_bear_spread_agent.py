@@ -61,7 +61,9 @@ class BullBearSpreadAgent(TrendAgent):
           
             PERIOD REQUIREMENTS:
             - Tables: "1mo"
+              * Call analyze_bull_bear_spread ONCE with periods=['5d', '1mo', '3mo'] as a list
             - Charts: "5y"
+              * Call generate_bull_bear_spread_chart only 5y period
             """
         )
         

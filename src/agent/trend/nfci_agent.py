@@ -33,7 +33,9 @@ class NFCIAgent(TrendAgent):
             
             PERIOD REQUIREMENTS:
             - Tables: "6mo", "1y", "2y"
+              * Call analyze_NFCI ONCE with periods=["6mo", "1y", "2y"] as a list
             - Charts: "2y"
+              * Call generate_NFCI_chart only 2y period
             
             SCORE:
             This agent does NOT provide scoring. Do NOT set AnalysisReport.score field (leave it as default empty list []).

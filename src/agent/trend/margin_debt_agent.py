@@ -65,7 +65,9 @@ class MarginDebtAgent(TrendAgent):
             
             PERIOD REQUIREMENTS:
             - Tables: "6mo", "1y"
+              * Call analyze_margin_debt ONCE with periods=["1mo", "6mo", "1y"] as a list
             - Charts: "10y"
+              * Call generate_margin_debt_chart only 10y period
             """
         )
         
