@@ -13,6 +13,7 @@ AI-powered comprehensive market analysis with automated Notion reporting.
 *Automated market analysis reports with charts, tables, and AI-generated insights published to Notion*
 
 ### Recent Reports
+- [2026-01-12](https://seunggu-kang.notion.site/2026-1-Week-2-2e662b45fc808111a1bbcf2d180426cf)
 - [2026-01-05](https://seunggu-kang.notion.site/2026-1-Week-1-2df62b45fc80811a9a74e4b49a9c760c)
 - [2025-12-29](https://seunggu-kang.notion.site/2025-12-4-2d862b45fc8081a1aaeec9623e245566)
 - [2025-12-22](https://seunggu-kang.notion.site/2025-12-4-2d162b45fc80816db613d5b5c60b3fd2)
@@ -23,9 +24,9 @@ AI-powered comprehensive market analysis with automated Notion reporting.
 - [2025-12-04](https://www.notion.so/2025-12-2bf62b45fc808135bd0bf00cded0e550)
 
 ### Latest Indicator Heatmap
-![Indicator Heatmap](https://pub-8ab005469c4042798a7550efc290ac49.r2.dev/indicator/images/indicator_heatmap_20260105.png)
+![Indicator Heatmap](https://pub-8ab005469c4042798a7550efc290ac49.r2.dev/indicator/images/indicator_heatmap_20260112.png)
 
-*Updated: 2026-01-05*
+*Updated: 2026-01-12*
 
 ---
 
