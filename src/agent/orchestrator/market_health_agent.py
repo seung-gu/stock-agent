@@ -26,11 +26,11 @@ class MarketHealthAgent(OrchestratorAgent):
     
     def _setup(self):
         """Set up sub-agents and synthesis agent."""
-        self.add_sub_agent(BullBearSpreadAgent())\
-            .add_sub_agent(PutCallAgent())\
-            .add_sub_agent(MarginDebtAgent())\
-            .add_sub_agent(HighYieldSpreadAgent())\
-            .add_sub_agent(VIXAgent())
+        self.add_sub_agent(BullBearSpreadAgent)\
+            .add_sub_agent(PutCallAgent)\
+            .add_sub_agent(MarginDebtAgent)\
+            .add_sub_agent(HighYieldSpreadAgent)\
+            .add_sub_agent(VIXAgent)
         
         self.synthesis_agent = self._create_synthesis_agent(f"""
         You are a market health analyst synthesizing contrarian indicators.

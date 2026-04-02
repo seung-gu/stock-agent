@@ -41,17 +41,23 @@ class OrchestratorAgent(AsyncAgent):
         """Set up sub-agents and synthesis agent. Override in subclasses."""
         raise NotImplementedError("Subclasses must implement _setup")
     
-    def add_sub_agent(self, agent: AsyncAgent):
+    def add_sub_agent(self, agent_cls, *args, **kwargs):
         """
-        Add a sub-agent (automatically uses agent_name for labeling).
-        
+        Safely create and add a sub-agent.
+
         Args:
-            agent: Agent to add (already has agent_name attribute)
-        
+            agent_cls: Agent class to instantiate
+            *args, **kwargs: Arguments passed to the agent constructor
+
         Returns:
             self (supports method chaining)
         """
-        self.sub_agents.append(agent)
+        try:
+            agent = agent_cls(*args, **kwargs)
+            self.sub_agents.append(agent)
+        except Exception as e:
+            class_name = getattr(agent_cls, '__name__', str(agent_cls))
+            print(f"⚠️ Failed to initialize {class_name}: {type(e).__name__}: {e}")
         return self
     
     def _create_synthesis_agent(self, instructions: str) -> Agent:

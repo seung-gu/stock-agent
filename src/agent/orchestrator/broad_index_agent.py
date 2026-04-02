@@ -25,11 +25,11 @@ class BroadIndexAgent(OrchestratorAgent):
     def _setup(self):
         """Set up sub-agents and synthesis agent."""
         # Add sub-agents using method chaining
-        self.add_sub_agent(EquityTrendAgent("^GSPC", label="S&P 500"))\
-            .add_sub_agent(EquityTrendAgent("^IXIC", label="Nasdaq Composite"))\
-            .add_sub_agent(EquityTrendAgent("^DJI", label="Dow Jones Industrial Average"))\
-            .add_sub_agent(MarketBreadthAgent())\
-            .add_sub_agent(MarketPEAgent())
+        self.add_sub_agent(EquityTrendAgent, "^GSPC", label="S&P 500")\
+            .add_sub_agent(EquityTrendAgent, "^IXIC", label="Nasdaq Composite")\
+            .add_sub_agent(EquityTrendAgent, "^DJI", label="Dow Jones Industrial Average")\
+            .add_sub_agent(MarketBreadthAgent)\
+            .add_sub_agent(MarketPEAgent)
         
         # Create synthesis agent
         self.synthesis_agent = self._create_synthesis_agent(f"""

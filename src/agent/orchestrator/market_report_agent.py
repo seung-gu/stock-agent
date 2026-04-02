@@ -27,10 +27,10 @@ class MarketReportAgent(OrchestratorAgent):
     def _setup(self):
         """Set up sub-agents and synthesis agent."""
         # Add orchestrator sub-agents
-        self.add_sub_agent(LiquidityAgent())\
-            .add_sub_agent(MarketHealthAgent())\
-            .add_sub_agent(BroadIndexAgent())\
-            .add_sub_agent(PortfolioAgent())
+        self.add_sub_agent(LiquidityAgent)\
+            .add_sub_agent(MarketHealthAgent)\
+            .add_sub_agent(BroadIndexAgent)\
+            .add_sub_agent(PortfolioAgent)
   
         # Create synthesis agent
         self.synthesis_agent = self._create_synthesis_agent(f"""
