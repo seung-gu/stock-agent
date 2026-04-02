@@ -84,7 +84,7 @@ class YFinanceSource(APIDataSource):
                 try:
                     info = getattr(ticker, 'info', {}) or {}
                 except Exception as e:
-                    # Some symbols (like DX=F) may not have info, but history works
+                    # Some symbols (like DX-Y.NYB) may not have info, but history works
                     print(f"[YF][WARN] Could not fetch info for {symbol}: {type(e).__name__}: {str(e)}")
                     info = {}
             

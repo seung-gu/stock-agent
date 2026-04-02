@@ -1,27 +1,27 @@
 #!/usr/bin/env python3
-"""DX=F (Dollar Index) Trend Analysis Agent"""
+"""DX-Y.NYB (Dollar Index) Trend Analysis Agent"""
 
 import asyncio
 from src.agent.base.trend_agent import TrendAgent
 from src.agent.tools.agent_tools import fetch_data, analyze_OHLCV, generate_OHLCV_chart, analyze_SMA
 
 class DXAgent(TrendAgent):
-    """Specialized agent for DX=F (Dollar Indicator) analysis"""
-    
+    """Specialized agent for DX-Y.NYB (Dollar Indicator) analysis"""
+
     def __init__(self):
         # Pre-fetch data
-        fetch_data("yfinance", "DX=F", "1y")
-        
+        fetch_data("yfinance", "DX-Y.NYB", "1y")
+
         super().__init__(
-            ticker="DX=F",
+            ticker="DX-Y.NYB",
             agent_name="dx_agent",
             label="US Dollar Indicator",
             tools=[analyze_OHLCV, generate_OHLCV_chart, analyze_SMA],
             context_instructions="""
-            DX=F (Dollar Indicator) Analysis:
-            - DX=F measures the value of the US dollar against a basket of foreign currencies
-            - Rising DX=F = dollar strengthening (tightening liquidity, rising demand for dollars)
-            - Falling DX=F = dollar weakening (loosening liquidity, falling demand for dollars)
+            DX-Y.NYB (Dollar Indicator) Analysis:
+            - DX-Y.NYB measures the value of the US dollar against a basket of foreign currencies
+            - Rising DX-Y.NYB = dollar strengthening (tightening liquidity, rising demand for dollars)
+            - Falling DX-Y.NYB = dollar weakening (loosening liquidity, falling demand for dollars)
             - Analyze how it affects the market and economy
             
             PERIOD REQUIREMENTS:

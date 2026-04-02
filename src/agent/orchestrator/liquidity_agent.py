@@ -11,12 +11,12 @@ class LiquidityAgent(OrchestratorAgent):
     """
     Liquidity analysis orchestrator.
     
-    Combines treasury yield analysis (TNX), financial conditions (NFCI), and currency strength (DX=F)
+    Combines treasury yield analysis (TNX), financial conditions (NFCI), and currency strength (DX-Y.NYB)
     to provide comprehensive liquidity insights.
     """
-    
+
     def __init__(self):
-        """Initialize liquidity agent with predefined TNX, NFCI, and DX=F agents."""
+        """Initialize liquidity agent with predefined TNX, NFCI, and DX-Y.NYB agents."""
         super().__init__(
             "liquidity_orchestrator",
             hooks={'on_results_collected': [save_scores_to_csv]}
@@ -25,9 +25,9 @@ class LiquidityAgent(OrchestratorAgent):
     def _setup(self):
         """Set up sub-agents and synthesis agent."""
         # Add sub-agents using method chaining
-        self.add_sub_agent(TNXAgent())\
-            .add_sub_agent(NFCIAgent())\
-            .add_sub_agent(DXAgent())
+        self.add_sub_agent(TNXAgent)\
+            .add_sub_agent(NFCIAgent)\
+            .add_sub_agent(DXAgent)
         
         # Create synthesis agent
         self.synthesis_agent = self._create_synthesis_agent(f"""
@@ -54,9 +54,9 @@ class LiquidityAgent(OrchestratorAgent):
 # Usage examples
 if __name__ == "__main__":
     async def main():
-        # Example: Comprehensive liquidity analysis (TNX + NFCI + DX=F)
+        # Example: Comprehensive liquidity analysis (TNX + NFCI + DX-Y.NYB)
         print("=" * 80)
-        print("Example: Liquidity Analysis (TNX + NFCI + DX=F)")
+        print("Example: Liquidity Analysis (TNX + NFCI + DX-Y.NYB)")
         print("=" * 80)
         liquidity_agent = LiquidityAgent()
         result = await liquidity_agent.run()

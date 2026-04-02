@@ -82,7 +82,7 @@ class TestYFinanceSource(unittest.TestCase):
 
     @patch('yfinance.Ticker')
     def test_sma200_not_cut_dxf_1y(self, mock_ticker_class):
-        """Ensure SMA(200) is not cut for DX=F 1y as well."""
+        """Ensure SMA(200) is not cut for DX-Y.NYB 1y as well."""
         end_date = datetime.now().date()
         idx = pd.date_range(end=pd.Timestamp(end_date), periods=800, freq='B')
         hist_df = pd.DataFrame({
@@ -99,7 +99,7 @@ class TestYFinanceSource(unittest.TestCase):
 
         async def run():
             source = YFinanceSource()
-            data = await source.fetch_data("DX=F", "1y")
+            data = await source.fetch_data("DX-Y.NYB", "1y")
             hist = data['data']
             self.assertIn('SMA_200', hist.columns)
             self.assertFalse(pd.isna(hist['SMA_200'].iloc[0]))
