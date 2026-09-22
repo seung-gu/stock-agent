@@ -3,7 +3,7 @@
 import pandas as pd
 import requests
 from pathlib import Path
-from bs4 import BeautifulSoup
+from io import BytesIO
 from datetime import timedelta
 from typing import Any
 
@@ -14,6 +14,14 @@ from src.utils.charts import create_line_chart
 class FINRASource(WebDataSource):
     """Data source for FINRA Margin Statistics."""
     
+    # Workbook linked from the margin statistics page. The page itself sits behind a bot
+    # challenge; this static file does not.
+    DATA_URL = 'https://www.finra.org/sites/default/files/2021-03/margin-statistics.xlsx'
+
+    # Deliberately not BROWSER_HEADERS: a spoofed browser User-Agent is rejected here,
+    # an honest one is served.
+    HEADERS = {'User-Agent': 'stock-agent (+https://github.com/seung-gu/stock-agent)'}
+
     # Symbol configuration: column_index, label, cache_file, calculate_yoy
     SYMBOL_CONFIG = {
         'MARGIN_DEBT_YOY': {
@@ -53,49 +61,26 @@ class FINRASource(WebDataSource):
         return self.SYMBOL_CONFIG[symbol]
     
     def _scrape_data(self, symbol: str) -> pd.Series:
-        """Scrape FINRA margin statistics from website for specified symbol."""
+        """Read FINRA margin statistics from the published workbook for specified symbol."""
         config = self._get_symbol_config(symbol)
         
-        url = 'https://www.finra.org/rules-guidance/key-topics/margin-accounts/margin-statistics'
-        response = requests.get(url, headers=self.BROWSER_HEADERS, timeout=15)
+        response = requests.get(self.DATA_URL, headers=self.HEADERS, timeout=15)
         response.raise_for_status()
         
-        soup = BeautifulSoup(response.text, 'html.parser')
-        table = soup.find('table')
+        frame = pd.read_excel(BytesIO(response.content), sheet_name=0)
         
-        if not table:
-            raise ValueError("No data table found on FINRA website")
+        dates = pd.to_datetime(frame.iloc[:, 0], format='%Y-%m') + pd.offsets.MonthEnd(0)
+        values = pd.to_numeric(frame.iloc[:, config['column_index']], errors='coerce')
+        series = pd.Series(values.values, index=dates).dropna().sort_index()
         
-        data = []
-        
-        for row in table.find_all('tr')[1:]:  # Skip header
-            cells = row.find_all('td')
-            if len(cells) < 4:
-                continue
-            
-            try:
-                date_str = cells[0].get_text(strip=True)
-                date_obj = pd.to_datetime(date_str, format='%b-%y')
-                date_obj = date_obj + pd.offsets.MonthEnd(0)
-                
-                value_str = cells[config['column_index']].get_text(strip=True).replace(',', '')
-                value = float(value_str)
-                
-                data.append((date_obj, value))
-            except Exception as e:
-                print(f"[FINRA][SCRAPE] Error parsing row: {e}")
-                continue
-        
-        if not data:
-            raise ValueError(f"No valid data scraped from FINRA website for {symbol}")
-        
-        series = pd.Series(dict(data)).sort_index()
+        if series.empty:
+            raise ValueError(f"No valid data read from FINRA workbook for {symbol}")
         
         # Calculate YoY if configured
         if config['yoy']:
             series = series.pct_change(periods=12) * 100
         
-        print(f"[FINRA][SCRAPE] Scraped {len(series)} records for {symbol}, range: {series.index[0].date()} to {series.index[-1].date()}")
+        print(f"[FINRA][SCRAPE] Read {len(series)} records for {symbol}, range: {series.index[0].date()} to {series.index[-1].date()}")
         return series
     
     def fetch_data(self, symbol: str, period: str) -> dict[str, Any]:
