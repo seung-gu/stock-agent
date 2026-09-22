@@ -14,6 +14,11 @@ from src.utils.charts import create_line_chart
 class FINRASource(WebDataSource):
     """Data source for FINRA Margin Statistics."""
     
+    # Monthly, published in the third week of the following month. Replaying past runs,
+    # the newest point reaches 47 days old just before a release; 62 (about two month
+    # lengths) leaves a release that slips a week from turning the run red.
+    MAX_AGE_DAYS = {'MARGIN_DEBT_YOY': 62}
+    
     # Workbook linked from the margin statistics page. The page itself sits behind a bot
     # challenge; this static file does not.
     DATA_URL = 'https://www.finra.org/sites/default/files/2021-03/margin-statistics.xlsx'
@@ -133,6 +138,8 @@ class FINRASource(WebDataSource):
         if len(series_data) == 0:
             return {
                 'period': period,
+                'as_of': data.get('as_of'),
+                'stale': data.get('stale', False),
                 'start': None,
                 'end': None,
                 'change': None,
@@ -147,6 +154,8 @@ class FINRASource(WebDataSource):
         
         return {
             'period': period,
+            'as_of': data.get('as_of'),
+            'stale': data.get('stale', False),
             'start': start_value,
             'end': end_value,
             'change': change,

@@ -12,9 +12,16 @@ from datetime import datetime, timedelta
 from typing import Any
 from pathlib import Path
 
+from src.data_sources import freshness
+
 
 class DataSource(ABC):
     """Base class for all data sources."""
+    
+    # How old a symbol's newest point may get before the run flags it. Cadence belongs to
+    # the dataset, not the provider: one source can serve a daily series and a quarterly
+    # one. Symbols absent from this map are not checked.
+    MAX_AGE_DAYS: dict[str, int] = {}
     
     def __init__(self):
         """Initialize data source."""
@@ -267,6 +274,20 @@ class WebDataSource(DataSource):
         """
         period = period or '1y'
         print(f"[CACHE][FETCH] symbol={symbol}, period={period}")
+
+        def finish(period_data, merged):
+            """Attach how old this data is, and record it for the run's stale report."""
+            result = build_result_fn(period_data, merged)
+            if len(merged) == 0:
+                return result
+            as_of = merged.index[-1].date().isoformat()
+            age = (datetime.now().date() - merged.index[-1].date()).days
+            result['as_of'] = as_of
+            limit = self.MAX_AGE_DAYS.get(symbol)
+            result['stale'] = freshness.record(symbol, as_of, age, limit)
+            if result['stale']:
+                print(f"[STALE] {symbol} as of {as_of} is {age} days old (limit {limit})")
+            return result
         
         # Load local cache with validation flag
         local, is_validated = load_cache_fn()
@@ -287,7 +308,7 @@ class WebDataSource(DataSource):
                 start_date = end_date - self._period_to_timedelta(period)
                 period_data = merged[merged.index >= start_date]
                 print(f"[CACHE][RETURN] Returning {len(period_data)} records for period {period}")
-                return build_result_fn(period_data if len(period_data) > 0 else merged, merged)
+                return finish(period_data if len(period_data) > 0 else merged, merged)
         
         # Scrape to check latest available date
         print(f"[SCRAPE] Fetching data")
@@ -304,7 +325,7 @@ class WebDataSource(DataSource):
                 start_date = end_date - self._period_to_timedelta(period)
                 period_data = merged[merged.index >= start_date]
                 print(f"[CACHE][RETURN] Returning {len(period_data)} records for period {period}")
-                return build_result_fn(period_data if len(period_data) > 0 else merged, merged)
+                return finish(period_data if len(period_data) > 0 else merged, merged)
             else:
                 # No cache and scraping failed
                 raise ValueError(f"Failed to fetch data: {e}")
@@ -380,5 +401,5 @@ class WebDataSource(DataSource):
         
         print(f"[CACHE][RETURN] Returning {len(period_data)} records for period {period}")
         
-        return build_result_fn(period_data if len(period_data) > 0 else merged, merged)
+        return finish(period_data if len(period_data) > 0 else merged, merged)
 
