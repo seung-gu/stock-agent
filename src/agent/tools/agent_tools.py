@@ -31,7 +31,7 @@ def as_of_note(analysis: dict) -> str:
 def fetch_data(source: str, symbol: str, period: str) -> str:
     """Populate cache by fetching data (NOT a tool - for internal workflow use only)."""
     src = get_data_source(source)
-    if symbol in src.MAX_AGE_DAYS:
+    if src.max_age_days(symbol) is not None:
         freshness.expect(symbol)
     src.fetch_data(symbol, period)
     return f"Fetched OK for {source}:{symbol} {period}"
@@ -51,7 +51,7 @@ async def analyze_OHLCV(source: str, symbol: str, periods: list[str]|str) -> str
         actual_period = src.get_actual_period_approx(data)
         analysis = src.get_analysis(data, actual_period)
         period_name = get_period_name(actual_period)
-        results.append(f"""{period_name} Analysis ({symbol}):
+        results.append(f"""{period_name} Analysis ({symbol}){as_of_note(analysis)}:
             - Start: {analysis['start']:.3f}
             - End: {analysis['end']:.3f}
             - Change: {analysis['change_pct']:+.2f}%
@@ -249,7 +249,7 @@ async def analyze_NFCI(periods: list[str]|str) -> str:
         actual_period = src.get_actual_period_approx(data)
         analysis = src.get_analysis(data, actual_period)
         period_name = get_period_name(actual_period)
-        results.append(f"""{period_name} NFCI (National Financial Conditions Index):
+        results.append(f"""{period_name} NFCI (National Financial Conditions Index){as_of_note(analysis)}:
             - Start: {analysis['start']:.3f}
             - End: {analysis['end']:.3f}
             - Change: {analysis['change_pct']:+.2f}%
@@ -461,7 +461,7 @@ async def analyze_vix(periods: list[str]|str) -> str:
         actual_period = src.get_actual_period_approx(data)
         analysis = src.get_analysis(data, actual_period)
         period_name = get_period_name(actual_period)
-        results.append(f"""{period_name} VIX (Volatility Index):
+        results.append(f"""{period_name} VIX (Volatility Index){as_of_note(analysis)}:
             - Start: {analysis['start']:.2f}
             - End: {analysis['end']:.2f}
             - Change: {analysis['change_pct']:+.2f}%
@@ -515,7 +515,7 @@ async def analyze_high_yield_spread(periods: list[str]|str) -> str:
         actual_period = src.get_actual_period_approx(data)
         analysis = src.get_analysis(data, actual_period)
         period_name = get_period_name(actual_period)
-        results.append(f"""{period_name} ICE BofA US High Yield Spread:
+        results.append(f"""{period_name} ICE BofA US High Yield Spread{as_of_note(analysis)}:
             - Start: {analysis['start']:.2f}%
             - End: {analysis['end']:.2f}%
             - Change: {analysis['change_pct']:+.2f}%

@@ -23,6 +23,28 @@ class DataSource(ABC):
     # one. Symbols absent from this map are not checked.
     MAX_AGE_DAYS: dict[str, int] = {}
     
+    def max_age_days(self, symbol: str) -> int | None:
+        """How old `symbol` may get. Sources with an open symbol list override this."""
+        return self.MAX_AGE_DAYS.get(symbol)
+    
+    def _annotate_freshness(self, result: dict[str, Any], symbol: str, index) -> dict[str, Any]:
+        """Attach how old this data is, and record it for the run's stale report.
+
+        Takes the full series index, not the slice the caller asked for: a short window
+        can be empty precisely because the source stopped updating.
+        """
+        if len(index) == 0:
+            return result
+        newest = index[-1].date()
+        as_of = newest.isoformat()
+        age = (datetime.now().date() - newest).days
+        limit = self.max_age_days(symbol)
+        result['as_of'] = as_of
+        result['stale'] = freshness.record(symbol, as_of, age, limit)
+        if result['stale']:
+            print(f"[STALE] {symbol} as of {as_of} is {age} days old (limit {limit})")
+        return result
+    
     def __init__(self):
         """Initialize data source."""
         pass
@@ -276,18 +298,7 @@ class WebDataSource(DataSource):
         print(f"[CACHE][FETCH] symbol={symbol}, period={period}")
 
         def finish(period_data, merged):
-            """Attach how old this data is, and record it for the run's stale report."""
-            result = build_result_fn(period_data, merged)
-            if len(merged) == 0:
-                return result
-            as_of = merged.index[-1].date().isoformat()
-            age = (datetime.now().date() - merged.index[-1].date()).days
-            result['as_of'] = as_of
-            limit = self.MAX_AGE_DAYS.get(symbol)
-            result['stale'] = freshness.record(symbol, as_of, age, limit)
-            if result['stale']:
-                print(f"[STALE] {symbol} as of {as_of} is {age} days old (limit {limit})")
-            return result
+            return self._annotate_freshness(build_result_fn(period_data, merged), symbol, merged.index)
         
         # Load local cache with validation flag
         local, is_validated = load_cache_fn()

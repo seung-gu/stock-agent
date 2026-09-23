@@ -17,6 +17,10 @@ class FREDSource(APIDataSource):
     
     _cache: dict[str, Any] = {}
     
+    # NFCI is weekly, released mid-week for the week ending the prior Friday, so the
+    # newest point runs ~12 days behind at its widest. The credit spread is daily.
+    MAX_AGE_DAYS = {'NFCI': 18, 'BAMLH0A0HYM2': 10}
+    
     def __init__(self):
         super().__init__()
         self._fred = None
@@ -127,11 +131,11 @@ class FREDSource(APIDataSource):
             'negative_label': 'Below Baseline'
         })
         
-        return {
+        return self._annotate_freshness({
             'data': period_data,
             'symbol': symbol,
             'config': config
-        }
+        }, symbol, series_data.index)
           
     async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None, chart_type: str = 'line', **kwargs) -> str:
         """Create FRED indicator chart.
@@ -161,6 +165,8 @@ class FREDSource(APIDataSource):
         
         return {
             'period': period,
+            'as_of': data.get('as_of'),
+            'stale': data.get('stale', False),
             'start': start_value,
             'end': end_value,
             'change_pct': change_pct,
