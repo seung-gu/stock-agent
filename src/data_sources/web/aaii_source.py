@@ -15,6 +15,9 @@ from src.utils.charts import create_line_chart
 class AAIISource(WebDataSource):
     """Data source for AAII Investor Sentiment Survey (Bull-Bear Spread)."""
     
+    # Weekly. Cached history shows a 7 day interval, 14 days at its widest.
+    MAX_AGE_DAYS = {'AAII_BULL_BEAR_SPREAD': 18}
+    
     def __init__(self):
         super().__init__()
         self._cache_file = Path('data/aaii_bull_bear_spread_history.json')
@@ -122,6 +125,8 @@ class AAIISource(WebDataSource):
         
         return {
             'period': period,
+            'as_of': data.get('as_of'),
+            'stale': data.get('stale', False),
             'start': start_value,
             'end': end_value,
             'change': change,

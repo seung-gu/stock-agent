@@ -16,6 +16,15 @@ class YFinanceSource(APIDataSource):
     
     _cache: dict[str, Any] = {}
     
+    def age_limit_days(self, symbol: str) -> int | None:
+        """Tickers here are exchange-traded, so every one of them moves on trading days.
+
+        The symbol list is open — the portfolio agent fetches whatever it holds — so this
+        is a rule rather than the per-symbol map the other sources use. Long weekends put
+        4 days between points at most.
+        """
+        return 10
+    
     def __init__(self):
         """Initialize with smart cache for API optimization."""
         super().__init__()
@@ -130,11 +139,11 @@ class YFinanceSource(APIDataSource):
             pos = hist.index.searchsorted(effective_start)
             hist_display = hist.iloc[pos:]
 
-        return {
+        return self._annotate_freshness({
             'data': hist_display,
             'info': info,
             'symbol': symbol
-        }
+        }, symbol, hist.index)
     
     async def create_chart(self, data: dict[str, Any], symbol: str, period: str, label: str = None, chart_type: str = 'candle', **kwargs) -> str:
         """Create stock/treasury chart.
@@ -206,6 +215,8 @@ class YFinanceSource(APIDataSource):
         
         return {
             'period': period,
+            'as_of': data.get('as_of'),
+            'stale': data.get('stale', False),
             'start': start_price,
             'end': end_price,
             'change_pct': change_pct,
