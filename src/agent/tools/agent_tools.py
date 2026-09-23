@@ -31,7 +31,7 @@ def as_of_note(analysis: dict) -> str:
 def fetch_data(source: str, symbol: str, period: str) -> str:
     """Populate cache by fetching data (NOT a tool - for internal workflow use only)."""
     src = get_data_source(source)
-    if src.max_age_days(symbol) is not None:
+    if src.age_limit_days(symbol) is not None:
         freshness.expect(symbol)
     src.fetch_data(symbol, period)
     return f"Fetched OK for {source}:{symbol} {period}"

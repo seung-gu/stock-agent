@@ -16,7 +16,7 @@ class YFinanceSource(APIDataSource):
     
     _cache: dict[str, Any] = {}
     
-    def max_age_days(self, symbol: str) -> int | None:
+    def age_limit_days(self, symbol: str) -> int | None:
         """Tickers here are exchange-traded, so every one of them moves on trading days.
 
         The symbol list is open — the portfolio agent fetches whatever it holds — so this

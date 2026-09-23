@@ -10,7 +10,7 @@ so a run declares what it needs up front and reports what it did not get.
 from pathlib import Path
 
 
-# symbol -> (as_of, age_days, max_age_days), for symbols a fetch actually reached
+# symbol -> (as_of, age_days, limit_days), for symbols a fetch actually reached
 _seen: dict[str, tuple[str, int, int]] = {}
 
 # symbols this run depends on, recorded before the fetch that may never return
@@ -22,19 +22,19 @@ def expect(symbol: str) -> None:
     _expected.add(symbol)
 
 
-def record(symbol: str, as_of: str, age_days: int, max_age_days: int | None) -> bool:
+def record(symbol: str, as_of: str, age_days: int, limit_days: int | None) -> bool:
     """Record one fetch. Returns True when what it served is older than the source allows.
 
     Periods for one symbol are fetched concurrently and may not all take the same path —
     one can serve cache while another scrapes successfully. Keep the newest reading so the
     run's verdict does not depend on which thread finished last.
     """
-    if max_age_days is None:
+    if limit_days is None:
         return False
     previous = _seen.get(symbol)
     if previous is None or as_of > previous[0]:
-        _seen[symbol] = (as_of, age_days, max_age_days)
-    return age_days > max_age_days
+        _seen[symbol] = (as_of, age_days, limit_days)
+    return age_days > limit_days
 
 
 def stale() -> dict[str, tuple[str, int, int]]:

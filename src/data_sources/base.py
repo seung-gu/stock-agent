@@ -23,7 +23,7 @@ class DataSource(ABC):
     # one. Symbols absent from this map are not checked.
     MAX_AGE_DAYS: dict[str, int] = {}
     
-    def max_age_days(self, symbol: str) -> int | None:
+    def age_limit_days(self, symbol: str) -> int | None:
         """How old `symbol` may get. Sources with an open symbol list override this."""
         return self.MAX_AGE_DAYS.get(symbol)
     
@@ -38,7 +38,7 @@ class DataSource(ABC):
         newest = index[-1].date()
         as_of = newest.isoformat()
         age = (datetime.now().date() - newest).days
-        limit = self.max_age_days(symbol)
+        limit = self.age_limit_days(symbol)
         result['as_of'] = as_of
         result['stale'] = freshness.record(symbol, as_of, age, limit)
         if result['stale']:
