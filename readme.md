@@ -13,6 +13,7 @@ AI-powered comprehensive market analysis with automated Notion reporting.
 *Automated market analysis reports with charts, tables, and AI-generated insights published to Notion*
 
 ### Recent Reports
+- [2026-11-09](https://seunggu-kang.notion.site/2026-11-2-41362b45fc8081c59674d4d9d6d2cef7)
 - [2026-11-02](https://seunggu-kang.notion.site/2026-11-1-40c62b45fc8081ed9233e427ac33468a)
 - [2026-10-26](https://seunggu-kang.notion.site/2026-10-4-40562b45fc8081e688ebd84db61d946f)
 - [2026-10-19](https://seunggu-kang.notion.site/2026-10-Week-3-3fe62b45fc808161a9b9c06361b2b14b)
@@ -22,12 +23,11 @@ AI-powered comprehensive market analysis with automated Notion reporting.
 - [2026-09-22](https://seunggu-kang.notion.site/2026-9-4-3e362b45fc80813bb097c411d71d8c3d)
 - [2026-09-21](https://seunggu-kang.notion.site/2026-9-3-3e262b45fc808161956bcbd672e5007b)
 - [2026-09-14](https://seunggu-kang.notion.site/2026-9-2-3db62b45fc808190a112de3faf9469df)
-- [2026-09-07](https://seunggu-kang.notion.site/2026-9-2026-9-1-3d462b45fc808131a91ac963991d8172)
 
 ### Latest Indicator Heatmap
-![Indicator Heatmap](https://pub-8ab005469c4042798a7550efc290ac49.r2.dev/indicator/images/indicator_heatmap_20261102.png)
+![Indicator Heatmap](https://pub-8ab005469c4042798a7550efc290ac49.r2.dev/indicator/images/indicator_heatmap_20261109.png)
 
-*Updated: 2026-11-02*
+*Updated: 2026-11-09*
 
 ---
 
