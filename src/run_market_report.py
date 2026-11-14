@@ -8,9 +8,13 @@ from agents import trace, set_default_openai_client
 from openai import AsyncOpenAI
 
 from src.agent.orchestrator.market_report_agent import MarketReportAgent
+from src.data_sources import freshness
 from src.adapters.notion_report_builder import NotionReportBuilder
 
 load_dotenv(override=True)
+
+# Read by the workflow after the report is published, to fail the run on stale data.
+STALE_REPORT_PATH = 'stale_sources.txt'
 
 # Suppress httpx INFO logs
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -67,6 +71,16 @@ async def main():
     print("\n📊 Running complete market report...")
     market_result = await run_market_report()
     print(f"Market Report Result: {market_result}")
+    
+    # The report is already published; the run still has to say which sources fed it
+    # stale data or dropped out entirely, since both look like success from outside.
+    problems = freshness.write_report(STALE_REPORT_PATH)
+    if problems:
+        print(f"\n⚠️  Sources needing attention ({len(problems)}):")
+        for line in problems:
+            print(f"   {line}")
+    else:
+        print("\n✅ All sources current")
 
 if __name__ == "__main__":
     asyncio.run(main())

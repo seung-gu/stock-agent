@@ -15,6 +15,10 @@ from src.utils.charts import create_line_chart
 class InvestingSource(WebDataSource):
     """Data source for market breadth indicators via Investing.com scraping."""
     
+    # Every trading day; weekends and holidays put 4 days between points at most. The
+    # wider gaps in the cached history are collection outages, not the market closing.
+    MAX_AGE_DAYS = {'S5TH': 10, 'S5FI': 10}
+    
     SYMBOL_URLS = {
         'S5TH': 'https://www.investing.com/indices/sp-500-stocks-above-200-day-average',
         'S5FI': 'https://www.investing.com/indices/s-p-500-stocks-above-50-day-average',
@@ -109,6 +113,8 @@ class InvestingSource(WebDataSource):
         
         return {
             'period': period or '1y',
+            'as_of': data.get('as_of'),
+            'stale': data.get('stale', False),
             'start': start_value,
             'end': end_value,
             'change': change_pct,

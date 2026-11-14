@@ -112,3 +112,15 @@ jobs:
             git push origin HEAD:${{ github.ref_name }}
           fi
 
+      
+      # Runs last on purpose: the report is already published, so a stalled source fails
+      # the run for visibility without costing the week's report.
+      - name: Fail if any source served stale data
+        if: always()
+        run: |
+          if [ -s stale_sources.txt ]; then
+            while IFS= read -r line; do echo "::error::stale data - $line"; done < stale_sources.txt
+            echo "The report was published, but the sources above have stopped updating."
+            exit 1
+          fi
+          echo "✅ All sources current"

@@ -15,6 +15,9 @@ from src.utils.charts import create_line_chart
 class YChartsSource(WebDataSource):
     """Data source for CBOE Put/Call Ratio via YCharts scraping."""
     
+    # Every trading day; the cached history never exceeds 4 days between points.
+    MAX_AGE_DAYS = {'CBOE_PUT_CALL_EQUITY': 10}
+    
     SYMBOL_URLS = {
         'CBOE_PUT_CALL_EQUITY': 'https://ycharts.com/indicators/cboe_equity_put_call_ratio',
     }
@@ -125,6 +128,8 @@ class YChartsSource(WebDataSource):
         
         return {
             'period': period,
+            'as_of': data.get('as_of'),
+            'stale': data.get('stale', False),
             'start': start_value,
             'end': end_value,
             'change': change,

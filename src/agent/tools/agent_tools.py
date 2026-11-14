@@ -6,7 +6,7 @@ from agents import function_tool
 from factset_report_analyzer import SP500
 from factset_report_analyzer.utils.plot import plot_time_series
 
-from src.data_sources import get_data_source
+from src.data_sources import get_data_source, freshness
 from src.config import CHART_OUTPUT_DIR
 from src.utils.technical_indicators import calculate_rsi, calculate_disparity
 from src.utils.koyfin_chart_capture import KoyfinChartCapture
@@ -20,9 +20,19 @@ def get_period_name(period: str) -> str:
     return period_names.get(period, f"{period}")
 
 
+def as_of_note(analysis: dict) -> str:
+    """When this data was last updated, so a stalled source cannot read as current."""
+    if not analysis.get('as_of'):
+        return ''
+    flag = ' - STALE, source has not updated' if analysis.get('stale') else ''
+    return f" (as of {analysis['as_of']}{flag})"
+
+
 def fetch_data(source: str, symbol: str, period: str) -> str:
     """Populate cache by fetching data (NOT a tool - for internal workflow use only)."""
     src = get_data_source(source)
+    if src.age_limit_days(symbol) is not None:
+        freshness.expect(symbol)
     src.fetch_data(symbol, period)
     return f"Fetched OK for {source}:{symbol} {period}"
 
@@ -41,7 +51,7 @@ async def analyze_OHLCV(source: str, symbol: str, periods: list[str]|str) -> str
         actual_period = src.get_actual_period_approx(data)
         analysis = src.get_analysis(data, actual_period)
         period_name = get_period_name(actual_period)
-        results.append(f"""{period_name} Analysis ({symbol}):
+        results.append(f"""{period_name} Analysis ({symbol}){as_of_note(analysis)}:
             - Start: {analysis['start']:.3f}
             - End: {analysis['end']:.3f}
             - Change: {analysis['change_pct']:+.2f}%
@@ -239,7 +249,7 @@ async def analyze_NFCI(periods: list[str]|str) -> str:
         actual_period = src.get_actual_period_approx(data)
         analysis = src.get_analysis(data, actual_period)
         period_name = get_period_name(actual_period)
-        results.append(f"""{period_name} NFCI (National Financial Conditions Index):
+        results.append(f"""{period_name} NFCI (National Financial Conditions Index){as_of_note(analysis)}:
             - Start: {analysis['start']:.3f}
             - End: {analysis['end']:.3f}
             - Change: {analysis['change_pct']:+.2f}%
@@ -290,7 +300,7 @@ async def analyze_market_breadth(symbol: str, periods: list[str]|str) -> str:
         analysis = src.get_analysis(data, actual_period)
         period_name = get_period_name(actual_period)
         ma_period = analysis['ma_period']
-        results.append(f"""{period_name} Market Breadth ({symbol} - {ma_period}day MA):
+        results.append(f"""{period_name} Market Breadth ({symbol} - {ma_period}day MA){as_of_note(analysis)}:
             - Start: {analysis['start']:.2f}%
             - End: {analysis['end']:.2f}%
             - Change: {analysis['change']:+.2f}%
@@ -347,7 +357,7 @@ async def analyze_bull_bear_spread(periods: list[str]|str) -> str:
         actual_period = src.get_actual_period_approx(data)
         analysis = src.get_analysis(data, actual_period)
         period_name = get_period_name(actual_period)
-        results.append(f"""{period_name} AAII Bull-Bear Spread:
+        results.append(f"""{period_name} AAII Bull-Bear Spread{as_of_note(analysis)}:
             - Start: {analysis['start']:+.2f}
             - End: {analysis['end']:+.2f}
             - Change: {analysis['change']:+.2f}
@@ -399,7 +409,7 @@ async def analyze_put_call(periods: list[str]|str) -> str:
         actual_period = src.get_actual_period_approx(data)
         analysis = src.get_analysis(data, actual_period)
         period_name = get_period_name(actual_period)
-        results.append(f"""{period_name} CBOE Equity Put/Call Ratio:
+        results.append(f"""{period_name} CBOE Equity Put/Call Ratio{as_of_note(analysis)}:
             - Start: {analysis['start']:.2f}
             - End: {analysis['end']:.2f}
             - Change: {analysis['change']:+.2f}
@@ -451,7 +461,7 @@ async def analyze_vix(periods: list[str]|str) -> str:
         actual_period = src.get_actual_period_approx(data)
         analysis = src.get_analysis(data, actual_period)
         period_name = get_period_name(actual_period)
-        results.append(f"""{period_name} VIX (Volatility Index):
+        results.append(f"""{period_name} VIX (Volatility Index){as_of_note(analysis)}:
             - Start: {analysis['start']:.2f}
             - End: {analysis['end']:.2f}
             - Change: {analysis['change_pct']:+.2f}%
@@ -505,7 +515,7 @@ async def analyze_high_yield_spread(periods: list[str]|str) -> str:
         actual_period = src.get_actual_period_approx(data)
         analysis = src.get_analysis(data, actual_period)
         period_name = get_period_name(actual_period)
-        results.append(f"""{period_name} ICE BofA US High Yield Spread:
+        results.append(f"""{period_name} ICE BofA US High Yield Spread{as_of_note(analysis)}:
             - Start: {analysis['start']:.2f}%
             - End: {analysis['end']:.2f}%
             - Change: {analysis['change_pct']:+.2f}%
@@ -558,7 +568,7 @@ async def analyze_margin_debt(symbol: str, periods: list[str]|str) -> str:
         analysis = src.get_analysis(data, actual_period)
         period_name = get_period_name(actual_period)
         label = data.get('label', symbol)
-        results.append(f"""{period_name} {label}:
+        results.append(f"""{period_name} {label}{as_of_note(analysis)}:
             - Start: {analysis['start']:.2f}
             - End: {analysis['end']:.2f}
             - Change: {analysis['change']:+.2f}

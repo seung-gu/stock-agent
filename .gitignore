@@ -92,3 +92,6 @@ charts/
 !readme-assets/*.png
 !readme-assets/*.jpg
 
+
+# Written each run by src/run_market_report.py for the workflow to check
+stale_sources.txt
